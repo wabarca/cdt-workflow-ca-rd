@@ -1,0 +1,24 @@
+{
+  "name": "CDT 8.0 & Python Climate Suite",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "cdt-runner",
+  "workspaceFolder": "/workspace",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "python.defaultInterpreterPath": "/opt/venv/bin/python",
+        "python.formatting.provider": "none",
+        "r.rpath.linux": "/usr/local/bin/R",
+        "r.rterm.linux": "/usr/local/bin/R"
+      },
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "REditorSupport.r",
+        "redhat.vscode-yaml",
+        "tamasfe.even-better-toml"
+      ]
+    }
+  },
+  "remoteUser": "root"
+}
