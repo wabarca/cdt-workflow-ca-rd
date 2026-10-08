@@ -1,0 +1,37 @@
+# ==============================================================================
+# EXPERIMENTO TN08: AMORTIGUAMIENTO TÉRMICO MARINO NOCTURNO (BARNES TMIN)
+# Dominio: Centroamérica y República Dominicana (1991–2020)
+# Variable: Temperatura Mínima Diaria (CHIRTS Tmin + Estaciones)
+# ==============================================================================
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_TN08"
+name: "Amortiguamiento Térmico Marino Tmin (Esquema de Barnes BSc Multiescala)"
+description: >
+  Filtro gaussiano continuo para suavizado regularizado en la interfaz
+  tierra-mar y amortiguamiento térmico marino nocturno en costas y archipiélagos.
+
+variable_type: "tmin"
+var_id: "tmin"
+
+downscaling:
+  method: "bilinear"
+  interp_method: "blin"
+
+bias_correction:
+  method: "multiplicative.bias.var"
+  interp_method: "barnes"
+  params:
+    nmin: 4
+    nmax: 12
+    maxdist: 3.5
+
+merging:
+  method: "barnes"
+  passes:
+    - radius: 1.0
+      interp_method: "barnes"
+    - radius: 0.75
+      interp_method: "barnes"
+    - radius: 0.50
+      interp_method: "barnes"

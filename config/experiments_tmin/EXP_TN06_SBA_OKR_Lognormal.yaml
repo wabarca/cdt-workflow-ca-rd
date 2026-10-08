@@ -1,0 +1,43 @@
+# ==============================================================================
+# EXPERIMENTO TN06: NOCHES CÁLIDAS TROPICALES EN TIERRAS BAJAS (LOGNORMAL + OKR)
+# Dominio: Centroamérica y República Dominicana (1991–2020)
+# Variable: Temperatura Mínima Diaria (CHIRTS Tmin + Estaciones)
+# ==============================================================================
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_TN06"
+name: "Noches Cálidas Tropicales Tmin (Lognormal + OKR)"
+description: >
+  Modela regímenes nocturnos tropicales húmedos continuos (noches cálidas >24 °C)
+  en costas del Caribe y llanuras costeras mediante distribución lognormal.
+
+variable_type: "tmin"
+var_id: "tmin"
+
+downscaling:
+  method: "bilinear"
+  interp_method: "blin"
+
+bias_correction:
+  method: "qmdist"
+  distr: "lnorm"
+  interp_method: "okr"
+  params:
+    vgm_model: "Sph"
+    nmin: 4
+    nmax: 12
+    maxdist: 3.5
+
+merging:
+  method: "sba"
+  interp_method: "okr"
+  passes:
+    - radius: 1.0
+      interp_method: "okr"
+      vgm_model: "Sph"
+    - radius: 0.75
+      interp_method: "okr"
+      vgm_model: "Sph"
+    - radius: 0.50
+      interp_method: "okr"
+      vgm_model: "Exp"

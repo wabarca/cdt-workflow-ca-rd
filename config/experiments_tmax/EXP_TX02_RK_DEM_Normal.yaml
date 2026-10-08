@@ -1,0 +1,45 @@
+# ==============================================================================
+# EXPERIMENTO TX02: REGRESSION KRIGING CON GRADIENTE ADIABÁTICO (SOLO DEM)
+# Dominio: Centroamérica y República Dominicana (1991–2020)
+# Variable: Temperatura Máxima Diaria (CHIRTS Tmax + Estaciones)
+# ==============================================================================
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_TX02"
+name: "Gradiente Térmico Adiabático Tmax (RK Solo DEM + QM Normal)"
+description: >
+  Modela el enfriamiento adiabático diurno (Lapse Rate dT/dz ~ -6.5 °C/km)
+  proyectado sobre el DEM SRTM 90m en las principales cordilleras (Cordillera Central,
+  Sierra Madre de Chiapas y Talamanca).
+
+variable_type: "tmax"
+var_id: "tmax"
+
+downscaling:
+  method: "bilinear"
+  interp_method: "blin"
+
+bias_correction:
+  method: "qmdist"
+  distr: "norm"
+  interp_method: "idw"
+  params:
+    idw_power: 2.0
+    nmin: 4
+    nmax: 12
+    maxdist: 3.5
+
+merging:
+  method: "regr.kriging"
+  covariables:
+    - "dem"
+  passes:
+    - radius: 1.0
+      interp_method: "regr.kriging"
+      vgm_model: "Sph"
+    - radius: 0.75
+      interp_method: "regr.kriging"
+      vgm_model: "Sph"
+    - radius: 0.50
+      interp_method: "regr.kriging"
+      vgm_model: "Exp"

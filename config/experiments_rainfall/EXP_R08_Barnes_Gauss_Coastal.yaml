@@ -1,0 +1,47 @@
+# ==============================================================================
+# EXPERIMENTO EXP-R08: Esquema de Barnes (BSc) Multiescala Gaussiano
+# ==============================================================================
+# Menú CDT: Merging Data > Rainfall > Merging Data (Method: Barnes Scheme)
+# Justificación Física y Climatológica:
+# Diseñado específicamente para regiones costeras, archipiélagos y zonas insulares
+# (República Dominicana, Islas de la Bahía en Honduras, Golfo de Fonseca).
+# El análisis objetivo de Barnes (Barnes, 1964; Acharya et al., 2013) utiliza
+# funciones de ponderación gaussianas continuas con radios decrecientes, eliminando
+# los artefactos circulares discontinuos ("ojos de buey") producidos por IDW o Kriging.
+# ==============================================================================
+
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_R08_Barnes_Gauss_Coastal"
+variable_type: "rainfall"
+description: "Esquema de Barnes (BSc) Multiescala (Ponderación Gaussiana Continua para Costas e Islas)"
+
+# --- Paso 1 y 2: Corrección de Sesgo (Bias Correction) ---
+bias_correction:
+  method: "mbvar"
+  interpolation:
+    method: "barnes"
+    maxdist: 2.5
+    nmin: 4
+    nmax: 16
+
+# --- Paso 3: Máscara Probabilística Lluvia/No-Lluvia (RnoR Mask) ---
+rnor_mask:
+  use: true
+  wet_threshold: 1.0
+  smoothing: true
+  method: "logit"
+  interpolation:
+    method: "barnes"
+    maxdist: 2.5
+
+# --- Paso 4: Fusión Espacial Final (Merging Data) ---
+merging:
+  method: "BSc"                     # Barnes Scheme
+  nrun: 3
+  passes: [0.70, 0.35, 0.15]
+  interpolation:
+    method: "barnes"
+    maxdist: 2.5
+    nmin: 5
+    nmax: 18

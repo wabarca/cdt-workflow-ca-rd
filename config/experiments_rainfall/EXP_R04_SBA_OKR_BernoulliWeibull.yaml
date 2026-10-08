@@ -1,0 +1,50 @@
+# ==============================================================================
+# EXPERIMENTO EXP-R04: Quantile Mapping Bernoulli-Weibull + Kriging por Bloques
+# ==============================================================================
+# Menú CDT: Merging Data > Rainfall > Compute Bias Coefficients (qm.dist: Weibull)
+# Justificación Física:
+# La distribución Weibull posee colas más pesadas que la Gamma, siendo superior
+# para modelar precipitaciones torrenciales extremas (>100–250 mm/día) asociadas
+# a Ondas del Este, Ciclones Tropicales del Caribe y Giros Centroamericanos (CAG).
+# ==============================================================================
+
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_R04_SBA_OKR_BernoulliWeibull"
+variable_type: "rainfall"
+description: "QM Paramétrico Bernoulli-Weibull (Optimizado para Extremos Ciclónicos)"
+
+# --- Paso 1 y 2: Corrección de Sesgo (Bias Correction) ---
+bias_correction:
+  method: "qm.dist"
+  distribution: "Weibull"           # Distribución Weibull para colas pesadas de extremos
+  interpolation:
+    method: "block_okr"
+    maxdist: 2.5
+    nmin: 6
+    nmax: 18
+    variogram_models: ["Sph", "Exp", "Gau"]
+
+# --- Paso 3: Máscara Probabilística Lluvia/No-Lluvia (RnoR Mask) ---
+rnor_mask:
+  use: true
+  wet_threshold: 1.0
+  smoothing: true
+  method: "logit"
+  interpolation:
+    method: "block_okr"
+    maxdist: 2.5
+    variogram_models: ["Sph", "Exp"]
+
+# --- Paso 4: Fusión Espacial Final (Merging Data) ---
+merging:
+  method: "SBA"
+  nrun: 3
+  passes: [0.70, 0.35, 0.15]
+  interpolation:
+    method: "block_okr"
+    maxdist: 2.5
+    nmin: 6
+    nmax: 18
+    use_block: true
+    variogram_models: ["Sph", "Exp", "Gau"]

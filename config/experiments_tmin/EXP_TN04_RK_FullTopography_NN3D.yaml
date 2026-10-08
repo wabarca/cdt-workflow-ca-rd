@@ -1,0 +1,48 @@
+# ==============================================================================
+# EXPERIMENTO TN04: INVERSIONES TÉRMICAS Y DRENAJE CATABÁTICO (NN-3D + CURVATURA)
+# Dominio: Centroamérica y República Dominicana (1991–2020)
+# Variable: Temperatura Mínima Diaria (CHIRTS Tmin + Estaciones)
+# ==============================================================================
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_TN04"
+name: "Inversiones Térmicas y Valles Fríos Tmin (NN-3D + RK Topografía Fina)"
+description: >
+  Modela el drenaje de aire frío nocturno (*cold-air pooling*) e inversiones térmicas
+  en valles intramontanos cerrados (Constanza, Valle Nuevo en RD, Quetzaltenango en Guatemala)
+  evitando que el enfriamiento contamine térmicamente las cimas adyacentes mediante NN-3D con ponderación vertical.
+
+variable_type: "tmin"
+var_id: "tmin"
+
+downscaling:
+  method: "bicubic"
+  interp_method: "bicub"
+
+bias_correction:
+  method: "multiplicative.bias.var"
+  interp_method: "nn3d"
+  params:
+    weight_horizontal: 1.0
+    weight_vertical: 0.008
+    nmin: 4
+    nmax: 12
+    maxdist: 3.5
+
+merging:
+  method: "regr.kriging"
+  covariables:
+    - "dem"
+    - "slope"
+    - "lat"
+    - "lon"
+  passes:
+    - radius: 1.0
+      interp_method: "regr.kriging"
+      vgm_model: "Sph"
+    - radius: 0.75
+      interp_method: "regr.kriging"
+      vgm_model: "Sph"
+    - radius: 0.50
+      interp_method: "regr.kriging"
+      vgm_model: "Exp"

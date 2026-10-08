@@ -1,0 +1,42 @@
+# ==============================================================================
+# EXPERIMENTO TN07: SESGO ESTACIONAL MENSUAL FIJO TMIN (ADMON + IDW)
+# Dominio: Centroamérica y República Dominicana (1991–2020)
+# Variable: Temperatura Mínima Diaria (CHIRTS Tmin + Estaciones)
+# ==============================================================================
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_TN07"
+name: "Climatología Mensual Fija Tmin (Aditivo Mensual + IDW)"
+description: >
+  Evalúa la suficiencia de 12 coeficientes aditivos estacionales fijos
+  para capturar el ciclo anual medio de temperatura mínima nocturna.
+
+variable_type: "tmin"
+var_id: "tmin"
+
+downscaling:
+  method: "bilinear"
+  interp_method: "blin"
+
+bias_correction:
+  method: "admon"
+  interp_method: "idw"
+  params:
+    idw_power: 2.0
+    nmin: 4
+    nmax: 12
+    maxdist: 3.5
+
+merging:
+  method: "sba"
+  interp_method: "idw"
+  passes:
+    - radius: 1.0
+      interp_method: "idw"
+      maxdist: 3.5
+    - radius: 0.75
+      interp_method: "idw"
+      maxdist: 3.5
+    - radius: 0.50
+      interp_method: "idw"
+      maxdist: 3.5

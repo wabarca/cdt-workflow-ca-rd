@@ -1,0 +1,53 @@
+# ==============================================================================
+# EXPERIMENTO TN03: CAÍDAS BRUSCAS POR FRENTES FRÍOS / NORTES (SKEW-NORMAL)
+# Dominio: Centroamérica y República Dominicana (1991–2020)
+# Variable: Temperatura Mínima Diaria (CHIRTS Tmin + Estaciones)
+# ==============================================================================
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_TN03"
+name: "Frentes Fríos y Nortes Invernales Tmin (Skew-Normal + RK Laderas Norte)"
+description: >
+  Modela caídas térmicas abruptas y asimétricas provocadas por irrupciones de aire polar
+  modificado (Nortes) durante el invierno boreal en laderas expuestas al norte
+  (Petén, Caribe guatemalteco/hondureño, vertiente Atlántica dominicana).
+
+variable_type: "tmin"
+var_id: "tmin"
+
+downscaling:
+  method: "idw"
+  interp_method: "idw"
+  params:
+    idw_power: 2.0
+    nmin: 4
+    nmax: 12
+    maxdist: 2.5
+
+bias_correction:
+  method: "qmdist"
+  distr: "snorm"
+  interp_method: "okr"
+  params:
+    vgm_model: "Sph"
+    nmin: 4
+    nmax: 12
+    maxdist: 3.5
+
+merging:
+  method: "regr.kriging"
+  covariables:
+    - "dem"
+    - "slope"
+    - "lat"
+    - "lon"
+  passes:
+    - radius: 1.0
+      interp_method: "regr.kriging"
+      vgm_model: "Sph"
+    - radius: 0.75
+      interp_method: "regr.kriging"
+      vgm_model: "Sph"
+    - radius: 0.50
+      interp_method: "regr.kriging"
+      vgm_model: "Exp"

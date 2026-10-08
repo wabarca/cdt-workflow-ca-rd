@@ -1,0 +1,42 @@
+# ==============================================================================
+# EXPERIMENTO TX07: SESGO ESTACIONAL MENSUAL FIJO (ADMON + IDW)
+# Dominio: Centroamérica y República Dominicana (1991–2020)
+# Variable: Temperatura Máxima Diaria (CHIRTS Tmax + Estaciones)
+# ==============================================================================
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_TX07"
+name: "Climatología Mensual Fija Tmax (Aditivo Mensual + IDW)"
+description: >
+  Evalúa la suficiencia de 12 coeficientes aditivos medios mensuales fijos
+  para capturar el ciclo anual medio de temperatura máxima.
+
+variable_type: "tmax"
+var_id: "tmax"
+
+downscaling:
+  method: "bilinear"
+  interp_method: "blin"
+
+bias_correction:
+  method: "admon"
+  interp_method: "idw"
+  params:
+    idw_power: 2.0
+    nmin: 4
+    nmax: 12
+    maxdist: 3.5
+
+merging:
+  method: "sba"
+  interp_method: "idw"
+  passes:
+    - radius: 1.0
+      interp_method: "idw"
+      maxdist: 3.5
+    - radius: 0.75
+      interp_method: "idw"
+      maxdist: 3.5
+    - radius: 0.50
+      interp_method: "idw"
+      maxdist: 3.5

@@ -1,0 +1,56 @@
+# ==============================================================================
+# EXPERIMENTO EXP-R07: Regression Kriging (RK) con Covariables Orográficas
+# ==============================================================================
+# Menú CDT: Merging Data > Rainfall > Merging Data (Method: Regression Kriging)
+# Justificación Física y Climatológica:
+# Modela explícitamente el forzamiento orográfico en sistemas montañosos
+# (Cordillera Central Dominicana, Sierra Madre de Guatemala, Cordillera de Talamanca).
+# Captura el ascenso forzado de los vientos Alisios acelerados por el Chorro del Caribe (CLLJ)
+# en barlovento y el fuerte sombrío de lluvia en sotavento mediante GLM con DEM,
+# pendiente y coordenadas geográficas, sumado al Kriging de los residuales.
+# ==============================================================================
+
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_R07_RK_Topography_BernoulliWeibull"
+variable_type: "rainfall"
+description: "Regression Kriging con Covariables Orográficas (DEM, Pendiente, Coordenadas)"
+
+# --- Paso 1 y 2: Corrección de Sesgo (Bias Correction) ---
+bias_correction:
+  method: "qm.dist"
+  distribution: "Weibull"
+  interpolation:
+    method: "block_okr"
+    maxdist: 2.5
+    nmin: 6
+    nmax: 18
+
+# --- Paso 3: Máscara Probabilística Lluvia/No-Lluvia (RnoR Mask) ---
+rnor_mask:
+  use: true
+  wet_threshold: 1.0
+  smoothing: true
+  method: "logit"
+  covariates: ["dem", "slope"]
+  interpolation:
+    method: "block_okr"
+    maxdist: 2.5
+
+# --- Paso 4: Fusión Espacial Final (Merging Data) ---
+merging:
+  method: "RK"                      # Regression Kriging
+  nrun: 3
+  passes: [0.70, 0.35, 0.15]
+  auxiliary_variables:
+    dem: true                       # Elevación topográfica (SRTM)
+    slope: true                     # Pendiente de laderas
+    aspect: false
+    lon_lat: true                   # Coordenadas geográficas
+  interpolation:
+    method: "block_okr"
+    maxdist: 2.5
+    nmin: 6
+    nmax: 20
+    use_block: true
+    variogram_models: ["Sph", "Exp", "Gau"]

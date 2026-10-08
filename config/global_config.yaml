@@ -1,0 +1,91 @@
+# ==============================================================================
+# ARCHIVO BASE DE CONFIGURACIÓN GLOBAL - EXPERIMENTOS CDT (1991-2020)
+# Dominio: Centroamérica y República Dominicana
+# ==============================================================================
+# Este archivo centraliza todas las rutas a datos, períodos temporales,
+# parámetros de validación espacial y recursos de cómputo compartidos por
+# todos los experimentos de Precipitación (CHIRPS), Temperatura Máxima (CHIRTS Tmax)
+# y Temperatura Mínima (CHIRTS Tmin).
+#
+# NOTA IMPORTANTE SOBRE LOS DATOS DE ENTRADA:
+# Los datos originales (grillas satelitales, estaciones, DEM, shapefile) son
+# proporcionados directamente por el usuario de forma local (no se descargan).
+#
+# Si el usuario suministra un único archivo NetCDF 3D (p. ej. chirps_1991_2020.nc),
+# el orquestador en Python lo detectará automáticamente y lo dividirá en archivos
+# diarios 2D en paralelo antes de invocar a CDT.
+#
+# Cada archivo de experimento individual en config/experiments_*/ incluye este
+# archivo mediante la clave: include: "config/global_config.yaml"
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. Período Temporal de Climatología Estándar (OMM 1991–2020)
+# ------------------------------------------------------------------------------
+period:
+  start_date: "19910101"   # Fecha inicial en formato YYYYMMDD (1 de enero de 1991)
+  end_date: "20201231"     # Fecha final en formato YYYYMMDD (31 de diciembre de 2020)
+  time_step: "daily"       # Paso temporal diario (10,958 días continuos)
+
+# ------------------------------------------------------------------------------
+# 2. Rutas a Conjuntos de Datos de Entrada (Suministrados por el Usuario)
+# ------------------------------------------------------------------------------
+paths:
+  # --- Opción A: Archivos NetCDF 3D Únicos (Multi-temporales 1991-2020) ---
+  # Si se especifican estas rutas, el lanzador los dividirá automáticamente en paralelo:
+  raw_3d_netcdf_rainfall: null     # Ej: "data/raw_netcdf/chirps_daily_1991_2020.nc"
+  raw_3d_netcdf_tmax: null         # Ej: "data/raw_netcdf/chirts_tmax_daily_1991_2020.nc"
+  raw_3d_netcdf_tmin: null         # Ej: "data/raw_netcdf/chirts_tmin_daily_1991_2020.nc"
+
+  # --- Opción B: Directorios con Grillas Diarias 2D en Formato CDT (0.05° ~5.5 km) ---
+  satellite_rainfall_dir: "data/chirps_daily"                # Directorio con archivos NetCDF diarios de CHIRPS v2.0
+  satellite_rainfall_format: "chirps_%s%s%s.nc"             # Patrón de nombres de archivo (%s%s%s = YYYY MM DD)
+  
+  satellite_tmax_dir: "data/chirts_daily/tmax"              # Directorio con archivos NetCDF diarios de CHIRTS Tmax
+  satellite_tmax_format: "tmax_%s%s%s.nc"                   # Patrón para temperatura máxima diaria
+  
+  satellite_tmin_dir: "data/chirts_daily/tmin"              # Directorio con archivos NetCDF diarios de CHIRTS Tmin
+  satellite_tmin_format: "tmin_%s%s%s.nc"                   # Patrón para temperatura mínima diaria
+  
+  satellite_temperature_dir: "data/chirts_daily"            # Fallback genérico para temperatura
+  satellite_temperature_format: "tmax_%s%s%s.nc"
+
+  # --- Datos de Estaciones Meteorológicas de Superficie (Formato CDT CSV) ---
+  # Formato CDT: Fila 1: ID, Fila 2: LON, Fila 3: LAT, Fila 4: ELEV, Filas 5+: YYYYMMDD y valores
+  stations_rainfall_file: "data/stations/precip_stations_all.csv"  # Red pluviométrica completa
+  stations_tmax_file: "data/stations/tmax_stations_all.csv"        # Red termométrica Tmax completa
+  stations_tmin_file: "data/stations/tmin_stations_all.csv"        # Red termométrica Tmin completa
+  stations_temperature_file: "data/stations/temp_stations_all.csv" # Fallback genérico
+  
+  # --- Archivo de Estaciones a Omitir para Validación Cruzada Independiente (Holdout) ---
+  holdout_stations_file: "data/stations/validation_holdout_stations.csv" # CSV con IDs de estaciones excluidas
+
+  # --- Covariables Físicas y Cartografía Espacial (Suministradas por el Usuario) ---
+  dem_file: "data/topography/dem_srtm_90m.nc"                       # DEM SRTM regional (elevación en msnm)
+  shapefile_path: "data/gis/central_america_dominican_rep.shp"       # Máscara de recorte vectorial (con buffer 10 km)
+
+  # --- Directorios de Salida y Auditoría ---
+  output_root: "output/experiments"                         # Directorio raíz donde se guardarán los resultados
+  log_root: "logs/experiments"                             # Directorio raíz para bitácoras y registros de depuración
+
+# ------------------------------------------------------------------------------
+# 3. Protocolo de Validación Cuantitativa y Métricas de Desempeño
+# ------------------------------------------------------------------------------
+validation:
+  enabled: true                  # Activar cálculo automático de métricas tras el ensamblado NetCDF 3D
+  wet_threshold: 1.0             # Umbral de lluvia (mm/día) para métricas categóricas (POD, FAR, ETS, HSS)
+  evaluate_training: true        # Evaluar también el desempeño in-sample en estaciones de entrenamiento
+  export_station_csv: true       # Generar validation_metrics_by_station.csv con métricas individuales
+
+# ------------------------------------------------------------------------------
+# 4. Asignación de Recursos de Hardware y Motor Paralelo en CDT
+# ------------------------------------------------------------------------------
+system:
+  # Configuración para servidor Intel Xeon Silver 4210R (10 núcleos físicos / 20 hilos)
+  nb_cores: 9                    # 9 núcleos físicos dedicados a CDT (1 núcleo libre para SO y disco)
+  dopar: true                    # Habilitar procesamiento en paralelo de fechas mediante doSNOW / foreach
+  detect_cores: false            # Desactivar autodetección para evitar contención de caché L3
+  memory_gc_interval: 500        # Ejecutar recolección de basura (gc()) en R cada 500 días procesados
+  rscript_path: null             # Ruta personalizada a Rscript.exe (null = autodetección en PATH o R 4.4.3)
+  auto_validate_inputs: true     # Ejecutar diagnóstico y validación de presencia de datos antes de iniciar
+  auto_split_3d_netcdf: true     # Si se suministran NetCDFs 3D, dividirlos automáticamente en paralelo

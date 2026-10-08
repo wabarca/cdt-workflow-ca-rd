@@ -1,0 +1,48 @@
+# ==============================================================================
+# EXPERIMENTO EXP-R06: Quantile Mapping Empírico No Paramétrico (ECDF)
+# ==============================================================================
+# Menú CDT: Merging Data > Rainfall > Compute Bias Coefficients (qm.ecdf)
+# Justificación Física y Climatológica:
+# El Mapeo de Cuantiles Empírico (Themeßl et al., 2011; Gudmundsson et al., 2012)
+# no asume ninguna función de distribución teórica previa (ni Gamma, ni Weibull).
+# Ajusta los cuantiles directamente a partir de las funciones de distribución acumulada
+# empíricas (ECDF) de las estaciones. Es ideal cuando el régimen pluviométrico es bimodal
+# complejo o multimodal (influencia mixta de Alisios, ciclones tropicales y convección local).
+# ==============================================================================
+
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_R06_SBA_IDW_EmpiricalQM"
+variable_type: "rainfall"
+description: "QM Empírico No Paramétrico (ECDF) con Interpolación Espacial IDW"
+
+# --- Paso 1 y 2: Corrección de Sesgo (Bias Correction) ---
+bias_correction:
+  method: "qm.ecdf"                 # Mapeo no paramétrico empírico directo
+  interpolation:
+    method: "idw"
+    maxdist: 2.5
+    nmin: 4
+    nmax: 16
+
+# --- Paso 3: Máscara Probabilística Lluvia/No-Lluvia (RnoR Mask) ---
+rnor_mask:
+  use: true
+  wet_threshold: 1.0
+  smoothing: true
+  method: "logit"
+  interpolation:
+    method: "idw"
+    maxdist: 2.5
+
+# --- Paso 4: Fusión Espacial Final (Merging Data) ---
+merging:
+  method: "SBA"
+  nrun: 3
+  passes: [0.70, 0.35, 0.15]
+  interpolation:
+    method: "idw"
+    maxdist: 2.5
+    nmin: 5
+    nmax: 18
+    use_block: false

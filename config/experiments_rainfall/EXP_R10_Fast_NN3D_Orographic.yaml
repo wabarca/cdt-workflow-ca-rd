@@ -1,0 +1,46 @@
+# ==============================================================================
+# EXPERIMENTO EXP-R10: Fast Merging / SBA con Vecino Cercano 3D (NN-3D)
+# ==============================================================================
+# Menú CDT: Merging Data > Rainfall > Merging Data (Method: SBA / Fast Merging)
+# Justificación Física y Climatológica:
+# Diseñado para evaluar esquemas de respuesta operativa ultra-rápida en cuencas de montaña.
+# Aplica interpolación tridimensional ponderando distancia euclidiana y cota altimétrica DEM (Delta_z).
+# Permite cuantificar el equilibrio entre velocidad computacional y fidelidad física
+# en topografía escarpada donde el Kriging completo puede resultar computacionalmente costoso.
+# ==============================================================================
+
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_R10_Fast_NN3D_Orographic"
+variable_type: "rainfall"
+description: "Fusión Rápida (Fast / SBA) con Interpolación 3D Altitudinal (NN-3D + DEM)"
+
+# --- Paso 1 y 2: Corrección de Sesgo (Bias Correction) ---
+bias_correction:
+  method: "mbvar"
+  interpolation:
+    method: "nn3d"                  # Interpolación 3D con elevación
+    maxdist: 2.5
+    nmin: 4
+    nmax: 16
+
+# --- Paso 3: Máscara Probabilística Lluvia/No-Lluvia (RnoR Mask) ---
+rnor_mask:
+  use: true
+  wet_threshold: 1.0
+  smoothing: true
+  method: "logit"
+  interpolation:
+    method: "nn3d"
+    maxdist: 2.5
+
+# --- Paso 4: Fusión Espacial Final (Merging Data) ---
+merging:
+  method: "SBA"
+  nrun: 3
+  passes: [0.70, 0.35, 0.15]
+  interpolation:
+    method: "nn3d"
+    maxdist: 2.5
+    nmin: 4
+    nmax: 16

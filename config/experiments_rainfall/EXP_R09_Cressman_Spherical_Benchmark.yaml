@@ -1,0 +1,48 @@
+# ==============================================================================
+# EXPERIMENTO EXP-R09: Esquema de Cressman (CSc) Clásico
+# ==============================================================================
+# Menú CDT: Merging Data > Rainfall > Merging Data (Method: Cressman Scheme)
+# Justificación Física y Climatológica:
+# El Esquema de Cressman (Cressman, 1959; Tripati et al., 2006) es la técnica histórica
+# pionera de análisis objetivo por correcciones sucesivas. Utiliza una función de ponderación
+# esférica de radio finito w = (R^2 - d^2)/(R^2 + d^2).
+# Su inclusión en la publicación permite contrastar empíricamente la función esférica clásica
+# frente a la gaussiana de Barnes y demostrar si los gradientes de borde de Cressman
+# introducen distorsiones en gradientes de precipitación tropical.
+# ==============================================================================
+
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_R09_Cressman_Spherical_Benchmark"
+variable_type: "rainfall"
+description: "Esquema de Cressman (CSc) Clásico (Correcciones Sucesivas con Ponderación Esférica)"
+
+# --- Paso 1 y 2: Corrección de Sesgo (Bias Correction) ---
+bias_correction:
+  method: "mbvar"
+  interpolation:
+    method: "cressman"
+    maxdist: 2.5
+    nmin: 4
+    nmax: 16
+
+# --- Paso 3: Máscara Probabilística Lluvia/No-Lluvia (RnoR Mask) ---
+rnor_mask:
+  use: true
+  wet_threshold: 1.0
+  smoothing: true
+  method: "logit"
+  interpolation:
+    method: "cressman"
+    maxdist: 2.5
+
+# --- Paso 4: Fusión Espacial Final (Merging Data) ---
+merging:
+  method: "CSc"                     # Cressman Scheme
+  nrun: 3
+  passes: [0.70, 0.35, 0.15]
+  interpolation:
+    method: "cressman"
+    maxdist: 2.5
+    nmin: 5
+    nmax: 18

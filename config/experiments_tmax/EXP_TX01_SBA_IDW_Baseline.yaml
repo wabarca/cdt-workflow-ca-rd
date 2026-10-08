@@ -1,0 +1,37 @@
+# ==============================================================================
+# EXPERIMENTO TX01: LÍNEA BASE DETERMINISTA (CONTROL NULO TMAX)
+# Dominio: Centroamérica y República Dominicana (1991–2020)
+# Variable: Temperatura Máxima Diaria (CHIRTS Tmax + Estaciones)
+# ==============================================================================
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_TX01"
+name: "Línea Base Tmax (Control Nulo Bilineal + IDW)"
+description: >
+  Control nulo determinista para temperatura máxima diurna. Desescalado geométrico
+  bilineal sin covariables topográficas, sesgo multiplicativo móvil e interpolación
+  SBA mediante IDW monocapa (1 pasada a 1.0°).
+
+variable_type: "tmax"
+var_id: "tmax"
+
+downscaling:
+  method: "bilinear"
+  interp_method: "blin"
+
+bias_correction:
+  method: "multiplicative.bias.var"
+  interp_method: "idw"
+  params:
+    idw_power: 2.0
+    nmin: 4
+    nmax: 12
+    maxdist: 3.5
+
+merging:
+  method: "sba"
+  interp_method: "idw"
+  passes:
+    - radius: 1.0
+      interp_method: "idw"
+      maxdist: 3.5

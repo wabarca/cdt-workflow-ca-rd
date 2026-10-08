@@ -1,0 +1,40 @@
+# ==============================================================================
+# EXPERIMENTO EXP-R01: Control Nulo / Línea Base Plana (SBA + IDW)
+# ==============================================================================
+# Menú CDT: Merging Data > Rainfall > Compute Bias / Apply Bias / Merging Data
+# Justificación Física:
+# Establece el límite inferior de desempeño. Evalúa la corrección aditiva clásica
+# sin modelación de probabilidad de lluvia seca ni covariables orográficas.
+# Permite cuantificar el error residual en zonas de relieve complejo.
+# ==============================================================================
+
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_R01_SBA_IDW_Baseline"
+variable_type: "rainfall"
+description: "Línea Base: SBA 1 pasada con IDW plano y sin máscara RnoR"
+
+# --- Paso 1 y 2: Corrección de Sesgo (Bias Correction) ---
+bias_correction:
+  method: "mbvar"                   # Multiplicative Bias with Moving Window (mbvar)
+  interpolation:
+    method: "idw"                   # Ponderación por Distancia Inversa (exponente p=2)
+    maxdist: 2.5                    # Radio de búsqueda: 2.5° (~275 km)
+    nmin: 4                         # Mínimo de estaciones requeridas para interpolar
+    nmax: 12                        # Máximo de estaciones vecinas consideradas
+
+# --- Paso 3: Máscara Probabilística Lluvia/No-Lluvia (RnoR Mask) ---
+rnor_mask:
+  use: false                        # Desactivada intencionalmente (Control Nulo)
+
+# --- Paso 4: Fusión Espacial Final (Merging Data) ---
+merging:
+  method: "SBA"                     # Simple Bias Adjustment (Ajuste simple por residuales)
+  nrun: 1                           # 1 sola pasada de interpolación
+  passes: [0.70]                    # Coeficiente de pasada única (0.70)
+  interpolation:
+    method: "idw"                   # IDW determinístico plano
+    maxdist: 2.5                    # Radio de búsqueda máximo: 2.5°
+    nmin: 5
+    nmax: 15
+    use_block: false                # Estimación puntual pura (sin promediado de bloque)

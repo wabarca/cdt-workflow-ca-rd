@@ -1,0 +1,109 @@
+Bootstrap: docker
+From: rocker/geospatial:4.4.2
+
+%labels
+    Author "Climate Data Tools Automation Team"
+    Version "8.0"
+    Description "Apptainer / Singularity Definition File for CDT 8.0 & Python Runner on HPC Clusters"
+
+%environment
+    export DEBIAN_FRONTEND=noninteractive
+    export LC_ALL=C.UTF-8
+    export LANG=C.UTF-8
+    export TZ=Etc/UTC
+    export PATH="/opt/venv/bin:$PATH"
+    export PYTHONUNBUFFERED=1
+    export R_LIBS_USER=/usr/local/lib/R/site-library
+
+%files
+    DESCRIPTION /opt/cdt_build/DESCRIPTION
+    NAMESPACE /opt/cdt_build/NAMESPACE
+    Makevars* /opt/cdt_build/
+    R /opt/cdt_build/R
+    src /opt/cdt_build/src
+    requirements.txt /opt/cdt_build/requirements.txt
+
+%post
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update && apt-get install -y --no-install-recommends \
+        python3 \
+        python3-pip \
+        python3-venv \
+        python3-dev \
+        build-essential \
+        gfortran \
+        git \
+        curl \
+        wget \
+        libcurl4-openssl-dev \
+        libssl-dev \
+        libxml2-dev \
+        libfontconfig1-dev \
+        libharfbuzz-dev \
+        libfribidi-dev \
+        libfreetype6-dev \
+        libpng-dev \
+        libtiff5-dev \
+        libjpeg-dev \
+        && rm -rf /var/lib/apt/lists/*
+
+    # Instalar paquetes de R requeridos por CDT
+    install2.r --error --skipinstalled -n -1 \
+        matrixStats \
+        fields \
+        lmomco \
+        fitdistrplus \
+        ADGofTest \
+        qmap \
+        dynamicTreeCut \
+        doParallel \
+        foreach \
+        doSNOW \
+        R.utils \
+        reshape2 \
+        latticeExtra \
+        RColorBrewer \
+        gridBase \
+        jsonlite \
+        XML \
+        xml2 \
+        urltools \
+        curl \
+        httr \
+        rvest \
+        stringr \
+        stringi \
+        units \
+        future \
+        devtools \
+        pkgbuild \
+        && rm -rf /tmp/downloaded_packages
+
+    # Compilar e instalar CDT en R
+    cd /opt/cdt_build
+    R CMD INSTALL . --no-staged-install
+    Rscript -e "if (!require('CDT')) stop('Fallo al instalar CDT')"
+
+    # Configurar Python venv y dependencias
+    python3 -m venv /opt/venv
+    . /opt/venv/bin/activate
+    pip install --no-cache-dir --upgrade pip
+    pip install --no-cache-dir -r /opt/cdt_build/requirements.txt
+
+    # Limpieza
+    rm -rf /opt/cdt_build
+
+%runscript
+    exec python launcher/experiment_runner.py "$@"
+
+%help
+    Contenedor Apptainer / Singularity para ejecutar la suite de experimentos de CDT 8.0 en clusters HPC:
+    
+    Construir imagen SIF:
+        apptainer build cdt_8.0.sif Apptainer.def
+    
+    Verificar entorno:
+        apptainer run cdt_8.0.sif --check-env
+    
+    Ejecutar suite completa de precipitación:
+        apptainer run --bind $(pwd):/workspace --pwd /workspace cdt_8.0.sif --suite rainfall

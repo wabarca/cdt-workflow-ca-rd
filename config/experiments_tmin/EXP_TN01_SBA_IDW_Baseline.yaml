@@ -1,0 +1,37 @@
+# ==============================================================================
+# EXPERIMENTO TN01: LÍNEA BASE DETERMINISTA (CONTROL NULO TMIN)
+# Dominio: Centroamérica y República Dominicana (1991–2020)
+# Variable: Temperatura Mínima Diaria (CHIRTS Tmin + Estaciones)
+# ==============================================================================
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_TN01"
+name: "Línea Base Tmin (Control Nulo Bilineal + IDW)"
+description: >
+  Control nulo determinista para temperatura mínima nocturna. Desescalado geométrico
+  bilineal sin covariables topográficas, sesgo multiplicativo e interpolación
+  SBA mediante IDW monocapa (1 pasada a 1.0°).
+
+variable_type: "tmin"
+var_id: "tmin"
+
+downscaling:
+  method: "bilinear"
+  interp_method: "blin"
+
+bias_correction:
+  method: "multiplicative.bias.var"
+  interp_method: "idw"
+  params:
+    idw_power: 2.0
+    nmin: 4
+    nmax: 12
+    maxdist: 3.5
+
+merging:
+  method: "sba"
+  interp_method: "idw"
+  passes:
+    - radius: 1.0
+      interp_method: "idw"
+      maxdist: 3.5

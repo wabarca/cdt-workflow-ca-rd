@@ -1,0 +1,51 @@
+# ==============================================================================
+# EXPERIMENTO EXP-R03: Quantile Mapping Bernoulli-Gamma + Kriging por Bloques
+# ==============================================================================
+# Menú CDT: Merging Data > Rainfall > Compute Bias Coefficients (qm.dist: Gamma)
+# Justificación Física:
+# La distribución de precipitación diaria tropical sigue teóricamente un proceso
+# estocástico Bernoulli-Gamma (ocurrencia discreta 0/1 + intensidad continua Gamma).
+# Corrige la sobreestimación de eventos moderados y preserva la variabilidad real.
+# El Kriging por Bloques mitiga la discrepancia de soporte entre pluviómetros y píxeles de 5.5 km.
+# ==============================================================================
+
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_R03_SBA_OKR_BernoulliGamma"
+variable_type: "rainfall"
+description: "QM Paramétrico Bernoulli-Gamma con Kriging Ordinario por Bloques"
+
+# --- Paso 1 y 2: Corrección de Sesgo (Bias Correction) ---
+bias_correction:
+  method: "qm.dist"                 # Quantile Mapping Paramétrico por distribución teórica
+  distribution: "Gamma"             # Función de densidad Gamma (ajuste por máxima verosimilitud)
+  interpolation:
+    method: "block_okr"             # Ordinary Kriging por Bloques (soporte espacial corregido)
+    maxdist: 2.5                    # Radio de búsqueda del semivariograma: 2.5° (~275 km)
+    nmin: 6                         # Mínimo de estaciones para ajustar el semivariograma
+    nmax: 18                        # Máximo de estaciones vecinas
+    variogram_models: ["Sph", "Exp", "Gau"] # Modelos teóricos evaluados (Esférico, Exponencial, Gaussiano)
+
+# --- Paso 3: Máscara Probabilística Lluvia/No-Lluvia (RnoR Mask) ---
+rnor_mask:
+  use: true
+  wet_threshold: 1.0
+  smoothing: true
+  method: "logit"
+  interpolation:
+    method: "block_okr"             # Kriging por bloques para la probabilidad espacial
+    maxdist: 2.5
+    variogram_models: ["Sph", "Exp"]
+
+# --- Paso 4: Fusión Espacial Final (Merging Data) ---
+merging:
+  method: "SBA"
+  nrun: 3
+  passes: [0.70, 0.35, 0.15]
+  interpolation:
+    method: "block_okr"             # Kriging Ordinario por Bloques
+    maxdist: 2.5
+    nmin: 6
+    nmax: 18
+    use_block: true                 # Integración sobre el bloque de 0.05°
+    variogram_models: ["Sph", "Exp", "Gau"]

@@ -1,0 +1,52 @@
+# ==============================================================================
+# EXPERIMENTO EXP-R05: Quantile Mapping Bernoulli-Lognormal + Kriging por Bloques
+# ==============================================================================
+# Menú CDT: Merging Data > Rainfall > Compute Bias Coefficients (qm.dist: Lognormal)
+# Justificación Física y Climatológica:
+# La distribución Lognormal es un modelo clásico en hidrología estocástica
+# (Kedem et al., 1990; Groisman et al., 1999) para variables positivas con
+# asimetría marcada generadas por procesos multiplicativos (ej. coalescencia de gotas).
+# Permite evaluar si una cola logarítmica modela mejor las tormentas convectivas
+# mesoescalares en el Caribe que las distribuciones Gamma o Weibull.
+# ==============================================================================
+
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_R05_SBA_OKR_BernoulliLognormal"
+variable_type: "rainfall"
+description: "QM Paramétrico Bernoulli-Lognormal con Kriging Ordinario por Bloques"
+
+# --- Paso 1 y 2: Corrección de Sesgo (Bias Correction) ---
+bias_correction:
+  method: "qm.dist"
+  distribution: "Lognormal"         # Distribución Lognormal (bernlnorm en CDT)
+  interpolation:
+    method: "block_okr"
+    maxdist: 2.5
+    nmin: 6
+    nmax: 18
+    variogram_models: ["Sph", "Exp", "Gau"]
+
+# --- Paso 3: Máscara Probabilística Lluvia/No-Lluvia (RnoR Mask) ---
+rnor_mask:
+  use: true
+  wet_threshold: 1.0
+  smoothing: true
+  method: "logit"
+  interpolation:
+    method: "block_okr"
+    maxdist: 2.5
+    variogram_models: ["Sph", "Exp"]
+
+# --- Paso 4: Fusión Espacial Final (Merging Data) ---
+merging:
+  method: "SBA"
+  nrun: 3
+  passes: [0.70, 0.35, 0.15]
+  interpolation:
+    method: "block_okr"
+    maxdist: 2.5
+    nmin: 6
+    nmax: 18
+    use_block: true
+    variogram_models: ["Sph", "Exp", "Gau"]

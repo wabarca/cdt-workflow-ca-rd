@@ -1,0 +1,47 @@
+# ==============================================================================
+# EXPERIMENTO TN05: HELADAS AGRONÓMICAS Y EXTREMOS NOCTURNOS (GUMBEL)
+# Dominio: Centroamérica y República Dominicana (1991–2020)
+# Variable: Temperatura Mínima Diaria (CHIRTS Tmin + Estaciones)
+# ==============================================================================
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_TN05"
+name: "Heladas Agronómicas y Extremos Fríos Tmin (Gumbel P01/P05 + RK DEM)"
+description: >
+  Ajusta eventos extremos de heladas meteorológicas y agronómicas (P01/P05, Tmin < 0 °C)
+  en altiplanos y valles de gran altitud mediante distribución de valores extremos de Gumbel
+  y regresión orográfica con el DEM.
+
+variable_type: "tmin"
+var_id: "tmin"
+
+downscaling:
+  method: "bilinear"
+  interp_method: "blin"
+
+bias_correction:
+  method: "qmdist"
+  distr: "gumbel"
+  interp_method: "okr"
+  params:
+    vgm_model: "Sph"
+    nmin: 4
+    nmax: 12
+    maxdist: 3.5
+
+merging:
+  method: "regr.kriging"
+  covariables:
+    - "dem"
+    - "lat"
+    - "lon"
+  passes:
+    - radius: 1.0
+      interp_method: "regr.kriging"
+      vgm_model: "Sph"
+    - radius: 0.75
+      interp_method: "regr.kriging"
+      vgm_model: "Sph"
+    - radius: 0.50
+      interp_method: "regr.kriging"
+      vgm_model: "Exp"

@@ -1,0 +1,49 @@
+# ==============================================================================
+# EXPERIMENTO TX04: TOPOCLIMATOLOGÍA Y RADIACIÓN SOLAR (NN-3D + ASPECTO)
+# Dominio: Centroamérica y República Dominicana (1991–2020)
+# Variable: Temperatura Máxima Diaria (CHIRTS Tmax + Estaciones)
+# ==============================================================================
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_TX04"
+name: "Topoclimatología y Radiación Tmax (NN-3D + RK Aspecto/Insolación)"
+description: >
+  Modela la insolación diferencial entre laderas este (calentamiento matutino)
+  y oeste (máximo vespertino) mediante orientación topográfica (aspect) y evita
+  la contaminación térmica entre valles y cumbres con ponderación altimétrica NN-3D.
+
+variable_type: "tmax"
+var_id: "tmax"
+
+downscaling:
+  method: "bicubic"
+  interp_method: "bicub"
+
+bias_correction:
+  method: "multiplicative.bias.var"
+  interp_method: "nn3d"
+  params:
+    weight_horizontal: 1.0
+    weight_vertical: 0.008
+    nmin: 4
+    nmax: 12
+    maxdist: 3.5
+
+merging:
+  method: "regr.kriging"
+  covariables:
+    - "dem"
+    - "slope"
+    - "aspect"
+    - "lat"
+    - "lon"
+  passes:
+    - radius: 1.0
+      interp_method: "regr.kriging"
+      vgm_model: "Sph"
+    - radius: 0.75
+      interp_method: "regr.kriging"
+      vgm_model: "Sph"
+    - radius: 0.50
+      interp_method: "regr.kriging"
+      vgm_model: "Exp"

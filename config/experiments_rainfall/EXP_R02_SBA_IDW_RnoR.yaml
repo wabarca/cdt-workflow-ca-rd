@@ -1,0 +1,47 @@
+# ==============================================================================
+# EXPERIMENTO EXP-R02: SBA 3 Pasadas + Máscara Probabilística RnoR (Logit)
+# ==============================================================================
+# Menú CDT: Merging Data > Rainfall > Compute Rain-No-Rain Mask / Merging Data
+# Justificación Física:
+# Evalúa el impacto de suprimir las lloviznas satelitales espurias (<1.0 mm/d)
+# causadas por cirros fríos durante la Canícula (Veranillo) en el Corredor Seco
+# Centroamericano (Guatemala, Honduras, El Salvador, Nicaragua) y el Valle de Azua (RD).
+# Las 3 pasadas anidadas capturan escalas sinóptica (260 km), meso (130 km) y local (55 km).
+# ==============================================================================
+
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_R02_SBA_IDW_RnoR"
+variable_type: "rainfall"
+description: "SBA 3 pasadas anidadas con Máscara RnoR Logit (Supresión de Drizzle)"
+
+# --- Paso 1 y 2: Corrección de Sesgo (Bias Correction) ---
+bias_correction:
+  method: "mbvar"                   # Multiplicative Bias with Moving Window
+  interpolation:
+    method: "idw"                   # IDW espacial
+    maxdist: 2.5
+    nmin: 4
+    nmax: 12
+
+# --- Paso 3: Máscara Probabilística Lluvia/No-Lluvia (RnoR Mask) ---
+rnor_mask:
+  use: true                         # Activar filtro probabilístico binario
+  wet_threshold: 1.0                # Umbral físico: Días con precipitación >= 1.0 mm
+  smoothing: true                   # Aplicar suavizado espacial para evitar saltos en bordes
+  method: "logit"                   # Modelo Lineal Generalizado con enlace Logit P(rain > 0)
+  interpolation:
+    method: "idw"
+    maxdist: 2.5
+
+# --- Paso 4: Fusión Espacial Final (Merging Data) ---
+merging:
+  method: "SBA"                     # Simple Bias Adjustment
+  nrun: 3                           # 3 pasadas de corrección sucesiva anidada
+  passes: [0.70, 0.35, 0.15]        # Radios relativos decrecientes: ~260 km, ~130 km, ~55 km
+  interpolation:
+    method: "idw"
+    maxdist: 2.5
+    nmin: 5
+    nmax: 15
+    use_block: false

@@ -1,0 +1,80 @@
+{
+  "experiment_id": "EXP_R01_SBA_IDW_Baseline",
+  "description": "L\u00ednea base de ajuste de sesgo simple con IDW y sin m\u00e1scara RnoR",
+  "variable_type": "rainfall",
+  "climatological_justification": "Sirve como punto de referencia nulo (control experimental). Eval\u00faa el comportamiento  de CHIRPS v2.0 frente a estaciones pluviom\u00e9tricas con correcci\u00f3n multiplicativa  global e IDW sin control de lloviznas espurias. Permite cuantificar el valor  agregado de los m\u00e9todos m\u00e1s avanzados en Centroam\u00e9rica y Rep\u00fablica Dominicana.\n",
+  "cdt_menu_references": {
+    "bias_computation": "Merging Data > Rainfall > Compute Bias Coefficients",
+    "bias_application": "Merging Data > Rainfall > Apply Bias Correction",
+    "merging_data": "Merging Data > Rainfall > Merging Data"
+  },
+  "timestamp_start": "2026-10-01T11:11:41.519102",
+  "configuration": {
+    "experiment_id": "EXP_R01_SBA_IDW_Baseline",
+    "description": "L\u00ednea base de ajuste de sesgo simple con IDW y sin m\u00e1scara RnoR",
+    "variable_type": "rainfall",
+    "time_step": "daily",
+    "cdt_menu_references": {
+      "bias_computation": "Merging Data > Rainfall > Compute Bias Coefficients",
+      "bias_application": "Merging Data > Rainfall > Apply Bias Correction",
+      "merging_data": "Merging Data > Rainfall > Merging Data"
+    },
+    "climatological_justification": "Sirve como punto de referencia nulo (control experimental). Eval\u00faa el comportamiento  de CHIRPS v2.0 frente a estaciones pluviom\u00e9tricas con correcci\u00f3n multiplicativa  global e IDW sin control de lloviznas espurias. Permite cuantificar el valor  agregado de los m\u00e9todos m\u00e1s avanzados en Centroam\u00e9rica y Rep\u00fablica Dominicana.\n",
+    "period": {
+      "start_date": "19910101",
+      "end_date": "20201231"
+    },
+    "paths": {
+      "stations_file": "data/stations/daily_precip_cdt.csv",
+      "satellite_dir": "data/satellite/chirps_daily_nc",
+      "satellite_format": "chirps_%s%s%s.nc",
+      "dem_file": "data/topography/dem_srtm_elevation.nc",
+      "shapefile_path": "data/gis/study_area_boundary.shp",
+      "output_dir": "output/experiments_rainfall/EXP_R01_SBA_IDW_Baseline",
+      "log_dir": "logs/experiments_rainfall/EXP_R01_SBA_IDW_Baseline",
+      "var_id": "precip"
+    },
+    "bias_correction": {
+      "method": "Multiplicative.Bias.Prefix",
+      "interpolation": {
+        "method": "idw",
+        "nmin": 4,
+        "nmax": 12,
+        "maxdist": 1.5
+      }
+    },
+    "merging": {
+      "method": "SBA",
+      "nrun": 1,
+      "passes": [
+        1.0
+      ],
+      "interpolation": {
+        "method": "idw",
+        "nmin": 6,
+        "nmax": 16,
+        "maxdist": 1.5,
+        "use_block": false
+      }
+    },
+    "rnor_mask": {
+      "use": false
+    },
+    "global_options": {
+      "powerWeightIDW": 2.0
+    },
+    "post_processing": {
+      "assemble_3d_netcdf": true,
+      "cf_compliance": "CF-1.8",
+      "output_filename": "precip_daily_1991_2020_EXP_R01.nc",
+      "standard_name": "precipitation_amount",
+      "long_name": "Daily Precipitation Amount",
+      "units": "mm/day",
+      "fill_value": -9999.0
+    }
+  },
+  "timestamp_end": "2026-10-01T11:11:41.793209",
+  "execution_time_sec": 0.2666013240814209,
+  "status": "FAILED",
+  "return_code": 1
+}

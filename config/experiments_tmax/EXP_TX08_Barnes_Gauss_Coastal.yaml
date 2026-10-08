@@ -1,0 +1,37 @@
+# ==============================================================================
+# EXPERIMENTO TX08: ANÁLISIS OBJETIVO CONTINUO GAUSSIANO (BARNES TMAX)
+# Dominio: Centroamérica y República Dominicana (1991–2020)
+# Variable: Temperatura Máxima Diaria (CHIRTS Tmax + Estaciones)
+# ==============================================================================
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_TX08"
+name: "Consistencia Litoral Tmax (Esquema de Barnes BSc Multiescala)"
+description: >
+  Filtro gaussiano continuo para suavizado regularizado en la transición
+  tierra-mar y frentes costeros de brisa marina diurna en islas y costas.
+
+variable_type: "tmax"
+var_id: "tmax"
+
+downscaling:
+  method: "bilinear"
+  interp_method: "blin"
+
+bias_correction:
+  method: "multiplicative.bias.var"
+  interp_method: "barnes"
+  params:
+    nmin: 4
+    nmax: 12
+    maxdist: 3.5
+
+merging:
+  method: "barnes"
+  passes:
+    - radius: 1.0
+      interp_method: "barnes"
+    - radius: 0.75
+      interp_method: "barnes"
+    - radius: 0.50
+      interp_method: "barnes"

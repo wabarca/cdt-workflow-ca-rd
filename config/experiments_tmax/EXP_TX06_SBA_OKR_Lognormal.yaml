@@ -1,0 +1,43 @@
+# ==============================================================================
+# EXPERIMENTO TX06: ASIMETRÍA POSITIVA EN TIERRAS BAJAS (LOGNORMAL + OKR)
+# Dominio: Centroamérica y República Dominicana (1991–2020)
+# Variable: Temperatura Máxima Diaria (CHIRTS Tmax + Estaciones)
+# ==============================================================================
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_TX06"
+name: "Asimetría Positiva en Llanuras Cálidas Tmax (Lognormal + OKR)"
+description: >
+  Modela regímenes térmicos cálidos y húmedos continuos en tierras bajas del Caribe
+  y Mosquitia hondureña/nicaragüense mediante distribución lognormal.
+
+variable_type: "tmax"
+var_id: "tmax"
+
+downscaling:
+  method: "bilinear"
+  interp_method: "blin"
+
+bias_correction:
+  method: "qmdist"
+  distr: "lnorm"
+  interp_method: "okr"
+  params:
+    vgm_model: "Sph"
+    nmin: 4
+    nmax: 12
+    maxdist: 3.5
+
+merging:
+  method: "sba"
+  interp_method: "okr"
+  passes:
+    - radius: 1.0
+      interp_method: "okr"
+      vgm_model: "Sph"
+    - radius: 0.75
+      interp_method: "okr"
+      vgm_model: "Sph"
+    - radius: 0.50
+      interp_method: "okr"
+      vgm_model: "Exp"

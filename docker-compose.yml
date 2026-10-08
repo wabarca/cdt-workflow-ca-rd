@@ -1,0 +1,25 @@
+services:
+  cdt-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: cdt-runner:8.0
+    container_name: cdt_orchestrator
+    working_dir: /workspace
+    volumes:
+      # Montaje de configuraciones y datos
+      - ./config:/workspace/config
+      - ./data:/workspace/data
+      # Montaje de salidas y registros (persistencia en el host)
+      - ./output:/workspace/output
+      - ./logs:/workspace/logs
+      - ./docs:/workspace/docs
+      # Código fuente y scripts
+      - ./launcher:/workspace/launcher
+      - ./R:/workspace/R
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LC_ALL=C.UTF-8
+      - LANG=C.UTF-8
+    # Comando interactivo o batch por defecto
+    command: ["python", "launcher/experiment_runner.py", "--check-env"]
