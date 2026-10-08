@@ -22,12 +22,30 @@ import os
 import time
 from typing import Any, Dict, List, Optional, Union
 
-import yaml
-
-from launcher.cdt_bridge import CDTBridge
-from launcher.data_preprocessor import split_3d_netcdf_to_daily_parallel, validate_project_inputs
 from launcher.env_checker import check_system_environment, print_environment_report
-from launcher.netcdf_assembler import assemble_daily_netcdfs_to_cf18
+
+
+def _check_python_requirements() -> bool:
+    """Ensure all required Python packages are installed, showing a clean error if not."""
+    try:
+        import yaml
+        import numpy
+        import pandas
+        import xarray
+        import netCDF4
+        return True
+    except ImportError as e:
+        print("\n" + "=" * 75)
+        print("  [!] ERROR: FALTAN PAQUETES DE PYTHON REQUERIDOS")
+        print("=" * 75)
+        print(f"  Detalle del error : {e}")
+        print("\n  Para instalar todas las dependencias necesarias en este entorno, ejecuta:")
+        print("      pip install -r requirements.txt")
+        print("\n  O ejecuta el diagnóstico completo del entorno con:")
+        print("      python launcher/experiment_runner.py --check-env")
+        print("=" * 75 + "\n")
+        return False
+
 
 
 def _deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
@@ -70,11 +88,13 @@ class ExperimentRunner:
             elif nb_cores == "auto":
                 parsed_cores = "auto"
         
+        from launcher.cdt_bridge import CDTBridge
         self.bridge = CDTBridge(rscript_path=rscript_path, nb_cores=parsed_cores)
         self.results_summary: List[Dict[str, Any]] = []
 
     def _load_yaml_file(self, filepath: Path) -> Dict[str, Any]:
         """Load a YAML file, resolving any 'include' or 'base_config' reference."""
+        import yaml
         with open(filepath, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}
 
@@ -509,14 +529,20 @@ def main() -> None:
     bench_out_dir = PROJECT_ROOT / "output" / f"benchmark_{args.region}" if args.region in ("ca", "rd") else PROJECT_ROOT / "output" / "benchmark"
 
     # 1. Modo Verificación de Entorno (--check-env)
+    # Siempre ejecuta usando únicamente la biblioteca estándar de Python
     if args.check_env:
         status = check_system_environment(rscript_path=args.rscript)
         print_environment_report(status)
         if not args.suite and not args.config and not args.check_data:
-            sys.exit(0 if status.get("is_compatible") else 1)
+            sys.exit(0 if status.get("is_ready") else 1)
 
-    # 2. Modo Verificación de Datos e Insumos (--check-data / --validate-inputs)
+    # 2. Para el resto de operaciones, verificar que las dependencias de Python estén instaladas
+    if not _check_python_requirements():
+        sys.exit(1)
+
+    # 3. Modo Verificación de Datos e Insumos (--check-data / --validate-inputs)
     if args.check_data:
+        from launcher.data_preprocessor import validate_project_inputs
         base_path = Path(args.base_config) if args.base_config else PROJECT_ROOT / "config" / "global_config.yaml"
         res = validate_project_inputs(config_path_or_dict=base_path, region=args.region, auto_split_3d=False, verbose=True)
         if not args.suite and not args.config:

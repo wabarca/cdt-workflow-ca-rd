@@ -1,11 +1,13 @@
 """Environment and Dependency Checker for CDT (Linux & Windows).
 
-Validates R installation (e.g. R 4.4.3+), detects Rscript executable path,
+Validates Python dependencies, R installation (e.g. R 4.4.3+), detects Rscript executable path,
 checks all required R packages, system libraries, and compiler toolchains.
+Uses ONLY Python standard library to ensure it runs on any bare Python environment.
 """
 
 from __future__ import annotations
 
+import importlib.util
 import os
 import platform
 import re
@@ -14,6 +16,20 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+
+REQUIRED_PYTHON_PACKAGES: list[Tuple[str, str]] = [
+    ("yaml", "pyyaml"),
+    ("netCDF4", "netCDF4"),
+    ("numpy", "numpy"),
+    ("scipy", "scipy"),
+    ("pandas", "pandas"),
+    ("xarray", "xarray"),
+    ("reportlab", "reportlab"),
+    ("matplotlib", "matplotlib"),
+    ("seaborn", "seaborn"),
+    ("plotly", "plotly"),
+    ("jinja2", "jinja2"),
+]
 
 REQUIRED_R_PACKAGES: list[str] = [
     "CDT",
@@ -33,6 +49,21 @@ REQUIRED_R_PACKAGES: list[str] = [
 ]
 
 MINIMUM_R_VERSION: Tuple[int, int, int] = (4, 0, 0)
+MINIMUM_PYTHON_VERSION: Tuple[int, int] = (3, 9)
+
+
+def check_installed_python_packages(
+    packages: list[Tuple[str, str]] = REQUIRED_PYTHON_PACKAGES
+) -> Dict[str, bool]:
+    """Query Python runtime to check which required packages are installed."""
+    results = {}
+    for import_name, pip_name in packages:
+        try:
+            spec = importlib.util.find_spec(import_name)
+            results[pip_name] = spec is not None
+        except Exception:
+            results[pip_name] = False
+    return results
 
 
 def find_rscript_executable() -> Optional[Path]:
@@ -148,7 +179,7 @@ def check_installed_r_packages(
 
 
 def check_system_environment(rscript_path: Optional[Path | str] = None) -> Dict[str, Any]:
-    """Perform a comprehensive pre-flight check of the execution environment.
+    """Perform a comprehensive pre-flight check of the execution environment (Python & R).
 
     Args:
         rscript_path: Optional custom path to Rscript executable.
@@ -156,11 +187,22 @@ def check_system_environment(rscript_path: Optional[Path | str] = None) -> Dict[
     Returns:
         Structured dictionary with environment diagnostic results.
     """
+    py_ver = sys.version_info
+    py_ver_str = platform.python_version()
+    py_ver_ok = py_ver >= MINIMUM_PYTHON_VERSION
+
+    # Check Python dependencies
+    py_packages = check_installed_python_packages(REQUIRED_PYTHON_PACKAGES)
+    missing_py_packages = [pkg for pkg, inst in py_packages.items() if not inst]
+    py_ready = py_ver_ok and len(missing_py_packages) == 0
+
     system_info = {
         "os": platform.system(),
         "os_release": platform.release(),
         "architecture": platform.machine(),
-        "python_version": platform.python_version(),
+        "python_version": py_ver_str,
+        "python_executable": sys.executable,
+        "python_version_ok": py_ver_ok,
     }
 
     if rscript_path is not None:
@@ -181,61 +223,82 @@ def check_system_environment(rscript_path: Optional[Path | str] = None) -> Dict[
         if r_version_tuple and r_version_tuple >= MINIMUM_R_VERSION:
             r_version_ok = True
 
-    pkg_status: Dict[str, bool] = {}
-    missing_packages: list[str] = []
+    r_pkg_status: Dict[str, bool] = {}
+    missing_r_packages: list[str] = []
 
     if rscript_path and r_version_ok:
-        pkg_status = check_installed_r_packages(rscript_path, REQUIRED_R_PACKAGES)
-        missing_packages = [p for p, installed in pkg_status.items() if not installed]
+        r_pkg_status = check_installed_r_packages(rscript_path, REQUIRED_R_PACKAGES)
+        missing_r_packages = [p for p, installed in r_pkg_status.items() if not installed]
 
-    is_ready = bool(
-        r_available and r_version_ok and (len(missing_packages) == 0 or "CDT" in pkg_status and pkg_status["CDT"])
+    r_ready = bool(
+        r_available and r_version_ok and (len(missing_r_packages) == 0 or "CDT" in r_pkg_status and r_pkg_status["CDT"])
     )
+
+    is_ready = bool(py_ready and r_ready)
 
     return {
         "system": system_info,
+        "python_packages": py_packages,
+        "missing_python_packages": missing_py_packages,
+        "python_ready": py_ready,
         "rscript_path": str(rscript_path) if rscript_path else None,
         "r_available": r_available,
         "r_version": r_version_str,
         "r_version_ok": r_version_ok,
-        "packages": pkg_status,
-        "missing_packages": missing_packages,
+        "r_packages": r_pkg_status,
+        "missing_r_packages": missing_r_packages,
+        "r_ready": r_ready,
         "is_ready": is_ready,
     }
 
 
 def print_environment_report(status: Dict[str, Any]) -> None:
     """Print a user-friendly console report of the environment health check."""
-    print("=" * 70)
-    print("       CDT ENVIRONMENT & DEPENDENCY PRE-FLIGHT CHECK")
-    print("=" * 70)
+    print("=" * 75)
+    print("       CDT ENVIRONMENT & DEPENDENCY PRE-FLIGHT CHECK (PYTHON & R)")
+    print("=" * 75)
     print(f"  Operating System  : {status['system']['os']} {status['system']['os_release']} ({status['system']['architecture']})")
-    print(f"  Python Version    : {status['system']['python_version']}")
+    print(f"  Python Binary     : {status['system']['python_executable']}")
+    print(f"  Python Version    : {status['system']['python_version']} (Required >= 3.9)")
     print(f"  Rscript Path      : {status['rscript_path'] or 'NOT FOUND'}")
     print(f"  R Version         : {status['r_version']} (Required >= 4.0.0, e.g. R 4.4.3)")
 
-    print("\n  Required R Packages Status:")
-    print("  " + "-" * 50)
-    if status["packages"]:
-        for pkg, installed in status["packages"].items():
+    # 1. Python Packages Table
+    print("\n  1. Required Python Packages Status (requirements.txt):")
+    print("  " + "-" * 55)
+    for pkg, installed in status["python_packages"].items():
+        icon = "[OK]" if installed else "[MISSING]"
+        print(f"    {icon:10} {pkg}")
+
+    # 2. R Packages Table
+    print("\n  2. Required R Packages Status:")
+    print("  " + "-" * 55)
+    if status["r_packages"]:
+        for pkg, installed in status["r_packages"].items():
             icon = "[OK]" if installed else "[MISSING]"
             print(f"    {icon:10} {pkg}")
     else:
         print("    [!] Could not check R packages because Rscript was not found.")
 
-    print("=" * 70)
+    print("=" * 75)
     if status["is_ready"]:
         print("  >>> STATUS: ENVIRONMENT IS FULLY COMPATIBLE & READY FOR CDT <<<")
     else:
         print("  >>> STATUS: ENVIRONMENT NEEDS ATTENTION BEFORE RUNNING <<<")
+        if status["missing_python_packages"]:
+            print(f"\n  [!] Faltan paquetes de Python: {', '.join(status['missing_python_packages'])}")
+            print("      Para instalarlos, ejecuta en tu terminal:")
+            print("      pip install -r requirements.txt")
+        
         if not status["r_available"]:
-            print("  * Please install R 4.4.3 (https://cran.r-project.org/) and add it to PATH.")
+            print("\n  [!] R no fue encontrado en el sistema.")
+            print("      Descarga e instala R 4.4.3: https://cran.r-project.org/")
         elif not status["r_version_ok"]:
-            print(f"  * R version {status['r_version']} is outdated. Please update to R >= 4.0.0.")
-        elif status["missing_packages"]:
-            print(f"  * Missing R packages: {', '.join(status['missing_packages'])}")
-            print("    Run: install.packages(c(" + ", ".join(f"'{p}'" for p in status["missing_packages"]) + "))")
-    print("=" * 70 + "\n")
+            print(f"\n  [!] La versión de R ({status['r_version']}) está obsoleta. Se requiere R >= 4.0.0.")
+        elif status["missing_r_packages"]:
+            print(f"\n  [!] Faltan paquetes de R: {', '.join(status['missing_r_packages'])}")
+            print("      Ejecuta en R: install.packages(c(" + ", ".join(f"'{p}'" for p in status["missing_r_packages"]) + "))")
+    print("=" * 75 + "\n")
 
 
 if __name__ == "__main__":
