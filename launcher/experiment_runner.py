@@ -202,6 +202,42 @@ class ExperimentRunner:
                     "stations_temperature_file", f"data/stations/temp_stations{reg_suffix}.csv"
                 )
 
+        # Resolve holdout / omitted stations file based on variable type and region
+        holdout_specified = paths.get("holdout_stations_file") or paths.get("omitted_stations_file")
+        if not holdout_specified or holdout_specified == "data/stations/validation_holdout_stations.csv":
+            reg_suffix = f"_{self.region}" if self.region in ("ca", "rd") else ""
+            if var_type in ("rainfall", "rain", "precip"):
+                cand_holdout = paths.get("holdout_rainfall_file", f"data/stations/validation_holdout_stations_rainfall{reg_suffix}.csv")
+                if not Path(cand_holdout).exists():
+                    cand_holdout = paths.get("holdout_rainfall_file", "data/stations/validation_holdout_stations_rainfall.csv")
+                if not Path(cand_holdout).exists():
+                    cand_holdout = paths.get("holdout_stations_file", "data/stations/validation_holdout_stations.csv")
+                paths["holdout_stations_file"] = cand_holdout
+            elif var_type in ("tmax", "tx", "temp_max", "temperature_max"):
+                cand_holdout = paths.get("holdout_tmax_file", f"data/stations/validation_holdout_stations_tmax{reg_suffix}.csv")
+                if not Path(cand_holdout).exists():
+                    cand_holdout = paths.get("holdout_tmax_file", "data/stations/validation_holdout_stations_tmax.csv")
+                if not Path(cand_holdout).exists():
+                    cand_holdout = paths.get("holdout_temperature_file", f"data/stations/validation_holdout_stations_temperature{reg_suffix}.csv")
+                if not Path(cand_holdout).exists():
+                    cand_holdout = paths.get("holdout_temperature_file", "data/stations/validation_holdout_stations_temperature.csv")
+                if not Path(cand_holdout).exists():
+                    cand_holdout = paths.get("holdout_stations_file", "data/stations/validation_holdout_stations.csv")
+                paths["holdout_stations_file"] = cand_holdout
+            elif var_type in ("tmin", "tn", "temp_min", "temperature_min"):
+                cand_holdout = paths.get("holdout_tmin_file", f"data/stations/validation_holdout_stations_tmin{reg_suffix}.csv")
+                if not Path(cand_holdout).exists():
+                    cand_holdout = paths.get("holdout_tmin_file", "data/stations/validation_holdout_stations_tmin.csv")
+                if not Path(cand_holdout).exists():
+                    cand_holdout = paths.get("holdout_temperature_file", f"data/stations/validation_holdout_stations_temperature{reg_suffix}.csv")
+                if not Path(cand_holdout).exists():
+                    cand_holdout = paths.get("holdout_temperature_file", "data/stations/validation_holdout_stations_temperature.csv")
+                if not Path(cand_holdout).exists():
+                    cand_holdout = paths.get("holdout_stations_file", "data/stations/validation_holdout_stations.csv")
+                paths["holdout_stations_file"] = cand_holdout
+            else:
+                paths["holdout_stations_file"] = paths.get("holdout_stations_file", "data/stations/validation_holdout_stations.csv")
+
         # Ensure output_dir and log_dir are set with regional awareness
         def_out_root = f"output/experiments_{self.region}" if self.region in ("ca", "rd") else "output/experiments"
         def_log_root = f"logs/experiments_{self.region}" if self.region in ("ca", "rd") else "logs/experiments"

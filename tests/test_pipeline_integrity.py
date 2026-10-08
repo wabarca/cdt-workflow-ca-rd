@@ -206,6 +206,28 @@ class TestRegionalRouting(unittest.TestCase):
         self.assertIn("rd", paths_rd["stations_rainfall_file"])
         self.assertIn("experiments_rd", paths_rd["output_dir"])
 
+    def test_variable_specific_holdout_routing(self):
+        from launcher.experiment_runner import ExperimentRunner
+        
+        # Rainfall experiment
+        runner_rain = ExperimentRunner(
+            config_target="config/experiments_rainfall/EXP_R01_SBA_IDW_Baseline.yaml",
+            base_config_path="config/global_config.yaml",
+            region="ca",
+        )
+        cfg_rain = runner_rain.load_configs()[0]
+        # Temperature experiment
+        runner_tmax = ExperimentRunner(
+            config_target="config/experiments_tmax/EXP_TX01_SBA_IDW_Baseline.yaml",
+            base_config_path="config/global_config.yaml",
+            region="ca",
+        )
+        cfg_tmax = runner_tmax.load_configs()[0]
+        
+        # Verify that holdout files are differentiated
+        self.assertIn("holdout_stations_file", cfg_rain["paths"])
+        self.assertIn("holdout_stations_file", cfg_tmax["paths"])
+
 
 class TestParallelCores(unittest.TestCase):
     """Test automatic and explicit core configuration."""

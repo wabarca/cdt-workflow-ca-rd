@@ -408,28 +408,69 @@ def validate_project_inputs(
             report_rows.append(("Shapefile de Recorte", "LISTO [OK]", shp_path.name, "Polígono regional con .shp/.shx/.dbf/.prj"))
 
     # -------------------------------------------------------------------------
-    # 4. Validar Estaciones Holdout (Validación Ciega)
+    # 4. Validar Estaciones Holdout (Validación Ciega por Variable)
     # -------------------------------------------------------------------------
-    holdout_path_str = paths.get("holdout_stations_file", "data/stations/validation_holdout_stations.csv")
-    holdout_path = Path(holdout_path_str).resolve()
-    if not holdout_path.exists():
-        cand = Path(holdout_path_str)
-        if cand.exists():
-            holdout_path = cand.resolve()
+    holdout_specs = [
+        (
+            "holdout_rainfall_file",
+            "Holdout Precipitación",
+            [
+                f"data/stations/validation_holdout_stations_rainfall_{active_region}.csv" if active_region else "",
+                "data/stations/validation_holdout_stations_rainfall.csv",
+                "data/stations/validation_holdout_stations.csv",
+            ],
+        ),
+        (
+            "holdout_temperature_file",
+            "Holdout Temperatura",
+            [
+                f"data/stations/validation_holdout_stations_temperature_{active_region}.csv" if active_region else "",
+                f"data/stations/validation_holdout_stations_tmax_{active_region}.csv" if active_region else "",
+                "data/stations/validation_holdout_stations_temperature.csv",
+                "data/stations/validation_holdout_stations_tmax.csv",
+                "data/stations/validation_holdout_stations.csv",
+            ],
+        ),
+    ]
 
-    if holdout_path.exists():
-        try:
-            df_h = pd.read_csv(holdout_path)
-            h_count = len(df_h)
-            details["holdout"] = {"path": str(holdout_path), "holdout_count": h_count}
-            desc = f"{h_count} estaciones excluidas reservadas para validación" if h_count > 0 else "0 estaciones omitidas (Validación in-sample)"
-            report_rows.append(("Estaciones Holdout", "LISTO [OK]", holdout_path.name, desc))
-        except Exception as e:
-            warnings.append(f"Estaciones Holdout: No se pudo leer CSV: {e}")
-            report_rows.append(("Estaciones Holdout", "ADVERTENCIA", holdout_path.name, str(e)))
-    else:
-        warnings.append(f"Estaciones Holdout: No encontrado en '{holdout_path_str}'. Se usará validación in-sample.")
-        report_rows.append(("Estaciones Holdout", "OPCIONAL", str(holdout_path_str), "No presente (Se evaluará con 100% de estaciones)"))
+    holdout_details = {}
+    for h_key, h_label, h_candidates in holdout_specs:
+        h_path_str = paths.get(h_key)
+        resolved_path = None
+        if h_path_str:
+            cand = Path(h_path_str).resolve()
+            if cand.exists():
+                resolved_path = cand
+            else:
+                cand_rel = Path(h_path_str)
+                if cand_rel.exists():
+                    resolved_path = cand_rel.resolve()
+
+        if not resolved_path:
+            for c_str in h_candidates:
+                if c_str:
+                    c_cand = Path(c_str).resolve()
+                    if c_cand.exists():
+                        resolved_path = c_cand
+                        break
+                    elif Path(c_str).exists():
+                        resolved_path = Path(c_str).resolve()
+                        break
+
+        if resolved_path and resolved_path.exists():
+            try:
+                df_h = pd.read_csv(resolved_path)
+                h_count = len(df_h)
+                holdout_details[h_key] = {"path": str(resolved_path), "holdout_count": h_count}
+                desc = f"{h_count} estaciones excluidas ({resolved_path.name})" if h_count > 0 else f"0 estaciones ({resolved_path.name})"
+                report_rows.append((h_label, "LISTO [OK]", resolved_path.name, desc))
+            except Exception as e:
+                warnings.append(f"{h_label}: No se pudo leer CSV: {e}")
+                report_rows.append((h_label, "ADVERTENCIA", resolved_path.name, str(e)))
+        else:
+            report_rows.append((h_label, "OPCIONAL", "No suministrado", "Validación in-sample (100% estaciones)"))
+
+    details["holdout"] = holdout_details
 
     # -------------------------------------------------------------------------
     # 5. Validar Grillas Satelitales Diarias NetCDF (CHIRPS, Tmax, Tmin)

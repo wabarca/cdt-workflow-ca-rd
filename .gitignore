@@ -6,7 +6,7 @@
 /data/**/*
 !/data/**/
 !/data/**/*.gitkeep
-!/data/stations/validation_holdout_stations.csv
+!/data/stations/validation_holdout_stations*.csv
 
 # --- 2. Salidas de Experimentos, Grillas NetCDF 3D y Logs de Auditoría ---
 /output/**/*
