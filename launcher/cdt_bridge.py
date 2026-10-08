@@ -41,8 +41,12 @@ def _to_r_val(val: Any) -> str:
 class CDTBridge:
     """High-level Python bridge for Climate Data Tools (CDT) R routines."""
 
-    def __init__(self, rscript_path: Optional[Union[str, Path]] = None):
-        """Initialize CDTBridge with explicit or auto-detected Rscript binary."""
+    def __init__(
+        self,
+        rscript_path: Optional[Union[str, Path]] = None,
+        nb_cores: Optional[Union[int, str]] = None,
+    ):
+        """Initialize CDTBridge with explicit or auto-detected Rscript binary and core count."""
         if rscript_path:
             self.rscript_path = Path(rscript_path).resolve()
         else:
@@ -50,6 +54,8 @@ class CDTBridge:
             if not auto_path:
                 raise RuntimeError("Could not find Rscript executable. Please install R 4.4.3+.")
             self.rscript_path = auto_path
+        
+        self.nb_cores = nb_cores
 
     def _execute_r_code(
         self,
@@ -59,6 +65,11 @@ class CDTBridge:
     ) -> Tuple[int, str, str, float]:
         """Execute a block of R code using Rscript subprocess."""
         start_time = time.time()
+
+        if isinstance(self.nb_cores, int) and self.nb_cores > 0:
+            core_setup = f"n_cores <- {self.nb_cores}\n"
+        else:
+            core_setup = "n_cores <- max(1, parallel::detectCores() - 1)\n"
         
         full_r_script = (
             "suppressPackageStartupMessages({\n"
@@ -68,7 +79,7 @@ class CDTBridge:
             "  library(foreach)\n"
             "})\n\n"
             "# Configuracion automatica de paralelismo de alto rendimiento\n"
-            "n_cores <- max(1, parallel::detectCores() - 1)\n"
+            f"{core_setup}"
             ".cdtData$Config$parallel <- list(dopar = TRUE, detect.cores = FALSE, nb.cores = n_cores)\n\n"
             f"{r_code}\n"
         )

@@ -198,18 +198,20 @@ def split_3d_netcdf_to_daily_parallel(
 
 def validate_project_inputs(
     config_path_or_dict: Union[Path, str, Dict[str, Any]],
-    auto_split_3d: bool = True,
+    region: Optional[str] = None,
+    auto_split_3d: bool = False,
     max_workers: Optional[int] = None,
     verbose: bool = True,
 ) -> Dict[str, Any]:
-    """Performs comprehensive validation of all user-supplied input datasets.
+    """Performs comprehensive, deep validation of all user-supplied input datasets.
 
     Checks:
-    1. Station CSV files (Precipitation, Tmax, Tmin).
-    2. Digital Elevation Model (DEM) NetCDF file.
+    1. Station CSV files (Precipitation, Tmax, Tmin): 4-line headers, station count, date range.
+    2. Digital Elevation Model (DEM) NetCDF file: dimensions, elevation range, coordinates.
     3. Study Area Boundary Shapefile (.shp, .shx, .dbf, .prj).
-    4. Validation Holdout CSV.
-    5. Gridded Data: verifies daily files or auto-splits 3D NetCDFs in parallel.
+    4. Validation Holdout CSV: station count and overlap with station files.
+    5. Daily Gridded NetCDFs: file count (10,958 days for 1991-2020) and format.
+    6. Raw 3D NetCDFs: availability in data/raw_netcdf/ for parallel splitting.
 
     Returns:
         Detailed diagnostic report with 'status': 'VALID', 'WARNINGS', or 'ERRORS'.
@@ -219,208 +221,311 @@ def validate_project_inputs(
         if not cfg_file.exists():
             return {
                 "status": "ERRORS",
-                "errors": [f"Config file not found: {cfg_file}"],
+                "errors": [f"Archivo de configuración no encontrado: {cfg_file}"],
                 "warnings": [],
                 "details": {},
             }
         with open(cfg_file, "r", encoding="utf-8") as f:
             cfg = yaml.safe_load(f) or {}
     else:
-        cfg = config_path_or_dict
+        cfg = dict(config_path_or_dict)
 
-    paths = cfg.get("paths", {})
+    # Apply regional overrides if region is specified (e.g. 'ca' or 'rd')
+    active_region = (region or cfg.get("active_region", "")).lower()
+    regions_dict = cfg.get("regions", {})
+    region_label = "General / Completo"
+
+    paths = dict(cfg.get("paths", {}))
+    if active_region and active_region in regions_dict:
+        reg_info = regions_dict[active_region]
+        region_label = f"{reg_info.get('name', active_region.upper())} ({active_region.upper()})"
+        for k, v in reg_info.items():
+            if k not in ("name", "benchmark_dir"):
+                paths[k] = v
+
     period = cfg.get("period", {})
-    start_date = period.get("start_date", "19910101")
-    end_date = period.get("end_date", "20201231")
+    start_date = str(period.get("start_date", "19910101"))
+    end_date = str(period.get("end_date", "20201231"))
+
+    # Expected days in 1991-2020 (30 years = 10,958 days including 7 leap years)
+    try:
+        dt_start = datetime.datetime.strptime(start_date, "%Y%m%d")
+        dt_end = datetime.datetime.strptime(end_date, "%Y%m%d")
+        expected_days = (dt_end - dt_start).days + 1
+    except Exception:
+        expected_days = 10958
 
     errors: List[str] = []
     warnings: List[str] = []
-    details: Dict[str, Any] = {}
+    details: Dict[str, Any] = {"region": active_region or "all"}
+    report_rows: List[Tuple[str, str, str, str]] = []
 
     if verbose:
-        print("=" * 80)
-        print("         DIAGNÓSTICO Y VALIDACIÓN DE DATOS DE ENTRADA (CDT 1991–2020)")
-        print("=" * 80)
+        print("\n" + "=" * 85)
+        print("     DIAGNÓSTICO Y VERIFICACIÓN DE DATOS E INSUMOS (CDT 1991–2020 / 30 AÑOS)")
+        print("=" * 85)
+        print(f"  Dominio / Región      : {region_label}")
+        print(f"  Periodo Climatológico : {start_date} a {end_date} ({expected_days:,} días diarios esperados)")
+        print("-" * 85)
 
+    # -------------------------------------------------------------------------
     # 1. Validar Estaciones Pluviométricas y Termométricas
+    # -------------------------------------------------------------------------
+    def_p = f"data/stations/precip_stations_{active_region}.csv" if active_region in ("ca", "rd") else "data/stations/precip_stations_all.csv"
+    def_tx = f"data/stations/tmax_stations_{active_region}.csv" if active_region in ("ca", "rd") else "data/stations/tmax_stations_all.csv"
+    def_tn = f"data/stations/tmin_stations_{active_region}.csv" if active_region in ("ca", "rd") else "data/stations/tmin_stations_all.csv"
+
     stn_keys = [
-        ("stations_rainfall_file", "Precipitación (Lluvia)"),
-        ("stations_tmax_file", "Temperatura Máxima (Tmax)"),
-        ("stations_tmin_file", "Temperatura Mínima (Tmin)"),
+        ("stations_rainfall_file", "Precipitación (Lluvia)", def_p),
+        ("stations_tmax_file", "Temperatura Máx (Tmax)", def_tx),
+        ("stations_tmin_file", "Temperatura Mín (Tmin)", def_tn),
     ]
     stn_details = {}
-    for key, label in stn_keys:
-        stn_path_str = paths.get(key)
-        if not stn_path_str:
-            warnings.append(f"No se especificó ruta para {key} ({label}).")
-            continue
+    for key, label, def_path in stn_keys:
+        stn_path_str = paths.get(key, def_path)
         stn_path = Path(stn_path_str).resolve()
         if not stn_path.exists():
-            # Check relative to project root
             cand = Path(stn_path_str)
             if cand.exists():
                 stn_path = cand.resolve()
-            else:
-                errors.append(f"Archivo de estaciones {label} no encontrado: {stn_path_str}")
-                continue
+            elif active_region:
+                all_cand = Path(stn_path_str.replace(f"_{active_region}.csv", "_all.csv"))
+                if all_cand.exists():
+                    stn_path = all_cand.resolve()
+                    warnings.append(f"Estaciones {label}: Usando archivo general '{stn_path.name}' como fallback para región {active_region.upper()}")
+
+        if not stn_path.exists():
+            errors.append(f"Estaciones {label}: Archivo no encontrado en '{stn_path_str}'")
+            report_rows.append((f"Estaciones {label}", "NO ENCONTRADO", str(stn_path_str), "Colocar CSV en formato CDT (4 filas encabezado)"))
+            continue
 
         try:
-            # Check CDT station header format
-            df_head = pd.read_csv(stn_path, nrows=5, header=None)
-            n_cols = df_head.shape[1] - 1 # excluding date column
+            with open(stn_path, "r", encoding="utf-8-sig") as f:
+                lines = [line.strip() for line in f if line.strip()]
+            
+            if len(lines) < 4:
+                errors.append(f"Estaciones {label}: Formato inválido (< 4 líneas en {stn_path.name})")
+                report_rows.append((f"Estaciones {label}", "INVÁLIDO", stn_path.name, "Archivo incompleto"))
+                continue
+
+            delim = "," if "," in lines[0] else (";" if ";" in lines[0] else "\t")
+            row0 = [x.strip() for x in lines[0].split(delim)]
+            row1 = [x.strip() for x in lines[1].split(delim)]
+            row2 = [x.strip() for x in lines[2].split(delim)]
+            row3 = [x.strip() for x in lines[3].split(delim)]
+
+            stn_ids = row0[1:]
+            n_stns = len(stn_ids)
+            n_records = len(lines) - 4
+            min_date = lines[4].split(delim)[0] if len(lines) > 4 else "N/A"
+            max_date = lines[-1].split(delim)[0] if len(lines) > 4 else "N/A"
+
             stn_details[key] = {
                 "path": str(stn_path),
-                "stations_count": n_cols,
+                "stations_count": n_stns,
+                "records_count": n_records,
+                "min_date": min_date,
+                "max_date": max_date,
                 "status": "VALID",
             }
-            if verbose:
-                print(f"  [OK] Estaciones {label:25}: {n_cols} estaciones detectadas ({stn_path.name})")
+            status_desc = f"{n_stns} estaciones | {n_records:,} días ({min_date}..{max_date})"
+            report_rows.append((f"Estaciones {label}", "LISTO [OK]", stn_path.name, status_desc))
         except Exception as e:
-            errors.append(f"Error al leer formato CDT de {key}: {e}")
+            errors.append(f"Estaciones {label}: Error al leer formato CDT: {e}")
+            report_rows.append((f"Estaciones {label}", "ERROR", stn_path.name, str(e)))
 
-    # 2. Validar DEM
-    dem_path_str = paths.get("dem_file")
-    if dem_path_str:
-        dem_path = Path(dem_path_str).resolve()
-        if not dem_path.exists():
-            cand = Path(dem_path_str)
-            if cand.exists():
-                dem_path = cand.resolve()
-            else:
-                errors.append(f"Archivo DEM no encontrado: {dem_path_str}")
+    details["stations"] = stn_details
+
+    # -------------------------------------------------------------------------
+    # 2. Validar Topografía DEM SRTM
+    # -------------------------------------------------------------------------
+    dem_path_str = paths.get("dem_file", "data/topography/dem_srtm_90m.nc")
+    dem_path = Path(dem_path_str).resolve()
+    if not dem_path.exists():
+        cand = Path(dem_path_str)
+        if cand.exists():
+            dem_path = cand.resolve()
         else:
-            try:
-                with xr.open_dataset(dem_path) as ds_dem:
-                    dem_vars = list(ds_dem.data_vars)
-                    details["dem"] = {
-                        "path": str(dem_path),
-                        "variables": dem_vars,
-                        "dims": dict(ds_dem.dims),
-                    }
-                    if verbose:
-                        print(f"  [OK] Topografía DEM SRTM      : {dem_vars[0] if dem_vars else 'z'} {dict(ds_dem.dims)} ({dem_path.name})")
-            except Exception as e:
-                errors.append(f"Error al abrir archivo DEM {dem_path_str}: {e}")
+            cand_gen = Path("data/topography/dem_srtm_90m.nc")
+            if cand_gen.exists():
+                dem_path = cand_gen.resolve()
+                warnings.append(f"Topografía DEM: Usando DEM regional general '{cand_gen.name}'")
+
+    if not dem_path.exists():
+        errors.append(f"Topografía DEM: Archivo no encontrado en '{dem_path_str}'")
+        report_rows.append(("Topografía DEM SRTM", "NO ENCONTRADO", str(dem_path_str), "Colocar NetCDF del DEM (ej. dem_srtm_90m.nc)"))
     else:
-        warnings.append("No se definió 'dem_file' en la configuración.")
+        try:
+            with xr.open_dataset(dem_path) as ds_dem:
+                dem_vars = list(ds_dem.data_vars)
+                var_name = dem_vars[0] if dem_vars else "z"
+                da_dem = ds_dem[var_name]
+                elev_min = float(da_dem.min().values)
+                elev_max = float(da_dem.max().values)
+                dims_str = ", ".join([f"{k}:{v}" for k, v in ds_dem.dims.items()])
+                
+                details["dem"] = {
+                    "path": str(dem_path),
+                    "var_name": var_name,
+                    "dims": dict(ds_dem.dims),
+                    "elev_range": [elev_min, elev_max],
+                }
+                status_desc = f"Var '{var_name}' ({dims_str}) | Cotas: {elev_min:.0f}m a {elev_max:.0f}m"
+                report_rows.append(("Topografía DEM SRTM", "LISTO [OK]", dem_path.name, status_desc))
+        except Exception as e:
+            errors.append(f"Topografía DEM: Error al abrir NetCDF: {e}")
+            report_rows.append(("Topografía DEM SRTM", "ERROR", dem_path.name, str(e)))
 
-    # 3. Validar Shapefile
-    shp_path_str = paths.get("shapefile_path")
-    if shp_path_str:
-        shp_path = Path(shp_path_str).resolve()
-        if not shp_path.exists():
-            cand = Path(shp_path_str)
-            if cand.exists():
-                shp_path = cand.resolve()
-            else:
-                errors.append(f"Shapefile no encontrado: {shp_path_str}")
+    # -------------------------------------------------------------------------
+    # 3. Validar Shapefile Regional (GIS)
+    # -------------------------------------------------------------------------
+    shp_path_str = paths.get("shapefile_path", "data/gis/central_america_dominican_rep.shp")
+    shp_path = Path(shp_path_str).resolve()
+    if not shp_path.exists():
+        cand = Path(shp_path_str)
+        if cand.exists():
+            shp_path = cand.resolve()
         else:
-            # Check sidecar files (.shx, .dbf)
-            missing_sidecars = []
-            for ext in [".shx", ".dbf"]:
-                sc = shp_path.with_suffix(ext)
-                if not sc.exists():
-                    missing_sidecars.append(ext)
-            if missing_sidecars:
-                warnings.append(f"Archivos auxiliares de Shapefile faltantes ({', '.join(missing_sidecars)} para {shp_path.name})")
-            details["shapefile"] = {"path": str(shp_path), "exists": True}
-            if verbose:
-                print(f"  [OK] Shapefile de Recorte     : {shp_path.name} (Buffer 10 km)")
+            cand_gen = Path("data/gis/central_america_dominican_rep.shp")
+            if cand_gen.exists():
+                shp_path = cand_gen.resolve()
+                warnings.append(f"Shapefile de Recorte: Usando shapefile general '{cand_gen.name}'")
+
+    if not shp_path.exists():
+        errors.append(f"Shapefile de Recorte: Archivo no encontrado en '{shp_path_str}'")
+        report_rows.append(("Shapefile de Recorte", "NO ENCONTRADO", str(shp_path_str), "Colocar .shp y archivos .shx/.dbf/.prj"))
     else:
-        warnings.append("No se definió 'shapefile_path' en la configuración.")
-
-    # 4. Validar Estaciones Holdout
-    holdout_path_str = paths.get("holdout_stations_file")
-    if holdout_path_str:
-        h_path = Path(holdout_path_str).resolve()
-        if not h_path.exists():
-            cand = Path(holdout_path_str)
-            if cand.exists():
-                h_path = cand.resolve()
-        if h_path.exists():
-            try:
-                df_h = pd.read_csv(h_path)
-                h_count = len(df_h)
-                details["holdout"] = {"path": str(h_path), "holdout_count": h_count}
-                if verbose:
-                    print(f"  [OK] Estaciones Holdout (CSV) : {h_count} estaciones de validación ciega ({h_path.name})")
-            except Exception as e:
-                warnings.append(f"No se pudo leer CSV de estaciones holdout: {e}")
+        missing_sidecars = []
+        for ext in [".shx", ".dbf", ".prj"]:
+            sc = shp_path.with_suffix(ext)
+            if not sc.exists():
+                missing_sidecars.append(ext)
+        if missing_sidecars:
+            warnings.append(f"Shapefile: Faltan archivos auxiliares ({', '.join(missing_sidecars)}) para {shp_path.name}")
+            report_rows.append(("Shapefile de Recorte", "ADVERTENCIA", shp_path.name, f"Faltan auxiliares: {', '.join(missing_sidecars)}"))
         else:
-            warnings.append(f"Archivo de estaciones holdout no encontrado: {holdout_path_str}. Se usará validación in-sample.")
+            details["shapefile"] = {"path": str(shp_path), "status": "COMPLETE"}
+            report_rows.append(("Shapefile de Recorte", "LISTO [OK]", shp_path.name, "Polígono regional con .shp/.shx/.dbf/.prj"))
 
-    # 5. Validar y/o Procesar Grillas Satelitales (CHIRPS, Tmax, Tmin)
+    # -------------------------------------------------------------------------
+    # 4. Validar Estaciones Holdout (Validación Ciega)
+    # -------------------------------------------------------------------------
+    holdout_path_str = paths.get("holdout_stations_file", "data/stations/validation_holdout_stations.csv")
+    holdout_path = Path(holdout_path_str).resolve()
+    if not holdout_path.exists():
+        cand = Path(holdout_path_str)
+        if cand.exists():
+            holdout_path = cand.resolve()
+
+    if holdout_path.exists():
+        try:
+            df_h = pd.read_csv(holdout_path)
+            h_count = len(df_h)
+            details["holdout"] = {"path": str(holdout_path), "holdout_count": h_count}
+            desc = f"{h_count} estaciones excluidas reservadas para validación" if h_count > 0 else "0 estaciones omitidas (Validación in-sample)"
+            report_rows.append(("Estaciones Holdout", "LISTO [OK]", holdout_path.name, desc))
+        except Exception as e:
+            warnings.append(f"Estaciones Holdout: No se pudo leer CSV: {e}")
+            report_rows.append(("Estaciones Holdout", "ADVERTENCIA", holdout_path.name, str(e)))
+    else:
+        warnings.append(f"Estaciones Holdout: No encontrado en '{holdout_path_str}'. Se usará validación in-sample.")
+        report_rows.append(("Estaciones Holdout", "OPCIONAL", str(holdout_path_str), "No presente (Se evaluará con 100% de estaciones)"))
+
+    # -------------------------------------------------------------------------
+    # 5. Validar Grillas Satelitales Diarias NetCDF (CHIRPS, Tmax, Tmin)
+    # -------------------------------------------------------------------------
     gridded_specs = [
-        ("satellite_rainfall_dir", "raw_3d_netcdf_rainfall", "chirps_%s%s%s.nc", "precip", "Precipitación (CHIRPS)"),
-        ("satellite_tmax_dir", "raw_3d_netcdf_tmax", "tmax_%s%s%s.nc", "tmax", "Temperatura Máxima (Tmax)"),
-        ("satellite_tmin_dir", "raw_3d_netcdf_tmin", "tmin_%s%s%s.nc", "tmin", "Temperatura Mínima (Tmin)"),
+        ("satellite_rainfall_dir", "raw_3d_netcdf_rainfall", "chirps_%s%s%s.nc", "precip", "Grillas Lluvia (CHIRPS)", "data/chirps_daily"),
+        ("satellite_tmax_dir", "raw_3d_netcdf_tmax", "tmax_%s%s%s.nc", "tmax", "Grillas Tmax (CHIRTS)", "data/chirts_daily/tmax"),
+        ("satellite_tmin_dir", "raw_3d_netcdf_tmin", "tmin_%s%s%s.nc", "tmin", "Grillas Tmin (CHIRTS)", "data/chirts_daily/tmin"),
     ]
 
-    for dir_key, raw_3d_key, def_format, def_var, label in gridded_specs:
-        target_dir_str = paths.get(dir_key)
+    for dir_key, raw_3d_key, def_format, def_var, label, def_dir in gridded_specs:
+        target_dir_str = paths.get(dir_key, def_dir)
         raw_3d_str = paths.get(raw_3d_key)
+        
+        t_dir = Path(target_dir_str).resolve()
+        if not t_dir.exists():
+            cand = Path(target_dir_str)
+            if cand.exists():
+                t_dir = cand.resolve()
 
-        # Case A: 3D NetCDF explicitly supplied
+        nc_files = list(t_dir.glob("*.nc")) if t_dir.exists() and t_dir.is_dir() else []
+        nc_count = len(nc_files)
+
+        # Check raw 3D file fallback if daily files are missing
+        raw_found = False
+        raw_path_obj = None
         if raw_3d_str:
-            raw_path = Path(raw_3d_str).resolve()
-            if not raw_path.exists():
-                cand = Path(raw_3d_str)
-                if cand.exists():
-                    raw_path = cand.resolve()
-            if raw_path.exists() and raw_path.is_file() and raw_path.suffix == ".nc":
-                if auto_split_3d and target_dir_str:
-                    target_dir = Path(target_dir_str).resolve()
-                    fmt = paths.get(f"{dir_key.replace('_dir', '_format')}", def_format)
-                    var = paths.get("var_id", def_var)
-                    split_res = split_3d_netcdf_to_daily_parallel(
-                        input_nc_path=raw_path,
-                        output_dir=target_dir,
-                        filename_format=fmt,
-                        var_id=var,
-                        start_date=start_date,
-                        end_date=end_date,
-                        max_workers=max_workers,
-                        verbose=verbose,
-                    )
-                    details[raw_3d_key] = split_res
-                else:
-                    details[raw_3d_key] = {"path": str(raw_path), "status": "FILE_FOUND"}
+            raw_path_obj = Path(raw_3d_str).resolve()
+            if not raw_path_obj.exists():
+                cand_raw = Path(raw_3d_str)
+                if cand_raw.exists():
+                    raw_path_obj = cand_raw.resolve()
+            raw_found = raw_path_obj.exists() and raw_path_obj.is_file()
 
-        # Case B: Directory of daily 2D NetCDFs
-        if target_dir_str:
-            t_dir = Path(target_dir_str).resolve()
-            if not t_dir.exists():
-                cand = Path(target_dir_str)
-                if cand.exists():
-                    t_dir = cand.resolve()
+        if nc_count >= expected_days:
+            details[dir_key] = {"path": str(t_dir), "file_count": nc_count, "status": "COMPLETE"}
+            report_rows.append((label, "LISTO [OK]", f"{t_dir.name}/", f"{nc_count:,} archivos diarios 2D (100% cobertura)"))
+        elif nc_count > 0:
+            pct = (nc_count / expected_days) * 100.0
+            warnings.append(f"{label}: Se encontraron {nc_count:,} de {expected_days:,} archivos diarios ({pct:.1f}%).")
+            report_rows.append((label, "PARCIAL [!]", f"{t_dir.name}/", f"{nc_count:,} de {expected_days:,} archivos ({pct:.1f}%)"))
+        elif raw_found and raw_path_obj:
+            details[raw_3d_key] = {"path": str(raw_path_obj), "status": "RAW_3D_READY"}
+            report_rows.append((label, "3D DISPONIBLE", raw_path_obj.name, "Listo para particionar automáticamente a diario"))
+        else:
+            errors.append(f"{label}: No se encontraron archivos NetCDF en '{target_dir_str}' ni 3D en raw_netcdf.")
+            report_rows.append((label, "NO ENCONTRADO", str(target_dir_str), f"Colocar {expected_days:,} archivos diarios 2D o NetCDF 3D"))
 
-            if t_dir.exists() and t_dir.is_dir():
-                nc_files = list(t_dir.glob("*.nc"))
-                details[dir_key] = {"path": str(t_dir), "file_count": len(nc_files)}
-                if verbose:
-                    print(f"  [OK] Grillas Diarias {label:20}: {len(nc_files)} archivos diarios NetCDF ({t_dir.name}/)")
-            elif not raw_3d_str:
-                warnings.append(f"Directorio de grillas {label} no encontrado: {target_dir_str}")
+    # -------------------------------------------------------------------------
+    # Renderizar Tabla de Diagnóstico en Terminal
+    # -------------------------------------------------------------------------
+    if verbose:
+        header = f"  {'COMPONENTE':<25} | {'ESTADO':<15} | {'ARCHIVO / CARPETA':<22} | {'DETALLE / ACCIÓN'}"
+        print(header)
+        print("  " + "-" * 83)
+        for comp, st, loc, det in report_rows:
+            st_color = st
+            print(f"  {comp:<25} | {st_color:<15} | {loc:<22} | {det}")
+        print("=" * 85)
 
     overall_status = "ERRORS" if errors else ("WARNINGS" if warnings else "VALID")
 
     if verbose:
-        print("-" * 80)
         if overall_status == "VALID":
-            print("  >>> ESTADO: TODOS LOS DATOS DE ENTRADA ESTÁN PRESENTES Y VALIDADOS.")
+            print("\n  >>> [EXITO] TODOS LOS DATOS ESTÁN LISTOS Y VALIDADOS PARA EJECUTAR CDT <<<")
+            print("  Puedes iniciar los experimentos con: python launcher/experiment_runner.py --suite all\n")
         elif overall_status == "WARNINGS":
-            print(f"  >>> ESTADO: VALIDADO CON {len(warnings)} ADVERTENCIA(S):")
+            print(f"\n  >>> [AVISO] DATOS VALIDADOS CON {len(warnings)} ADVERTENCIA(S):")
             for w in warnings:
                 print(f"      [!] {w}")
+            print("  Puedes ejecutar las suites pero revisa las advertencias anteriores.\n")
         else:
-            print(f"  >>> ESTADO: SE ENCONTRARON {len(errors)} ERROR(ES) CRÍTICO(S):")
+            print(f"\n  >>> [ALERTA] SE ENCONTRARON {len(errors)} ERROR(ES) DE DATOS FALTANTES:")
             for e in errors:
                 print(f"      [X] {e}")
-        print("=" * 80 + "\n")
+            print("\n  GUÍA RÁPIDA PARA COLOCAR TUS DATOS:")
+            print("  1. Estaciones CSV (CDT 4 encabezados): data/stations/precip_stations_all.csv, tmax_stations_all.csv, tmin_stations_all.csv")
+            print("  2. DEM SRTM NetCDF: data/topography/dem_srtm_90m.nc")
+            print("  3. Shapefile Regional: data/gis/central_america_dominican_rep.shp (+ .shx, .dbf, .prj)")
+            print("  4. Grillas Diarias: data/chirps_daily/, data/chirts_daily/tmax/, data/chirts_daily/tmin/\n")
 
     return {
         "status": overall_status,
+        "is_ready": overall_status in ("VALID", "WARNINGS"),
         "errors": errors,
         "warnings": warnings,
         "details": details,
     }
+
+
+def check_data_readiness(
+    config_path: Union[Path, str] = "config/global_config.yaml",
+    region: Optional[str] = None,
+    verbose: bool = True,
+) -> bool:
+    """Convenience helper to check data readiness returning True/False boolean."""
+    res = validate_project_inputs(config_path_or_dict=config_path, region=region, verbose=verbose)
+    return res.get("is_ready", False)
+

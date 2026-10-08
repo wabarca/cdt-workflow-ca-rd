@@ -141,26 +141,25 @@ python launcher/experiment_runner.py [OPCIONES]
 
 | Argumento | Alias | Tipo | Descripción |
 | :--- | :---: | :---: | :--- |
+| `--check-env` | | `flag` | Ejecuta el diagnóstico del entorno (Rscript, paquetes y compiladores) antes de procesar. |
+| `--check-data` | `--check-inputs`, `--validate-inputs` | `flag` | Verifica exhaustivamente la presencia, formato y completitud de todos los datos e insumos (estaciones, DEM, shapefile, grillas diarias 1991-2020). |
 | `--suite` | `-s`, `--variable`, `-v` | `str` | Ejecuta una suite predefinida: `rainfall` (10 exp), `tmax` (8 exp), `tmin` (8 exp) o `all` (26 exp). |
 | `--config` | `-c` | `str` | Ruta a un archivo `.yaml` específico o a una carpeta con archivos `.yaml`. |
 | `--base-config` | `-b` | `str` | Ruta al archivo maestro común (por defecto: `config/global_config.yaml`). |
-| `--validate-inputs` | | `flag` | Valida la presencia e integridad de todas las entradas y realiza el particionado 3D a 2D en paralelo. |
 | `--benchmark` | `--generate-report` | `flag` | Genera el ranking multicriterio (leaderboard), diagramas de Taylor, boxplots y dashboard HTML interactivo. |
-| `--check-env` | | `flag` | Ejecuta el diagnóstico del entorno (Rscript, paquetes y compiladores) antes de procesar. |
 | `--rscript` | `-r` | `str` | Ruta absoluta al ejecutable `Rscript` (útil si R no está en el `PATH` del sistema). |
 
 ---
 
 ### B. Flujos de Trabajo Típicos
 
-#### 1. Diagnóstico del Entorno (Pre-flight Check)
-Verifica que R 4.4.3, el paquete CDT local y las dependencias geoespaciales estén instaladas:
+#### 1. Diagnóstico del Entorno y Verificación de Insumos (Pre-flight Checks)
 ```bash
-# Windows
-python launcher/experiment_runner.py --check-env --rscript "C:\Program Files\R\R-4.4.3\bin\Rscript.exe"
-
-# Linux
+# A. Verificar instalación de R, compiladores y paquetes espaciales:
 python launcher/experiment_runner.py --check-env
+
+# B. Verificar presencia y formato de estaciones, DEM, shapefiles y grillas:
+python launcher/experiment_runner.py --check-data
 ```
 
 #### 2. Ejecutar un Experimento Individual

@@ -69,7 +69,35 @@ paths:
   log_root: "logs/experiments"                             # Directorio raíz para bitácoras y registros de depuración
 
 # ------------------------------------------------------------------------------
-# 3. Protocolo de Validación Cuantitativa y Métricas de Desempeño
+# 3. Configuraciones por Región / Dominio Territorial (Centroamérica vs Rep. Dominicana)
+# ------------------------------------------------------------------------------
+# Cuando se ejecuta el lanzador con --region ca o --region rd, estas rutas
+# reemplazan automáticamente los archivos de estaciones, DEM, shapefile y carpetas de salida.
+regions:
+  ca:
+    name: "Centroamérica"
+    stations_rainfall_file: "data/stations/precip_stations_ca.csv"
+    stations_tmax_file: "data/stations/tmax_stations_ca.csv"
+    stations_tmin_file: "data/stations/tmin_stations_ca.csv"
+    dem_file: "data/topography/dem_srtm_central_america.nc"
+    shapefile_path: "data/gis/central_america.shp"
+    output_root: "output/experiments_ca"
+    log_root: "logs/experiments_ca"
+    benchmark_dir: "output/benchmark_ca"
+
+  rd:
+    name: "República Dominicana"
+    stations_rainfall_file: "data/stations/precip_stations_rd.csv"
+    stations_tmax_file: "data/stations/tmax_stations_rd.csv"
+    stations_tmin_file: "data/stations/tmin_stations_rd.csv"
+    dem_file: "data/topography/dem_srtm_dominicana.nc"
+    shapefile_path: "data/gis/republica_dominicana.shp"
+    output_root: "output/experiments_rd"
+    log_root: "logs/experiments_rd"
+    benchmark_dir: "output/benchmark_rd"
+
+# ------------------------------------------------------------------------------
+# 4. Protocolo de Validación Cuantitativa y Métricas de Desempeño
 # ------------------------------------------------------------------------------
 validation:
   enabled: true                  # Activar cálculo automático de métricas tras el ensamblado NetCDF 3D
@@ -78,14 +106,15 @@ validation:
   export_station_csv: true       # Generar validation_metrics_by_station.csv con métricas individuales
 
 # ------------------------------------------------------------------------------
-# 4. Asignación de Recursos de Hardware y Motor Paralelo en CDT
+# 5. Asignación de Recursos de Hardware y Motor Paralelo en CDT
 # ------------------------------------------------------------------------------
 system:
-  # Configuración para servidor Intel Xeon Silver 4210R (10 núcleos físicos / 20 hilos)
-  nb_cores: 9                    # 9 núcleos físicos dedicados a CDT (1 núcleo libre para SO y disco)
+  # 'auto' detecta dinámicamente los núcleos de la máquina y reserva 1 para el sistema (N - 1).
+  # Si deseas forzar un número fijo, indica un entero (ej: 4, 8, 16).
+  nb_cores: "auto"               # Detección automática en Python y R (detectCores() - 1)
   dopar: true                    # Habilitar procesamiento en paralelo de fechas mediante doSNOW / foreach
-  detect_cores: false            # Desactivar autodetección para evitar contención de caché L3
   memory_gc_interval: 500        # Ejecutar recolección de basura (gc()) en R cada 500 días procesados
   rscript_path: null             # Ruta personalizada a Rscript.exe (null = autodetección en PATH o R 4.4.3)
   auto_validate_inputs: true     # Ejecutar diagnóstico y validación de presencia de datos antes de iniciar
   auto_split_3d_netcdf: true     # Si se suministran NetCDFs 3D, dividirlos automáticamente en paralelo
+

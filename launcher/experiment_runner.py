@@ -48,6 +48,8 @@ class ExperimentRunner:
         self,
         config_target: Union[Path, str],
         base_config_path: Optional[Union[Path, str]] = None,
+        region: Optional[str] = "ca",
+        nb_cores: Optional[Union[int, str]] = "auto",
         rscript_path: Optional[Path | str] = None,
     ):
         """Initialize runner with path to a YAML configuration file or directory of YAMLs."""
@@ -56,7 +58,19 @@ class ExperimentRunner:
             raise FileNotFoundError(f"Target path not found: {self.config_target}")
 
         self.base_config_path = Path(base_config_path).resolve() if base_config_path else None
-        self.bridge = CDTBridge(rscript_path=rscript_path)
+        self.region = (region or "ca").lower()
+        
+        # Parse nb_cores
+        parsed_cores: Optional[Union[int, str]] = None
+        if nb_cores:
+            if isinstance(nb_cores, str) and nb_cores.isdigit():
+                parsed_cores = int(nb_cores)
+            elif isinstance(nb_cores, int):
+                parsed_cores = nb_cores
+            elif nb_cores == "auto":
+                parsed_cores = "auto"
+        
+        self.bridge = CDTBridge(rscript_path=rscript_path, nb_cores=parsed_cores)
         self.results_summary: List[Dict[str, Any]] = []
 
     def _load_yaml_file(self, filepath: Path) -> Dict[str, Any]:
@@ -115,10 +129,18 @@ class ExperimentRunner:
         return configs
 
     def _normalize_experiment_paths(self, exp: Dict[str, Any]) -> Dict[str, Any]:
-        """Normalize paths depending on variable type (rainfall vs temperature)."""
+        """Normalize paths depending on variable type (rainfall vs temperature) and region."""
         var_type = exp.get("variable_type", "rainfall").lower()
         exp_id = exp.get("experiment_id", exp.get("id", "EXP"))
-        paths = exp.get("paths", {})
+        paths = dict(exp.get("paths", {}))
+
+        # Apply regional overrides if present in configuration
+        regions_dict = exp.get("regions", {})
+        if self.region in regions_dict:
+            reg_info = regions_dict[self.region]
+            for k, v in reg_info.items():
+                if k not in ("name", "benchmark_dir"):
+                    paths[k] = v
 
         # Auto-map generic satellite_dir and stations_file from base_config if not explicitly overridden
         if "satellite_dir" not in paths:
@@ -140,22 +162,40 @@ class ExperimentRunner:
                 paths["var_id"] = paths.get("var_id", "temp")
 
         if "stations_file" not in paths:
+            reg_suffix = f"_{self.region}" if self.region in ("ca", "rd") else "_all"
             if var_type in ("rainfall", "rain", "precip"):
-                paths["stations_file"] = paths.get("stations_rainfall_file", "data/stations/precip_stations_all.csv")
+                paths["stations_file"] = paths.get(
+                    "stations_rainfall_file", f"data/stations/precip_stations{reg_suffix}.csv"
+                )
             elif var_type in ("tmax", "tx", "temp_max", "temperature_max"):
-                paths["stations_file"] = paths.get("stations_tmax_file", paths.get("stations_temperature_file", "data/stations/tmax_stations_all.csv"))
+                paths["stations_file"] = paths.get(
+                    "stations_tmax_file",
+                    paths.get("stations_temperature_file", f"data/stations/tmax_stations{reg_suffix}.csv"),
+                )
             elif var_type in ("tmin", "tn", "temp_min", "temperature_min"):
-                paths["stations_file"] = paths.get("stations_tmin_file", paths.get("stations_temperature_file", "data/stations/tmin_stations_all.csv"))
+                paths["stations_file"] = paths.get(
+                    "stations_tmin_file",
+                    paths.get("stations_temperature_file", f"data/stations/tmin_stations{reg_suffix}.csv"),
+                )
             else:
-                paths["stations_file"] = paths.get("stations_temperature_file", "data/stations/temp_stations_all.csv")
+                paths["stations_file"] = paths.get(
+                    "stations_temperature_file", f"data/stations/temp_stations{reg_suffix}.csv"
+                )
 
-        # Ensure output_dir and log_dir are set
+        # Ensure output_dir and log_dir are set with regional awareness
+        def_out_root = f"output/experiments_{self.region}" if self.region in ("ca", "rd") else "output/experiments"
+        def_log_root = f"logs/experiments_{self.region}" if self.region in ("ca", "rd") else "logs/experiments"
+
+        out_root = paths.get("output_root", def_out_root)
+        log_root = paths.get("log_root", def_log_root)
+
         if "output_dir" not in paths:
-            paths["output_dir"] = f"{paths.get('output_root', 'output/experiments')}/{exp_id}"
+            paths["output_dir"] = f"{out_root}/{exp_id}"
         if "log_dir" not in paths:
-            paths["log_dir"] = f"{paths.get('log_root', 'logs/experiments')}/{exp_id}"
+            paths["log_dir"] = f"{log_root}/{exp_id}"
 
         exp["paths"] = paths
+        exp["active_region"] = self.region
         return exp
 
     def _merge_global_and_exp(self, global_cfg: Dict[str, Any], exp_cfg: Dict[str, Any]) -> Dict[str, Any]:
@@ -427,42 +467,66 @@ def main() -> None:
         help="Ruta al archivo de configuracion base/comun con rutas y parametros globales.",
     )
     parser.add_argument(
-        "--rscript", "-r",
+        "--rscript",
         type=str,
         default=None,
         help="Ruta personalizada al ejecutable Rscript (opcional).",
     )
     parser.add_argument(
-        "--check-env",
-        action="store_true",
-        help="Ejecuta la validacion del entorno de R y paquetes antes de iniciar.",
+        "--region", "--domain",
+        type=str,
+        choices=["ca", "rd", "all"],
+        default="ca",
+        help="Dominio territorial a procesar: 'ca' (Centroamérica), 'rd' (República Dominicana) o 'all' (General). Por defecto 'ca'.",
     )
     parser.add_argument(
-        "--validate-inputs",
+        "--cores", "--nb-cores",
+        type=str,
+        default="auto",
+        help="Número de núcleos CPU para cálculo paralelo ('auto' detecta N-1 núcleos dinámicamente, o pasar un número entero como 8).",
+    )
+    parser.add_argument(
+        "--check-env",
         action="store_true",
-        help="Ejecuta la validacion de presencia y formato de todos los datos de entrada (estaciones, DEM, shapefile, grillas).",
+        help="Ejecuta el diagnóstico y verificación del entorno de R, Rtools/GCC y paquetes requeridos.",
+    )
+    parser.add_argument(
+        "--check-data", "--check-inputs", "--validate-inputs", "--verify-data",
+        action="store_true",
+        dest="check_data",
+        help="Verifica exhaustivamente la presencia, formato y completitud de todos los datos e insumos (estaciones, DEM, shapefile, grillas diarias 1991-2020).",
     )
     parser.add_argument(
         "--benchmark", "--generate-report",
         action="store_true",
-        help="Genera el reporte de benchmark, ranking multicriterio (leaderboard), graficos de Taylor/boxplots y dashboard HTML interactivo.",
+        help="Genera el reporte de benchmark, ranking multicriterio (leaderboard), gráficos de Taylor/boxplots y dashboard HTML interactivo.",
     )
 
     args = parser.parse_args()
 
+    # Determine regional directory names
+    exp_out_dir = PROJECT_ROOT / "output" / f"experiments_{args.region}" if args.region in ("ca", "rd") else PROJECT_ROOT / "output" / "experiments"
+    bench_out_dir = PROJECT_ROOT / "output" / f"benchmark_{args.region}" if args.region in ("ca", "rd") else PROJECT_ROOT / "output" / "benchmark"
+
+    # 1. Modo Verificación de Entorno (--check-env)
     if args.check_env:
         status = check_system_environment(rscript_path=args.rscript)
         print_environment_report(status)
+        if not args.suite and not args.config and not args.check_data:
+            sys.exit(0 if status.get("is_compatible") else 1)
 
-    if args.validate_inputs:
+    # 2. Modo Verificación de Datos e Insumos (--check-data / --validate-inputs)
+    if args.check_data:
         base_path = Path(args.base_config) if args.base_config else PROJECT_ROOT / "config" / "global_config.yaml"
-        validate_project_inputs(config_path_or_dict=base_path, auto_split_3d=True, verbose=True)
+        res = validate_project_inputs(config_path_or_dict=base_path, region=args.region, auto_split_3d=False, verbose=True)
+        if not args.suite and not args.config:
+            sys.exit(0 if res.get("is_ready") else 1)
 
     if args.benchmark:
         from launcher.benchmark_reporter import run_full_benchmark_suite
         run_full_benchmark_suite(
-            experiments_dir=PROJECT_ROOT / "output" / "experiments",
-            output_dir=PROJECT_ROOT / "output" / "benchmark"
+            experiments_dir=exp_out_dir,
+            output_dir=bench_out_dir
         )
         return
 
@@ -480,7 +544,7 @@ def main() -> None:
             suite_targets.append(PROJECT_ROOT / "config" / "experiments_tmin")
     elif args.config:
         suite_targets.append(Path(args.config))
-    elif not args.check_env and not args.validate_inputs:
+    elif not args.check_env and not args.check_data:
         # Default fallback: run rainfall baseline
         suite_targets.append(PROJECT_ROOT / "config" / "experiments_rainfall" / "EXP_R01_SBA_IDW_Baseline.yaml")
 
@@ -489,6 +553,8 @@ def main() -> None:
         runner = ExperimentRunner(
             config_target=target,
             base_config_path=args.base_config,
+            region=args.region,
+            nb_cores=args.cores,
             rscript_path=args.rscript,
         )
         res = runner.run_all_experiments()
@@ -499,8 +565,8 @@ def main() -> None:
         try:
             from launcher.benchmark_reporter import run_full_benchmark_suite
             run_full_benchmark_suite(
-                experiments_dir=PROJECT_ROOT / "output" / "experiments",
-                output_dir=PROJECT_ROOT / "output" / "benchmark"
+                experiments_dir=exp_out_dir,
+                output_dir=bench_out_dir
             )
         except Exception as e:
             print(f"[!] Advertencia al generar reporte de benchmark post-corrida: {e}")
@@ -508,3 +574,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

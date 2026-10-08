@@ -13,23 +13,23 @@ Esta carpeta contiene la documentación técnica, matemática y metodológica pa
    - Algoritmo paso a paso, métodos SBA, RK, Cressman, Barnes y esquema multi-pasada iterativo.
 
 3. [**03. Métodos y Parámetros de Interpolación de Residuales**](file:///d:/Workspace/CDT-8.0/docs/03_metodos_interpolacion_residuales.md)
-   - IDW, Ordinary Kriging (Block Kriging, modelos de variograma), Shepard, Spheremap, NN-3D y *fail-safes*.
+   - IDW, Ordinary Kriging (Block Kriging, modelos de variograma), Shepard, Spheremap, NN-3D y _fail-safes_.
 
 4. [**04. Fusión de Precipitación y Máscara Rain-No-Rain**](file:///d:/Workspace/CDT-8.0/docs/04_merging_precipitacion_rnor.md)
    - Máscara probabilística RnoR (Logit vs Aditivo), funciones de corte (CutOff 1, 2, 3), suavizado espacial y límites físicos.
 
 5. [**05. Fusión de Temperatura y Modelado Topográfico**](file:///d:/Workspace/CDT-8.0/docs/05_merging_temperatura_dem.md)
-   - Gradiente térmico vertical (*lapse rate*), regresión GLM con covariables DEM, pendiente y aspecto/orientación.
+   - Gradiente térmico vertical (_lapse rate_), regresión GLM con covariables DEM, pendiente y aspecto/orientación.
 
 6. [**06. Plantillas y Scripts de Producción**](file:///d:/Workspace/CDT-8.0/docs/06_ejemplos_scripts_produccion.md)
    - Scripts listos para ejecución en producción, servidores headless, tareas programadas (cron / Task Scheduler) y orquestadores Python.
 
 7. [**07. Flujo Completo de Temperatura (CHIRTS) y Diseño Experimental**](file:///d:/Workspace/CDT-8.0/docs/07_flujo_completo_temperatura_chirts.md)
-   - Cadena: *Split 3D NC $\rightarrow$ Downscaling Coef $\rightarrow$ Downscale Data $\rightarrow$ Bias Coef $\rightarrow$ Bias Correction $\rightarrow$ Merging $\rightarrow$ Concatenate 3D*.
-   - Justificación de dinámicas diurnas ($T_{max}$) vs nocturnas ($T_{min}$), inversiones térmicas y frentes fríos (*Nortes*).
+   - Cadena: _Split 3D NC $\rightarrow$ Downscaling Coef $\rightarrow$ Downscale Data $\rightarrow$ Bias Coef $\rightarrow$ Bias Correction $\rightarrow$ Merging $\rightarrow$ Concatenate 3D_.
+   - Justificación de dinámicas diurnas ($T_{max}$) vs nocturnas ($T_{min}$), inversiones térmicas y frentes fríos (_Nortes_).
 
 8. [**08. Flujo Completo de Precipitación (CHIRPS) y Diseño Experimental**](file:///d:/Workspace/CDT-8.0/docs/08_flujo_completo_precipitacion_chirps.md)
-   - Cadena: *Split 3D NC $\rightarrow$ Bias Coef $\rightarrow$ Bias Correction $\rightarrow$ Merging + RnoR $\rightarrow$ Concatenate 3D*.
+   - Cadena: _Split 3D NC $\rightarrow$ Bias Coef $\rightarrow$ Bias Correction $\rightarrow$ Merging + RnoR $\rightarrow$ Concatenate 3D_.
    - Modelado de variables mixtas cero-continuas (Bernoulli-Gamma, Bernoulli-Weibull) y métricas de validación.
 
 9. [**09. Arquitectura de Lanzadores en Python y Verificación de Dependencias**](file:///d:/Workspace/CDT-8.0/docs/09_arquitectura_lanzadores_python_y_dependencias.md)
