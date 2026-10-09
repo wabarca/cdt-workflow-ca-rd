@@ -346,9 +346,93 @@ El script compara la serie temporal de cada celda con los registros de la estaci
 
 ---
 
-## 7. Rendimiento y Tiempos de Cómputo (Intel Xeon Silver 4210R)
+## 7. Estructura y Organización Detallada de la Carpeta de Salidas (`output/`)
 
-Configuración de hardware: **Intel Xeon Silver 4210R (10C/20T @ 2.40 GHz), 9 hilos asignados a CDT, 64 GB RAM, NVMe SSD**:
+Los resultados generados por el orquestador se estructuran de manera modular, jerárquica y totalmente reproducible. Cada corrida experimental dispone de un subdirectorio aislado para evitar cualquier sobreescritura accidental.
+
+### A. Organización por Dominio Territorial y Benchmark
+
+Según el parámetro regional utilizado (`--region ca` para Centroamérica o `--region rd` para República Dominicana), el directorio raíz `output/` se clasifica en:
+
+```
+output/
+├── experiments_ca/                     # Resultados de experimentos de Centroamérica (--region ca)
+│   ├── EXP_R01_SBA_IDW_Baseline/       # Carpeta aislada por cada experimento
+│   ├── EXP_R07_RK_DEM/
+│   ├── EXP_TX01_SBA_IDW_Baseline/
+│   └── ...
+│
+├── experiments_rd/                     # Resultados de experimentos de República Dominicana (--region rd)
+│   ├── EXP_R01_SBA_IDW_Baseline/
+│   ├── EXP_R07_RK_DEM/
+│   └── ...
+│
+├── benchmark_ca/                       # Reportes comparativos y ranking de Centroamérica
+│   ├── leaderboard_summary.csv
+│   ├── taylor_diagram_rainfall.png
+│   ├── taylor_diagram_temperature.png
+│   ├── error_boxplots_comparison.png
+│   └── benchmark_dashboard.html
+│
+└── benchmark_rd/                       # Reportes comparativos y ranking de Rep. Dominicana
+    ├── leaderboard_summary.csv
+    └── benchmark_dashboard.html
+```
+
+---
+
+### B. Contenido Detallado Dentro de Cada Experimento
+
+Dentro de la carpeta de cualquier experimento individual (por ejemplo, `output/experiments_ca/EXP_R07_RK_DEM/`), se almacenan los siguientes artefactos:
+
+```
+output/experiments_ca/EXP_R07_RK_DEM/
+│
+├── 📦 rainfall_daily_1991_2020_EXP_R07_RK_DEM.nc   # 1. PRODUCTO FINAL CONSOLIDADO NETCDF 3D
+│                                                    # (30 años / 10,958 días continuos, estándar CF-1.8 con compresión zlib)
+│
+├── 📁 Data_Merged/                                 # 2. GRILLAS 2D DIARIAS CORREGIDAS (Salida CDT)
+│   ├── precip_mrg_19910101.nc
+│   ├── precip_mrg_19910102.nc
+│   └── ... (10,958 archivos NetCDF diarios 2D corregidos)
+│
+├── 📁 BIAS_COEFF/                                  # 3. PARÁMETROS Y COEFICIENTES ESTIMADOS POR CDT
+│   ├── Mean_Bias_1991_2020.nc                      # Coeficientes medios de sesgo, modelos de
+│   └── variogram_params.rds                         # semivariograma y superficies de ajuste espacial
+│
+├── 📁 station_split/                               # 4. PARTICIÓN DE ESTACIONES METEOROLÓGICAS
+│   ├── training_stations.csv                       # Subconjunto de estaciones usado para calibrar/fusión
+│   └── holdout_stations.csv                        # Estaciones reservadas a ciegas para validación cruzada
+│
+├── 📊 validation_metrics_by_station.csv            # 5. TABLA DE MÉTRICAS POR ESTACIÓN INDIVIDUAL
+│                                                    # (KGE, r, RMSE, MAE, PBIAS, POD, FAR, ETS, HSS)
+│
+├── 📈 validation_summary.json                      # 6. RESUMEN ESTADÍSTICO GLOBAL DE VALIDACIÓN
+│                                                    # (Promedios, medianas, percentiles y tasas de acierto)
+│
+└── 📋 experiment_manifest.json                     # 7. MANIFIESTO DE AUDITORÍA Y TRAZABILIDAD
+                                                     # (Parámetros exactos, versiones de R/CDT, tiempos de CPU y hashes)
+```
+
+---
+
+### C. Clasificación de Artefactos y Preguntas Frecuentes
+
+| Componente | ¿Dónde se ubica? | Descripción y Formato |
+| :--- | :--- | :--- |
+| **Datos originales de entrada** | `data/` *(intactos)* | Los insumos de entrada (`data/chirps_daily/`, `data/stations/`, etc.) **nunca se modifican ni se copian** a `output/`. |
+| **Grillas diarias corregidas** | `<EXP_ID>/Data_Merged/` | Archivos NetCDF 2D generados directamente por las rutinas de CDT para cada día de la serie 1991–2020. |
+| **Producto consolidado final** | `<EXP_ID>/*.nc` | Archivo NetCDF 3D multitemporal `[time, lat, lon]` ensamblado automáticamente en Python bajo estándares internacionales CF-1.8. |
+| **Parámetros y coeficientes** | `<EXP_ID>/BIAS_COEFF/` | Superficies raster y objetos R (`.rds`) con coeficientes de ajuste y modelos geoestadísticos. |
+| **Partición de estaciones** | `<EXP_ID>/station_split/` | Archivos CSV con las estaciones de entrenamiento y estaciones excluidas (*holdout*). |
+| **Métricas de validación** | `<EXP_ID>/validation_*.csv/json` | Evaluación independiente in-sample y out-of-sample contra observaciones terrestres. |
+| **Bitácoras y registros R** | `logs/experiments_<region>/<EXP_ID>/` | Script R generado dinámicamente (`.R`), `stdout.log` y `stderr.log`. |
+
+---
+
+## 8. Rendimiento y Tiempos de Cómputo (Intel Xeon Silver 4210R)
+
+Configuración de hardware: **Intel Xeon Silver 4210R (10C/20T @ 2.40 GHz), detección automática de núcleos (`N - 1`), 64 GB RAM, NVMe SSD**:
 
 | Suite | Núm. Exp. | Días por Exp. | Tiempo por Exp. | Tiempo Total Suite | Consumo RAM Máx. |
 | :--- | :---: | :---: | :---: | :---: | :---: |
@@ -356,3 +440,4 @@ Configuración de hardware: **Intel Xeon Silver 4210R (10C/20T @ 2.40 GHz), 9 hi
 | **Temperatura Máxima ($T_{max}$)** | 8 | 10,958 | 80 – 95 min | **11.0 – 12.5 horas** | 3.5 – 4.6 GB |
 | **Temperatura Mínima ($T_{min}$)** | 8 | 10,958 | 80 – 95 min | **11.0 – 12.5 horas** | 3.5 – 4.6 GB |
 | **Total Global** | **26** | **10,958** | — | **28.0 – 31.5 horas** | **4.6 GB (<8% de 64 GB)** |
+
