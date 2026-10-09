@@ -88,11 +88,17 @@ class CDTBridge:
             log_dir = Path(log_dir)
             log_dir.mkdir(parents=True, exist_ok=True)
             script_file = log_dir / f"{job_name}.R"
-            script_file.write_text(full_r_script, encoding="utf-8")
+        else:
+            import tempfile
+            temp_f = tempfile.NamedTemporaryFile(suffix=".R", delete=False)
+            script_file = Path(temp_f.name)
+            temp_f.close()
+
+        script_file.write_text(full_r_script, encoding="utf-8")
         
         try:
             res = subprocess.run(
-                [str(self.rscript_path), "-e", full_r_script],
+                [str(self.rscript_path), "--vanilla", str(script_file)],
                 capture_output=True,
                 text=True,
                 check=False,

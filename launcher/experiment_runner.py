@@ -339,6 +339,35 @@ class ExperimentRunner:
                 except Exception as e:
                     print(f"      [!] Error al particionar estaciones: {e}. Usando archivo original.")
 
+            # Ensure 2D daily files exist in satellite_dir; if not, split raw 3D NetCDF
+            sat_dir = Path(paths.get("satellite_dir", "")).resolve() if paths.get("satellite_dir") else None
+            if sat_dir and (not sat_dir.exists() or not list(sat_dir.glob("*.nc"))):
+                raw_key = f"raw_3d_netcdf_{var_type}" if var_type in ("rainfall", "precip") else f"raw_3d_netcdf_{var_type}"
+                raw_path_str = paths.get(raw_key) or paths.get("raw_3d_netcdf_rainfall" if var_type in ("rainfall", "precip") else "raw_3d_netcdf_tmax")
+                if not raw_path_str:
+                    cand_3d_files = list(Path("data/raw_netcdf").glob("*.nc")) if Path("data/raw_netcdf").exists() else []
+                    for cf in cand_3d_files:
+                        if var_type in ("rainfall", "precip") and "chirps" in cf.name.lower():
+                            raw_path_str = str(cf)
+                            break
+                        elif "tmax" in var_type and "tmax" in cf.name.lower():
+                            raw_path_str = str(cf)
+                            break
+                        elif "tmin" in var_type and "tmin" in cf.name.lower():
+                            raw_path_str = str(cf)
+                            break
+                if raw_path_str and Path(raw_path_str).exists():
+                    from launcher.data_preprocessor import split_3d_netcdf_to_daily_files
+                    print(f"  --> Generando archivos diarios 2D desde NetCDF 3D: {Path(raw_path_str).name} -> {sat_dir}")
+                    split_3d_netcdf_to_daily_files(
+                        raw_3d_netcdf_path=raw_path_str,
+                        output_daily_dir=sat_dir,
+                        filename_format=paths.get("satellite_format", "chirps_%s%s%s.nc" if var_type in ("rainfall", "precip") else f"{var_type}_%s%s%s.nc"),
+                        var_id=paths.get("var_id", "precip" if var_type in ("rainfall", "precip") else "temp"),
+                        start_date=exp.get("period", {}).get("start_date", "19910101"),
+                        end_date=exp.get("period", {}).get("end_date", "20201231"),
+                    )
+
             # Create working copy of exp dict with effective training station path
             exp_exec = dict(exp)
             exp_exec["paths"] = dict(paths)
@@ -354,6 +383,10 @@ class ExperimentRunner:
                 continue
 
             status_str = "SUCCESS" if ret_code == 0 else "FAILED"
+            if ret_code != 0 and stderr:
+                err_lines = [l.strip() for l in stderr.strip().splitlines() if l.strip()]
+                for el in err_lines[-4:]:
+                    print(f"      [R-stderr] {el}")
             manifest_data["timestamp_end"] = datetime.datetime.now().isoformat()
             manifest_data["execution_time_sec"] = elapsed
             manifest_data["status"] = status_str
