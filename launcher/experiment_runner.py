@@ -343,9 +343,20 @@ class ExperimentRunner:
                 except Exception as e:
                     print(f"      [!] Error al particionar estaciones: {e}. Usando archivo original.")
 
-            # Ensure 2D daily files exist in satellite_dir; if not, split raw 3D NetCDF
+            # Ensure all 2D daily files exist in satellite_dir; if incomplete or missing, split/resume raw 3D NetCDF
             sat_dir = Path(paths.get("satellite_dir", "")).resolve() if paths.get("satellite_dir") else None
-            if sat_dir and (not sat_dir.exists() or not list(sat_dir.glob("*.nc"))):
+            p_start = str(exp.get("period", {}).get("start_date", "19910101"))
+            p_end = str(exp.get("period", {}).get("end_date", "20201231"))
+            try:
+                dt_s = datetime.datetime.strptime(p_start, "%Y%m%d")
+                dt_e = datetime.datetime.strptime(p_end, "%Y%m%d")
+                expected_days = (dt_e - dt_s).days + 1
+            except Exception:
+                expected_days = 10958
+
+            current_nc_count = len(list(sat_dir.glob("*.nc"))) if (sat_dir and sat_dir.exists()) else 0
+
+            if sat_dir and current_nc_count < expected_days:
                 raw_key = f"raw_3d_netcdf_{var_type}" if var_type in ("rainfall", "precip") else f"raw_3d_netcdf_{var_type}"
                 raw_path_str = paths.get(raw_key) or paths.get("raw_3d_netcdf_rainfall" if var_type in ("rainfall", "precip") else "raw_3d_netcdf_tmax")
                 if not raw_path_str:
@@ -362,14 +373,18 @@ class ExperimentRunner:
                             break
                 if raw_path_str and Path(raw_path_str).exists():
                     from launcher.data_preprocessor import split_3d_netcdf_to_daily_parallel
-                    print(f"  --> Generando archivos diarios 2D desde NetCDF 3D: {Path(raw_path_str).name} -> {sat_dir}")
+                    if current_nc_count > 0:
+                        print(f"  --> Grillas diarias incompletas ({current_nc_count:,} de {expected_days:,} días). Reanudando particionado 3D...")
+                    else:
+                        print(f"  --> Generando {expected_days:,} archivos diarios 2D desde NetCDF 3D: {Path(raw_path_str).name} -> {sat_dir.name}/")
+                    
                     split_3d_netcdf_to_daily_parallel(
                         input_nc_path=raw_path_str,
                         output_dir=sat_dir,
                         filename_format=paths.get("satellite_format", "chirps_%s%s%s.nc" if var_type in ("rainfall", "precip") else f"{var_type}_%s%s%s.nc"),
                         var_id=paths.get("var_id", "precip" if var_type in ("rainfall", "precip") else "temp"),
-                        start_date=exp.get("period", {}).get("start_date", "19910101"),
-                        end_date=exp.get("period", {}).get("end_date", "20201231"),
+                        start_date=p_start,
+                        end_date=p_end,
                     )
 
             # Create working copy of exp dict with effective training station path

@@ -94,7 +94,8 @@ def _batch_slice_worker(args: Tuple[str, List[Tuple[int, str]], str, str, str, s
                 fname = f"{var_id}_{y}{m}{d}.nc"
 
             out_file = out_dir_path / fname
-            if not out_file.exists():
+            # Re-generate if missing or corrupted (size < 512 bytes)
+            if not out_file.exists() or out_file.stat().st_size < 512:
                 data_2d = ds[var_id].isel(time=time_idx)
                 ds_out = xr.Dataset(
                     data_vars={var_id: (data_2d.dims, data_2d.values, data_2d.attrs)},
