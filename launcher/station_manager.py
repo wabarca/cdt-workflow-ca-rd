@@ -23,46 +23,58 @@ import xarray as xr
 from launcher.metrics import compute_categorical_metrics, compute_continuous_metrics
 
 
+def normalize_id(val: Any) -> str:
+    """Normalize station ID by stripping quotes, whitespace, and formatting."""
+    if val is None:
+        return ""
+    s = str(val).strip().strip('"').strip("'").strip()
+    if s.endswith(".0") and s[:-2].isdigit():
+        s = s[:-2]
+    return s
+
+
 def read_holdout_station_ids(holdout_file: Union[str, Path]) -> List[str]:
     """Read list of station IDs to omit from a CSV or text file.
     
     Supports:
     - CSV with header ('id', 'station_id', 'code', 'station', etc.)
+    - CSV with multiple columns (searches for ID column)
     - CSV without header (single column of IDs)
-    - Comma/semicolon/newline separated text
+    - Comma/semicolon/tab/newline separated text
     """
     path = Path(holdout_file).resolve()
     if not path.exists():
         raise FileNotFoundError(f"Holdout stations file not found: {path}")
 
     ids: List[str] = []
-    with open(path, "r", encoding="utf-8-sig") as f:
-        first_line = f.readline().strip()
-        f.seek(0)
-        
-        # Check delimiter
-        delimiter = "," if "," in first_line else (";" if ";" in first_line else None)
-        
-        reader = csv.reader(f, delimiter=delimiter) if delimiter else f
-        header_candidate = None
-        for i, row in enumerate(reader):
-            if isinstance(row, list):
-                if not row or not row[0].strip():
-                    continue
-                val = row[0].strip()
-            else:
-                val = row.strip()
-                if not val:
-                    continue
-            
-            # Check if first row is a header title
-            if i == 0 and val.lower() in ("id", "station_id", "station", "codigo", "code", "stn_id", "estacion", "name"):
-                header_candidate = val
-                continue
-            
-            ids.append(val)
+    # Try reading with pandas first for intelligent column matching
+    try:
+        df = pd.read_csv(path, dtype=str)
+        if not df.empty:
+            id_cols = [c for c in df.columns if str(c).strip().lower() in (
+                "id", "station_id", "station", "codigo", "code", "stn_id", "estacion", "name", "id_estacion", "cod_estacion"
+            )]
+            target_col = id_cols[0] if id_cols else df.columns[0]
+            raw_vals = df[target_col].dropna().tolist()
+            ids = [normalize_id(v) for v in raw_vals if normalize_id(v)]
+    except Exception:
+        pass
 
-    # Remove duplicates while preserving order
+    if not ids:
+        with open(path, "r", encoding="utf-8-sig") as f:
+            lines = [line.strip() for line in f if line.strip()]
+        
+        for i, line in enumerate(lines):
+            parts = [p.strip() for p in line.replace(";", ",").replace("\t", ",").split(",") if p.strip()]
+            if not parts:
+                continue
+            val = parts[0]
+            if i == 0 and val.lower() in ("id", "station_id", "station", "codigo", "code", "stn_id", "estacion", "name", "id_estacion"):
+                continue
+            norm = normalize_id(val)
+            if norm:
+                ids.append(norm)
+
     unique_ids = list(dict.fromkeys(ids))
     return unique_ids
 
@@ -100,8 +112,7 @@ def parse_cdt_station_file(station_file: Union[str, Path]) -> Tuple[pd.DataFrame
     row3 = split_row(lines[3]) # ELEV or Date
 
     # Check if row3 is Elevation or First Date (Dates are usually 8 digits like 19910101)
-    # If row3[0].upper() in ('ELEV', 'ELV', 'ALT', 'ALTITUDE', 'HEIGHT') or not numeric date
-    tag3 = row3[0].upper()
+    tag3 = row3[0].upper().strip().strip('"').strip("'")
     has_elev = False
     if tag3 in ("ELEV", "ELV", "ALT", "ALTITUDE", "HEIGHT", "ELEVATION"):
         has_elev = True
@@ -113,15 +124,15 @@ def parse_cdt_station_file(station_file: Union[str, Path]) -> Tuple[pd.DataFrame
             # Check if row 4 is a date
             if len(lines) > 4:
                 row4 = split_row(lines[4])
-                tag4 = row4[0]
+                tag4 = row4[0].strip().strip('"').strip("'")
                 if len(tag4) == 8 and tag4.isdigit():
                     has_elev = True
 
     header_lines = 4 if has_elev else 3
-    station_ids = row0[1:]
-    lons = [float(x) for x in row1[1:]]
-    lats = [float(x) for x in row2[1:]]
-    elevs = [float(x) for x in row3[1:]] if has_elev else [np.nan] * len(station_ids)
+    station_ids = [normalize_id(s) for s in row0[1:]]
+    lons = [float(str(x).strip().strip('"')) for x in row1[1:]]
+    lats = [float(str(x).strip().strip('"')) for x in row2[1:]]
+    elevs = [float(str(x).strip().strip('"')) for x in row3[1:]] if has_elev else [np.nan] * len(station_ids)
 
     # Read the rest of data lines
     data_rows = []
@@ -130,12 +141,12 @@ def parse_cdt_station_file(station_file: Union[str, Path]) -> Tuple[pd.DataFrame
         parts = split_row(line)
         if not parts:
             continue
-        dates.append(parts[0])
+        dates.append(parts[0].strip().strip('"'))
         # Replace missing flags (-99, -999, NA, null) with np.nan
         vals = []
         for x in parts[1:]:
             try:
-                v = float(x)
+                v = float(str(x).strip().strip('"'))
                 if v in (-99.0, -999.0, -9999.0):
                     vals.append(np.nan)
                 else:
@@ -177,13 +188,19 @@ def split_cdt_station_file(
     df_data, meta, header_lines = parse_cdt_station_file(station_file)
 
     all_ids = meta["id"]
-    train_ids = [s for s in all_ids if s not in holdout_ids]
-    val_ids = [s for s in all_ids if s in holdout_ids]
+    norm_all = [normalize_id(s) for s in all_ids]
+    norm_holdout = {normalize_id(h) for h in holdout_ids if normalize_id(h)}
+
+    val_indices = [i for i, ns in enumerate(norm_all) if ns in norm_holdout]
+    val_ids = [all_ids[i] for i in val_indices]
+    train_ids = [all_ids[i] for i in range(len(all_ids)) if i not in set(val_indices)]
 
     if not train_ids:
         raise ValueError("All stations were matched as holdout! No stations remaining for training.")
-    if not val_ids:
-        print(f"[!] Advertencia: Ninguna estación del archivo holdout coincidió con los IDs del archivo principal.")
+    if not val_ids and holdout_ids:
+        print(f"      [!] Advertencia: Ninguna estación del archivo holdout ({len(holdout_ids)} estaciones) coincidió con los IDs del archivo principal ({len(all_ids)} estaciones).")
+        print(f"          Muestra IDs archivo de estaciones : {all_ids[:5]}")
+        print(f"          Muestra IDs archivo holdout       : {holdout_ids[:5]}")
 
     delim = meta["delimiter"]
 
@@ -234,7 +251,7 @@ def evaluate_netcdf_against_stations(
     var_type: str = "rainfall",
     wet_threshold: float = 1.0,
 ) -> Tuple[pd.DataFrame, Dict[str, Any]]:
-    """Extract reconstructed grid series at station locations and compute validation metrics.
+    """Extract reconstructed grid series at station coordinates and compute validation metrics.
     
     Args:
         netcdf_path: Path to assembled 3D CF-1.8 NetCDF file.
