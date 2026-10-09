@@ -78,9 +78,12 @@ class CDTBridge:
             "  library(doParallel)\n"
             "  library(foreach)\n"
             "})\n\n"
-            "# Configuracion automatica de paralelismo de alto rendimiento\n"
+            "# Configuracion automatica de paralelismo de alto rendimiento en CDT\n"
             f"{core_setup}"
-            ".cdtData$Config$parallel <- list(dopar = TRUE, detect.cores = FALSE, nb.cores = n_cores)\n\n"
+            "cdt_env <- asNamespace('CDT')\n"
+            "if (exists('.cdtData', envir = cdt_env)) {\n"
+            "  get('.cdtData', envir = cdt_env)$Config$parallel <- list(dopar = TRUE, detect.cores = FALSE, nb.cores = n_cores)\n"
+            "}\n\n"
             f"{r_code}\n"
         )
 
