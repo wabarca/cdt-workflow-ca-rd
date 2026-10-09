@@ -357,11 +357,11 @@ class ExperimentRunner:
                             raw_path_str = str(cf)
                             break
                 if raw_path_str and Path(raw_path_str).exists():
-                    from launcher.data_preprocessor import split_3d_netcdf_to_daily_files
+                    from launcher.data_preprocessor import split_3d_netcdf_to_daily_parallel
                     print(f"  --> Generando archivos diarios 2D desde NetCDF 3D: {Path(raw_path_str).name} -> {sat_dir}")
-                    split_3d_netcdf_to_daily_files(
-                        raw_3d_netcdf_path=raw_path_str,
-                        output_daily_dir=sat_dir,
+                    split_3d_netcdf_to_daily_parallel(
+                        input_nc_path=raw_path_str,
+                        output_dir=sat_dir,
                         filename_format=paths.get("satellite_format", "chirps_%s%s%s.nc" if var_type in ("rainfall", "precip") else f"{var_type}_%s%s%s.nc"),
                         var_id=paths.get("var_id", "precip" if var_type in ("rainfall", "precip") else "temp"),
                         start_date=exp.get("period", {}).get("start_date", "19910101"),

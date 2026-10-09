@@ -196,6 +196,10 @@ def split_3d_netcdf_to_daily_parallel(
     }
 
 
+# Convenience alias for parallel 3D splitting
+split_3d_netcdf_to_daily_files = split_3d_netcdf_to_daily_parallel
+
+
 def validate_project_inputs(
     config_path_or_dict: Union[Path, str, Dict[str, Any]],
     region: Optional[str] = None,
