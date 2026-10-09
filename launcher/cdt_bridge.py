@@ -268,7 +268,7 @@ class CDTBridge:
 
         r_cmd = (
             "res <- cdtMergingClimDataCMD(\n"
-            "  variable = 'precip',\n"
+            "  variable = 'rain',\n"
             f"  time.step = {_to_r_val(time_step)},\n"
             f"  dates = list(from = 'range', pars = list(start = {_to_r_val(start_date)}, end = {_to_r_val(end_date)})),\n"
             f"  station.data = list(file = {_to_r_val(station_file)}, sep = ',', na.strings = '-99'),\n"
