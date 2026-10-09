@@ -263,10 +263,12 @@ class CDTBridge:
         }
 
         auxvar_dict = auxvar or {"dem": False, "slope": False, "aspect": False, "lon": False, "lat": False}
-        dem_dict = {"file": str(dem_file) if dem_file else "", "varid": "dem", "ilon": 1, "ilat": 2}
+        dem_varid = "elevation" if (dem_file and "gebco" in str(dem_file).lower()) else "dem"
+        dem_dict = {"file": str(dem_file) if dem_file else "", "varid": dem_varid, "ilon": 1, "ilat": 2}
 
         r_cmd = (
-            "res <- cdtMergingPrecipCMD(\n"
+            "res <- cdtMergingClimDataCMD(\n"
+            "  variable = 'precip',\n"
             f"  time.step = {_to_r_val(time_step)},\n"
             f"  dates = list(from = 'range', pars = list(start = {_to_r_val(start_date)}, end = {_to_r_val(end_date)})),\n"
             f"  station.data = list(file = {_to_r_val(station_file)}, sep = ',', na.strings = '-99'),\n"
@@ -313,7 +315,7 @@ class CDTBridge:
         global_mrg_opts: Optional[Dict[str, Any]] = None,
         log_dir: Optional[Path] = None,
     ) -> Tuple[int, str, str, float]:
-        """Run cdtMergingTempCMD in non-GUI mode (Step 3 in CDT)."""
+        """Run cdtMergingClimDataCMD for temperature in non-GUI mode (Step 3 in CDT)."""
         Path(output_dir).mkdir(parents=True, exist_ok=True)
         
         r_lines = []
@@ -326,10 +328,12 @@ class CDTBridge:
         }
 
         auxvar_dict = auxvar or {"dem": True, "slope": True, "aspect": False, "lon": True, "lat": True}
-        dem_dict = {"file": str(dem_file) if dem_file else "", "varid": "dem", "ilon": 1, "ilat": 2}
+        dem_varid = "elevation" if (dem_file and "gebco" in str(dem_file).lower()) else "dem"
+        dem_dict = {"file": str(dem_file) if dem_file else "", "varid": dem_varid, "ilon": 1, "ilat": 2}
 
         r_cmd = (
-            "res <- cdtMergingTempCMD(\n"
+            "res <- cdtMergingClimDataCMD(\n"
+            "  variable = 'temp',\n"
             f"  time.step = {_to_r_val(time_step)},\n"
             f"  dates = list(from = 'range', pars = list(start = {_to_r_val(start_date)}, end = {_to_r_val(end_date)})),\n"
             f"  station.data = list(file = {_to_r_val(station_file)}, sep = ',', na.strings = '-99'),\n"
@@ -339,8 +343,10 @@ class CDTBridge:
             f"  auxvar = {_to_r_val(auxvar_dict)},\n"
             f"  dem.data = {_to_r_val(dem_dict)},\n"
             f"  grid = list(from = 'data', pars = NULL),\n"
+            f"  RnoR = list(use = FALSE, wet = 1.0, smooth = FALSE),\n"
             f"  blank = {_to_r_val(blank_dict)},\n"
             f"  output = list(dir = {_to_r_val(output_dir)}, format = {_to_r_val(output_format)}),\n"
+            f"  precision = list(from.data = TRUE, prec = 'short'),\n"
             "  GUI = FALSE\n"
             ")\n"
         )
