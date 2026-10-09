@@ -7,6 +7,10 @@ assembles final CF-1.8 compliant 3D NetCDFs, and outputs execution audit reports
 
 from __future__ import annotations
 
+import warnings
+warnings.filterwarnings("ignore", category=RuntimeWarning, message=".*GIL.*")
+warnings.filterwarnings("ignore", category=RuntimeWarning, message=".*global interpreter lock.*")
+
 import sys
 from pathlib import Path
 

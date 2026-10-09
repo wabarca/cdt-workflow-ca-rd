@@ -8,6 +8,10 @@ Provides:
 
 from __future__ import annotations
 
+import warnings
+warnings.filterwarnings("ignore", category=RuntimeWarning, message=".*GIL.*")
+warnings.filterwarnings("ignore", category=RuntimeWarning, message=".*global interpreter lock.*")
+
 import concurrent.futures
 import datetime
 import os
@@ -19,6 +23,13 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 import yaml
+
+
+def _worker_init():
+    """Initializer for multi-process workers to suppress C-extension GIL warnings."""
+    import warnings
+    warnings.filterwarnings("ignore", category=RuntimeWarning, message=".*GIL.*")
+    warnings.filterwarnings("ignore", category=RuntimeWarning, message=".*global interpreter lock.*")
 
 
 def _write_single_daily_slice(
@@ -176,7 +187,7 @@ def split_3d_netcdf_to_daily_parallel(
     ]
 
     new_written = 0
-    with concurrent.futures.ProcessPoolExecutor(max_workers=workers) as executor:
+    with concurrent.futures.ProcessPoolExecutor(max_workers=workers, initializer=_worker_init) as executor:
         results = list(executor.map(_batch_slice_worker, worker_args))
         new_written = sum(results)
 
