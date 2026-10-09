@@ -357,24 +357,49 @@ def validate_project_inputs(
     else:
         try:
             with xr.open_dataset(dem_path) as ds_dem:
-                dem_vars = list(ds_dem.data_vars)
-                var_name = dem_vars[0] if dem_vars else "z"
+                # Identify the actual 2D numeric elevation variable, ignoring CRS metadata
+                meta_vars = {"crs", "spatial_ref", "grid_mapping", "transverse_mercator", "lambert_conformal_conic"}
+                candidate_vars = [v for v in ds_dem.data_vars if v.lower() not in meta_vars and np.issubdtype(ds_dem[v].dtype, np.number)]
+                
+                # Prioritize standard names
+                preferred = ["elevation", "z", "dem", "elev", "height", "band1", "topo"]
+                var_name = None
+                for pref in preferred:
+                    match = next((v for v in candidate_vars if v.lower() == pref), None)
+                    if match:
+                        var_name = match
+                        break
+                
+                if not var_name and candidate_vars:
+                    var_2d = [v for v in candidate_vars if len(ds_dem[v].dims) >= 2]
+                    var_name = var_2d[0] if var_2d else candidate_vars[0]
+                elif not var_name:
+                    var_name = list(ds_dem.data_vars)[0] if ds_dem.data_vars else "z"
+
                 da_dem = ds_dem[var_name]
-                elev_min = float(da_dem.min().values)
-                elev_max = float(da_dem.max().values)
-                dims_str = ", ".join([f"{k}:{v}" for k, v in ds_dem.dims.items()])
+                # Safely compute finite min and max
+                vals = da_dem.values
+                valid_vals = vals[np.isfinite(vals)]
+                if len(valid_vals) > 0:
+                    elev_min = float(np.min(valid_vals))
+                    elev_max = float(np.max(valid_vals))
+                else:
+                    elev_min = 0.0
+                    elev_max = 0.0
+
+                dims_str = ", ".join([f"{k}:{v}" for k, v in da_dem.sizes.items()]) or ", ".join([f"{k}:{v}" for k, v in ds_dem.dims.items()])
                 
                 details["dem"] = {
                     "path": str(dem_path),
                     "var_name": var_name,
-                    "dims": dict(ds_dem.dims),
+                    "dims": dict(da_dem.sizes),
                     "elev_range": [elev_min, elev_max],
                 }
                 status_desc = f"Var '{var_name}' ({dims_str}) | Cotas: {elev_min:.0f}m a {elev_max:.0f}m"
-                report_rows.append(("Topografía DEM SRTM", "LISTO [OK]", dem_path.name, status_desc))
+                report_rows.append(("Topografía DEM SRTM/GEBCO", "LISTO [OK]", dem_path.name, status_desc))
         except Exception as e:
             errors.append(f"Topografía DEM: Error al abrir NetCDF: {e}")
-            report_rows.append(("Topografía DEM SRTM", "ERROR", dem_path.name, str(e)))
+            report_rows.append(("Topografía DEM SRTM/GEBCO", "ERROR", dem_path.name, str(e)))
 
     # -------------------------------------------------------------------------
     # 3. Validar Shapefile Regional (GIS)
