@@ -82,7 +82,8 @@ class CDTBridge:
             f"{core_setup}"
             "cdt_env <- asNamespace('CDT')\n"
             "if (exists('.cdtData', envir = cdt_env)) {\n"
-            "  get('.cdtData', envir = cdt_env)$Config$parallel <- list(dopar = TRUE, detect.cores = FALSE, nb.cores = n_cores)\n"
+            "  cdt_data <- get('.cdtData', envir = cdt_env)\n"
+            "  cdt_data$Config$parallel <- list(dopar = TRUE, detect.cores = FALSE, nb.cores = n_cores)\n"
             "}\n\n"
             f"{r_code}\n"
         )
