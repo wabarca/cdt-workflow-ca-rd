@@ -58,12 +58,9 @@ paths:
   stations_temperature_file: "data/stations/temp_stations_all.csv" # Fallback genérico
   
   # --- Archivos de Estaciones a Omitir para Validación Cruzada Independiente (Holdout) ---
-  # Permite especificar listas de exclusión independientes por variable climática o generales:
-  holdout_rainfall_file: "data/stations/validation_holdout_stations_rainfall.csv"       # Exclusiones red lluvia
-  holdout_tmax_file: "data/stations/validation_holdout_stations_tmax.csv"               # Exclusiones red Tmax
-  holdout_tmin_file: "data/stations/validation_holdout_stations_tmin.csv"               # Exclusiones red Tmin
-  holdout_temperature_file: "data/stations/validation_holdout_stations_temperature.csv"# Fallback general temperatura
-  holdout_stations_file: "data/stations/validation_holdout_stations.csv"                # Fallback general global
+  # Dos listas de exclusión independientes según la red de estaciones:
+  holdout_rainfall_file: "data/stations/validation_holdout_stations_rainfall.csv"       # Estaciones omitidas para Precipitación
+  holdout_temperature_file: "data/stations/validation_holdout_stations_temperature.csv"# Estaciones omitidas para Temperatura (Tmax/Tmin)
 
   # --- Covariables Físicas y Cartografía Espacial (Suministradas por el Usuario) ---
   dem_file: "data/topography/dem_srtm_90m.nc"                       # DEM SRTM regional (elevación en msnm)
@@ -85,8 +82,6 @@ regions:
     stations_tmax_file: "data/stations/tmax_stations_ca.csv"
     stations_tmin_file: "data/stations/tmin_stations_ca.csv"
     holdout_rainfall_file: "data/stations/validation_holdout_stations_rainfall_ca.csv"
-    holdout_tmax_file: "data/stations/validation_holdout_stations_tmax_ca.csv"
-    holdout_tmin_file: "data/stations/validation_holdout_stations_tmin_ca.csv"
     holdout_temperature_file: "data/stations/validation_holdout_stations_temperature_ca.csv"
     dem_file: "data/topography/dem_srtm_central_america.nc"
     shapefile_path: "data/gis/central_america.shp"
@@ -100,8 +95,6 @@ regions:
     stations_tmax_file: "data/stations/tmax_stations_rd.csv"
     stations_tmin_file: "data/stations/tmin_stations_rd.csv"
     holdout_rainfall_file: "data/stations/validation_holdout_stations_rainfall_rd.csv"
-    holdout_tmax_file: "data/stations/validation_holdout_stations_tmax_rd.csv"
-    holdout_tmin_file: "data/stations/validation_holdout_stations_tmin_rd.csv"
     holdout_temperature_file: "data/stations/validation_holdout_stations_temperature_rd.csv"
     dem_file: "data/topography/dem_srtm_dominicana.nc"
     shapefile_path: "data/gis/republica_dominicana.shp"

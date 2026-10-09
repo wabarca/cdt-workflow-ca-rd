@@ -395,15 +395,16 @@ docker compose run --rm cdt-runner python launcher/experiment_runner.py --suite 
 
 ## Estructura de Preparación de Datos (`data/`)
 
-Ubica tus conjuntos de datos locales en los subdirectorios correspondientes de `data/`:
-
-- **Estaciones (`data/stations/`):**
+- **Estaciones y Listas de Exclusión (`data/stations/`):**
   - Para Centroamérica: `precip_stations_ca.csv`, `tmax_stations_ca.csv`, `tmin_stations_ca.csv`
   - Para Rep. Dominicana: `precip_stations_rd.csv`, `tmax_stations_rd.csv`, `tmin_stations_rd.csv`
   - _(Opcional)_ Archivo general combinado: `precip_stations_all.csv`, `tmax_stations_all.csv`, `tmin_stations_all.csv`
-  - Formato CDT (4 líneas de encabezado: `ID`, `LON`, `LAT`, `ELEV`), y opcionalmente IDs a omitir en `validation_holdout_stations.csv`.
+  - Formato CDT (4 líneas de encabezado: `ID`, `LON`, `LAT`, `ELEV`).
+  - **Validación Cruzada Independiente (*Holdout*):**
+    - `validation_holdout_stations_rainfall.csv` $\rightarrow$ IDs de estaciones omitidas para **Precipitación**.
+    - `validation_holdout_stations_temperature.csv` $\rightarrow$ IDs de estaciones omitidas para **Temperatura (Tmax/Tmin)**.
 - **Grillas Satelitales (`data/chirps_daily/` y `data/chirts_daily/{tmax,tmin}/`):** Archivos NetCDF diarios 2D (o NetCDFs 3D multitemporales en `data/raw_netcdf/` para particionar automáticamente).
-- **Topografía (`data/topography/`):** DEM SRTM en NetCDF (`dem_srtm_central_america.nc`, `dem_srtm_dominicana.nc` o `dem_srtm_90m.nc`).
+- **Topografía (`data/topography/`):** DEM SRTM/GEBCO en NetCDF (`dem_srtm_central_america.nc`, `dem_srtm_dominicana.nc` o `dem_srtm_90m.nc`).
 - **Cartografía GIS (`data/gis/`):** Shapefile con buffer 10 km (`central_america.shp`, `republica_dominicana.shp` o `central_america_dominican_rep.shp` junto con `.shx`, `.dbf`, `.prj`).
 
 ## Módulos de Documentación Técnica

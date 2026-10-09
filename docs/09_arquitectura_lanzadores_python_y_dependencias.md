@@ -206,22 +206,23 @@ Todos los datos de entrada son suministrados localmente por el usuario. La carpe
 ```
 data/
 ├── stations/
-│   ├── precip_stations_all.csv         # Red pluviométrica histórica (Lluvia)
-│   ├── tmax_stations_all.csv           # Red termométrica histórica (Tmax)
-│   ├── tmin_stations_all.csv           # Red termométrica histórica (Tmin)
-│   └── validation_holdout_stations.csv # Lista de IDs a omitir para validación ciega
+│   ├── precip_stations_all.csv                    # Red pluviométrica histórica (Lluvia)
+│   ├── tmax_stations_all.csv                      # Red termométrica histórica (Tmax)
+│   ├── tmin_stations_all.csv                      # Red termométrica histórica (Tmin)
+│   ├── validation_holdout_stations_rainfall.csv   # Lista de IDs a omitir para lluvia
+│   └── validation_holdout_stations_temperature.csv# Lista de IDs a omitir para temperatura (Tmax/Tmin)
 │
-├── chirps_daily/                       # Grillas diarias 2D CHIRPS (chirps_YYYYMMDD.nc)
+├── chirps_daily/                                  # Grillas diarias 2D CHIRPS (chirps_YYYYMMDD.nc)
 ├── chirts_daily/
-│   ├── tmax/                           # Grillas diarias 2D Tmax (tmax_YYYYMMDD.nc)
-│   └── tmin/                           # Grillas diarias 2D Tmin (tmin_YYYYMMDD.nc)
+│   ├── tmax/                                      # Grillas diarias 2D Tmax (tmax_YYYYMMDD.nc)
+│   └── tmin/                                      # Grillas diarias 2D Tmin (tmin_YYYYMMDD.nc)
 │
-├── raw_netcdf/                         # (Opcional) NetCDFs 3D únicos multitemporales (1991–2020)
+├── raw_netcdf/                                    # (Opcional) NetCDFs 3D únicos multitemporales (1991–2020)
 ├── topography/
-│   └── dem_srtm_90m.nc                 # Modelo Digital de Elevación SRTM (msnm)
+│   └── dem_srtm_90m.nc                            # Modelo Digital de Elevación SRTM/GEBCO (msnm)
 │
 └── gis/
-    ├── central_america_dominican_rep.shp # Shapefile del dominio (con buffer 10 km)
+    ├── central_america_dominican_rep.shp          # Shapefile del dominio (con buffer 10 km)
     ├── central_america_dominican_rep.shx
     ├── central_america_dominican_rep.dbf
     └── central_america_dominican_rep.prj
@@ -235,8 +236,11 @@ Deben cumplir con el estándar oficial de entrada de CDT (separado por comas):
 * **Fila 4 (ELEV):** `"ELEV", 120.0, 450.5, 1200.0, ...` *(Altitud en msnm; indispensable para desescalado y RK)*
 * **Filas 5 en adelante (Datos):** `YYYYMMDD, val_stn1, val_stn2, val_stn3, ...` (Valores diarios; usar `-99` o `NA` para vacíos).
 
-#### 2. Formato del Archivo de Exclusión (*Holdout Validation*):
-* **`data/stations/validation_holdout_stations.csv`:** Archivo CSV simple con la columna `station_id`.
+#### 2. Formato de los Archivos de Exclusión (*Holdout Validation*):
+Se manejan dos archivos independientes para evitar mezclar redes con coberturas diferentes:
+* **`data/stations/validation_holdout_stations_rainfall.csv`** (para experimentos de precipitación).
+* **`data/stations/validation_holdout_stations_temperature.csv`** (para experimentos de temperatura $T_{max}$ y $T_{min}$).
+* **Estructura del archivo:** Archivo CSV simple con la columna `station_id`:
   * **Si se desean excluir estaciones:** Se listan los IDs correspondientes:
     ```csv
     station_id
@@ -245,6 +249,7 @@ Deben cumplir con el estándar oficial de entrada de CDT (separado por comas):
     STN_042
     ```
   * **Si no se desea excluir ninguna estación:** Se deja el archivo únicamente con su cabecera `station_id` (vacío).
+
 
 #### 3. Grillas Satelitales (Precipitación y Temperatura):
 * **Opción Archivos Diarios 2D:** Ubicar los archivos NetCDF diarios en `data/chirps_daily/` (`chirps_YYYYMMDD.nc`), `data/chirts_daily/tmax/` (`tmax_YYYYMMDD.nc`) y `data/chirts_daily/tmin/` (`tmin_YYYYMMDD.nc`).
