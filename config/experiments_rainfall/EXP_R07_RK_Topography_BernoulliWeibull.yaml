@@ -18,10 +18,11 @@ description: "Regression Kriging con Covariables Orográficas (DEM, Pendiente, C
 
 # --- Paso 1 y 2: Corrección de Sesgo (Bias Correction) ---
 bias_correction:
-  method: "qm.dist"
-  distribution: "Weibull"
+  method: "qmdist"
+  distribution: "bernweibull"
   interpolation:
-    method: "block_okr"
+    method: "okr"
+    use_block: true
     maxdist: 2.5
     nmin: 6
     nmax: 18
@@ -34,7 +35,8 @@ rnor_mask:
   method: "logit"
   covariates: ["dem", "slope"]
   interpolation:
-    method: "block_okr"
+    method: "okr"
+    use_block: true
     maxdist: 2.5
 
 # --- Paso 4: Fusión Espacial Final (Merging Data) ---
@@ -46,9 +48,10 @@ merging:
     dem: true                       # Elevación topográfica (SRTM)
     slope: true                     # Pendiente de laderas
     aspect: false
-    lon_lat: true                   # Coordenadas geográficas
+    lon: true                       # Longitud
+    lat: true                       # Latitud
   interpolation:
-    method: "block_okr"
+    method: "okr"
     maxdist: 2.5
     nmin: 6
     nmax: 20

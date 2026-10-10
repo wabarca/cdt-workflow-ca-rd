@@ -17,14 +17,15 @@ description: "QM Paramétrico Bernoulli-Gamma con Kriging Ordinario por Bloques"
 
 # --- Paso 1 y 2: Corrección de Sesgo (Bias Correction) ---
 bias_correction:
-  method: "qm.dist"                 # Quantile Mapping Paramétrico por distribución teórica
-  distribution: "Gamma"             # Función de densidad Gamma (ajuste por máxima verosimilitud)
+  method: "qmdist"                  # Quantile Mapping Paramétrico por distribución teórica (CDT: qmdist)
+  distribution: "berngamma"         # Función de densidad Bernoulli-Gamma
   interpolation:
-    method: "block_okr"             # Ordinary Kriging por Bloques (soporte espacial corregido)
+    method: "okr"                   # Ordinary Kriging por Bloques (CDT: okr con use_block=TRUE)
+    use_block: true                 # Integración sobre bloque espacial
     maxdist: 2.5                    # Radio de búsqueda del semivariograma: 2.5° (~275 km)
     nmin: 6                         # Mínimo de estaciones para ajustar el semivariograma
     nmax: 18                        # Máximo de estaciones vecinas
-    variogram_models: ["Sph", "Exp", "Gau"] # Modelos teóricos evaluados (Esférico, Exponencial, Gaussiano)
+    variogram_models: ["Sph", "Exp", "Gau"] # Modelos teóricos evaluados
 
 # --- Paso 3: Máscara Probabilística Lluvia/No-Lluvia (RnoR Mask) ---
 rnor_mask:
@@ -33,7 +34,8 @@ rnor_mask:
   smoothing: true
   method: "logit"
   interpolation:
-    method: "block_okr"             # Kriging por bloques para la probabilidad espacial
+    method: "okr"                   # Kriging para probabilidad espacial
+    use_block: true
     maxdist: 2.5
     variogram_models: ["Sph", "Exp"]
 
@@ -43,7 +45,7 @@ merging:
   nrun: 3
   passes: [0.70, 0.35, 0.15]
   interpolation:
-    method: "block_okr"             # Kriging Ordinario por Bloques
+    method: "okr"                   # Kriging Ordinario por Bloques (CDT: okr)
     maxdist: 2.5
     nmin: 6
     nmax: 18

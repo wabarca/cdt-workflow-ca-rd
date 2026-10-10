@@ -31,7 +31,7 @@ rnor_mask:
   smoothing: true
   method: "logit"
   interpolation:
-    method: "nn3d"
+    method: "shepard"
     maxdist: 2.5
 
 # --- Paso 4: Fusión Espacial Final (Merging Data) ---
@@ -40,7 +40,7 @@ merging:
   nrun: 3
   passes: [0.70, 0.35, 0.15]
   interpolation:
-    method: "nn3d"
+    method: "shepard"
     maxdist: 2.5
     nmin: 4
     nmax: 16

@@ -309,6 +309,22 @@ class ExperimentRunner:
             log_dir.mkdir(parents=True, exist_ok=True)
 
             manifest_file = out_dir / "manifest.json"
+            
+            # Clean partial NetCDF files if previous run was interrupted / failed
+            if manifest_file.exists():
+                try:
+                    with open(manifest_file, "r", encoding="utf-8") as pf:
+                        prev_m = json.load(pf)
+                    if prev_m.get("status") != "SUCCESS":
+                        # Clean partial nc files
+                        for f in out_dir.glob("*.nc"):
+                            try:
+                                f.unlink()
+                            except Exception:
+                                pass
+                except Exception:
+                    pass
+
             manifest_data = {
                 "experiment_id": exp_id,
                 "variable_type": var_type,
@@ -423,8 +439,8 @@ class ExperimentRunner:
             assembled_nc_path = None
             if ret_code == 0 and post_proc.get("assemble_3d_netcdf", True):
                 try:
-                    search_dirs = [out_dir, out_dir / "Data_Merged", out_dir / "Merged_Data", out_dir / "Output"]
-                    daily_nc_dir = next((d for d in search_dirs if d.exists() and list(d.glob("*.nc"))), out_dir)
+                    cand_dirs = [d for d in [out_dir] + list(out_dir.glob("**/DATA")) + list(out_dir.glob("MERGED_*")) if d.is_dir() and list(d.glob("*.nc"))]
+                    daily_nc_dir = cand_dirs[0] if cand_dirs else out_dir
                     
                     if list(daily_nc_dir.glob("*.nc")):
                         out_nc_name = post_proc.get("output_filename", f"{var_type}_daily_1991_2020_{exp_id}.nc")
@@ -503,19 +519,98 @@ class ExperimentRunner:
         period = exp.get("period", {})
         merging = exp.get("merging", {})
         interp = merging.get("interpolation", {})
+        if not interp and "interp_method" in merging:
+            interp = {"method": merging["interp_method"]}
         rnor = exp.get("rnor_mask", {})
+        bias_cfg = exp.get("bias_correction", {}) or {}
 
-        return self.bridge.merge_rainfall(
+        # Check if pre-merging Bias Correction is needed
+        bias_method = str(bias_cfg.get("method", "")).lower()
+        needs_pre_bias = bias_method in ("qmdist", "qm.dist", "qmecdf", "qm.ecdf") or bias_cfg.get("apply_as_pre_step", False)
+
+        effective_sat_dir = paths.get("satellite_dir", "")
+        effective_sat_format = paths.get("satellite_format", "chirps_%s%s%s.nc")
+        total_time = 0.0
+
+        if needs_pre_bias:
+            bias_coeffs_dir = out_dir / "bias_coeffs"
+            bias_coeffs_dir.mkdir(parents=True, exist_ok=True)
+            b_interp = bias_cfg.get("interpolation", {})
+            if not b_interp and "interp_method" in bias_cfg:
+                b_interp = {"method": bias_cfg["interp_method"]}
+
+            print(f"  --> [Paso 1/3] Calculando coeficientes de sesgo ({bias_method})...")
+            rc1, out1, err1, t1 = self.bridge.compute_bias_coefficients(
+                variable_type="rainfall",
+                time_step=exp.get("time_step", "daily"),
+                station_file=paths.get("stations_file", ""),
+                netcdf_dir=effective_sat_dir,
+                netcdf_format=effective_sat_format,
+                output_dir=bias_coeffs_dir,
+                bias_method=bias_method,
+                distr_name=bias_cfg.get("distribution") or bias_cfg.get("distr") or "berngamma",
+                interp_method=b_interp.get("method", "okr"),
+                nmin=b_interp.get("nmin", 4),
+                nmax=b_interp.get("nmax", 12),
+                maxdist=b_interp.get("maxdist", 2.0),
+                use_block=b_interp.get("use_block", True),
+                vgm_models=b_interp.get("variogram_models", ["Sph", "Exp", "Gau"]),
+                dem_file=paths.get("dem_file"),
+                var_id=paths.get("var_id", "precip"),
+                start_year=int(str(period.get("start_date", "19910101"))[:4]),
+                end_year=int(str(period.get("end_date", "20201231"))[:4]),
+                global_bias_opts=exp.get("global_options"),
+                log_dir=log_dir,
+            )
+            total_time += t1
+            if rc1 != 0:
+                return rc1, out1, err1, total_time
+
+            # Step 2: Apply bias correction
+            adj_dir = out_dir / "bias_adjusted"
+            adj_dir.mkdir(parents=True, exist_ok=True)
+            cand_rds = list(bias_coeffs_dir.rglob("input_parameters.rds"))
+            if cand_rds:
+                actual_bias_dir = cand_rds[0].parent
+            else:
+                cand_bias_dirs = [d for d in bias_coeffs_dir.glob("BIAS_DATA_*") if d.is_dir()]
+                actual_bias_dir = cand_bias_dirs[0] if cand_bias_dirs else bias_coeffs_dir
+
+            print(f"  --> [Paso 2/3] Aplicando ajuste de sesgo a grillas satelitales...")
+            rc2, out2, err2, t2 = self.bridge.apply_bias_correction_precip(
+                time_step=exp.get("time_step", "daily"),
+                start_date=period.get("start_date", "19910101"),
+                end_date=period.get("end_date", "20201231"),
+                netcdf_dir=effective_sat_dir,
+                netcdf_format=effective_sat_format,
+                bias_dir=actual_bias_dir,
+                bias_format=None,
+                bias_method=bias_method,
+                output_dir=adj_dir,
+                var_id=paths.get("var_id", "precip"),
+                output_format="rr_adj_%s%s%s.nc",
+                log_dir=log_dir,
+            )
+            total_time += t2
+            if rc2 != 0:
+                return rc2, out2, err2, total_time
+
+            cand_adj_dirs = [d for d in adj_dir.glob("ADJUSTED_*") if d.is_dir()]
+            effective_sat_dir = cand_adj_dirs[0] if cand_adj_dirs else adj_dir
+            effective_sat_format = "rr_adj_%s%s%s.nc"
+            print(f"  --> [Paso 3/3] Ejecutando fusion espacial final (Merging)...")
+
+        rc3, out3, err3, t3 = self.bridge.merge_rainfall(
             time_step=exp.get("time_step", "daily"),
             start_date=period.get("start_date", "19910101"),
             end_date=period.get("end_date", "20201231"),
             station_file=paths.get("stations_file", ""),
-            netcdf_dir=paths.get("satellite_dir", ""),
-            netcdf_format=paths.get("satellite_format", "chirps_%s%s%s.nc"),
+            netcdf_dir=effective_sat_dir,
+            netcdf_format=effective_sat_format,
             output_dir=out_dir,
             var_id=paths.get("var_id", "precip"),
             merge_method=merging.get("method", "SBA"),
-            nrun=merging.get("nrun", 3),
+            nrun=merging.get("nrun", 3 if isinstance(merging.get("passes"), list) and len(merging.get("passes")) > 1 else 1),
             pass_ratios=merging.get("passes", [1.0, 0.75, 0.5]),
             interp_method=interp.get("method", "idw"),
             nmin=interp.get("nmin", 6),
@@ -528,10 +623,12 @@ class ExperimentRunner:
             rnor_smooth=rnor.get("smoothing", True),
             shapefile_path=paths.get("shapefile_path"),
             dem_file=paths.get("dem_file"),
-            auxvar=merging.get("auxiliary_variables"),
+            auxvar=merging.get("auxiliary_variables") or merging.get("covariables"),
             global_mrg_opts=exp.get("global_options"),
             log_dir=log_dir,
         )
+        total_time += t3
+        return rc3, out3, err3, total_time
 
     def _run_temperature_experiment(
         self, exp: Dict[str, Any], out_dir: Path, log_dir: Path
@@ -540,31 +637,132 @@ class ExperimentRunner:
         period = exp.get("period", {})
         merging = exp.get("merging", {})
         interp = merging.get("interpolation", {})
+        if not interp and "interp_method" in merging:
+            interp = {"method": merging["interp_method"]}
+        elif not interp and isinstance(merging.get("passes"), list) and len(merging["passes"]) > 0:
+            first_pass = merging["passes"][0]
+            if isinstance(first_pass, dict) and "interp_method" in first_pass:
+                interp = {"method": first_pass["interp_method"]}
+        bias_cfg = exp.get("bias_correction", {}) or {}
 
-        return self.bridge.merge_temperature(
+        var_raw = str(paths.get("var_id", exp.get("variable_type", "tmax"))).lower()
+        var_prefix = "tmin" if "tmin" in var_raw else "tmax"
+
+        # Check if pre-merging Bias Correction is needed
+        bias_method = str(bias_cfg.get("method", "")).lower()
+        needs_pre_bias = bias_method in ("qmdist", "qm.dist", "qmecdf", "qm.ecdf") or bias_cfg.get("apply_as_pre_step", False)
+
+        effective_sat_dir = paths.get("satellite_dir", "")
+        effective_sat_format = paths.get("satellite_format", f"{var_prefix}_%s%s%s.nc")
+        total_time = 0.0
+
+        if needs_pre_bias:
+            bias_coeffs_dir = out_dir / "bias_coeffs"
+            bias_coeffs_dir.mkdir(parents=True, exist_ok=True)
+            b_interp = bias_cfg.get("interpolation", {})
+            if not b_interp and "interp_method" in bias_cfg:
+                b_interp = {"method": bias_cfg["interp_method"]}
+
+            print(f"  --> [Paso 1/3] Calculando coeficientes de sesgo ({bias_method})...")
+            rc1, out1, err1, t1 = self.bridge.compute_bias_coefficients(
+                variable_type="temperature",
+                time_step=exp.get("time_step", "daily"),
+                station_file=paths.get("stations_file", ""),
+                netcdf_dir=effective_sat_dir,
+                netcdf_format=effective_sat_format,
+                output_dir=bias_coeffs_dir,
+                bias_method=bias_method,
+                distr_name=bias_cfg.get("distribution") or bias_cfg.get("distr") or "norm",
+                interp_method=b_interp.get("method", "okr"),
+                nmin=b_interp.get("nmin", 4),
+                nmax=b_interp.get("nmax", 12),
+                maxdist=b_interp.get("maxdist", 3.5),
+                use_block=b_interp.get("use_block", True),
+                vgm_models=b_interp.get("variogram_models", ["Sph", "Exp", "Gau", "Pen"]),
+                dem_file=paths.get("dem_file"),
+                var_id=paths.get("var_id", var_prefix),
+                start_year=int(str(period.get("start_date", "19910101"))[:4]),
+                end_year=int(str(period.get("end_date", "20201231"))[:4]),
+                global_bias_opts=exp.get("global_options"),
+                log_dir=log_dir,
+            )
+            total_time += t1
+            if rc1 != 0:
+                return rc1, out1, err1, total_time
+
+            adj_dir = out_dir / "bias_adjusted"
+            adj_dir.mkdir(parents=True, exist_ok=True)
+            cand_rds = list(bias_coeffs_dir.rglob("input_parameters.rds"))
+            if cand_rds:
+                actual_bias_dir = cand_rds[0].parent
+            else:
+                cand_bias_dirs = [d for d in bias_coeffs_dir.glob("BIAS_DATA_*") if d.is_dir()]
+                actual_bias_dir = cand_bias_dirs[0] if cand_bias_dirs else bias_coeffs_dir
+
+            print(f"  --> [Paso 2/3] Aplicando ajuste de sesgo a grillas termometricas...")
+            rc2, out2, err2, t2 = self.bridge.apply_bias_correction_temp(
+                time_step=exp.get("time_step", "daily"),
+                start_date=period.get("start_date", "19910101"),
+                end_date=period.get("end_date", "20201231"),
+                netcdf_dir=effective_sat_dir,
+                netcdf_format=effective_sat_format,
+                bias_dir=actual_bias_dir,
+                bias_format=None,
+                bias_method=bias_method,
+                output_dir=adj_dir,
+                var_id=paths.get("var_id", var_prefix),
+                output_format=f"{var_prefix}_adj_%s%s%s.nc",
+                log_dir=log_dir,
+            )
+            total_time += t2
+            if rc2 != 0:
+                return rc2, out2, err2, total_time
+
+            cand_adj_dirs = [d for d in adj_dir.glob("ADJUSTED_*") if d.is_dir()]
+            effective_sat_dir = cand_adj_dirs[0] if cand_adj_dirs else adj_dir
+            effective_sat_format = f"{var_prefix}_adj_%s%s%s.nc"
+            print(f"  --> [Paso 3/3] Ejecutando fusion espacial final (Merging)...")
+
+        m_method = str(merging.get("method", "RK")).upper()
+        if m_method == "BARNES":
+            m_method_clean = "SBA"
+            interp_method_clean = "barnes"
+        elif m_method in ("RK", "REGR.KRIGING", "REGR_KRIGING"):
+            m_method_clean = "RK"
+            interp_method_clean = interp.get("method") or "okr"
+            if interp_method_clean.lower() in ("regr.kriging", "regr_kriging"):
+                interp_method_clean = "okr"
+        else:
+            m_method_clean = "SBA"
+            interp_method_clean = interp.get("method") or "idw"
+
+        rc3, out3, err3, t3 = self.bridge.merge_temperature(
             time_step=exp.get("time_step", "daily"),
             start_date=period.get("start_date", "19910101"),
             end_date=period.get("end_date", "20201231"),
             station_file=paths.get("stations_file", ""),
-            netcdf_dir=paths.get("satellite_dir", ""),
-            netcdf_format=paths.get("satellite_format", "tmax_%s%s%s.nc"),
+            netcdf_dir=effective_sat_dir,
+            netcdf_format=effective_sat_format,
             output_dir=out_dir,
-            var_id=paths.get("var_id", "temp"),
-            merge_method=merging.get("method", "RK"),
-            nrun=merging.get("nrun", 3),
+            var_id=paths.get("var_id", var_prefix),
+            merge_method=m_method_clean,
+            nrun=merging.get("nrun", 3 if isinstance(merging.get("passes"), list) and len(merging.get("passes")) > 1 else 1),
             pass_ratios=merging.get("passes", [1.0, 0.75, 0.5]),
-            interp_method=interp.get("method", "idw"),
+            interp_method=interp_method_clean,
             nmin=interp.get("nmin", 8),
             nmax=interp.get("nmax", 24),
             maxdist=interp.get("maxdist", 3.5),
             use_block=interp.get("use_block", True),
             vgm_models=interp.get("variogram_models", ["Sph", "Exp", "Gau", "Pen"]),
             dem_file=paths.get("dem_file"),
-            auxvar=merging.get("auxiliary_variables"),
+            auxvar=merging.get("auxiliary_variables") or merging.get("covariables"),
             shapefile_path=paths.get("shapefile_path"),
+            output_format=f"{var_prefix}_mrg_%s%s%s.nc",
             global_mrg_opts=exp.get("global_options"),
             log_dir=log_dir,
         )
+        total_time += t3
+        return rc3, out3, err3, total_time
 
     def _print_execution_summary(self) -> None:
         print("\n" + "=" * 80)

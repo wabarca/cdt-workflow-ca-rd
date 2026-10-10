@@ -19,7 +19,7 @@ downscaling:
   interp_method: "blin"
 
 bias_correction:
-  method: "multiplicative.bias.var"
+  method: "mbvar"
   interp_method: "barnes"
   params:
     nmin: 4
@@ -27,7 +27,9 @@ bias_correction:
     maxdist: 3.5
 
 merging:
-  method: "barnes"
+  method: "SBA"
+  interpolation:
+    method: "barnes"
   passes:
     - radius: 1.0
       interp_method: "barnes"

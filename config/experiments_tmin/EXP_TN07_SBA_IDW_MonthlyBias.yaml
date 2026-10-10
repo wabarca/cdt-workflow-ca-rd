@@ -19,7 +19,7 @@ downscaling:
   interp_method: "blin"
 
 bias_correction:
-  method: "admon"
+  method: "mbmon"
   interp_method: "idw"
   params:
     idw_power: 2.0
@@ -28,7 +28,7 @@ bias_correction:
     maxdist: 3.5
 
 merging:
-  method: "sba"
+  method: "SBA"
   interp_method: "idw"
   passes:
     - radius: 1.0

@@ -18,10 +18,11 @@ description: "QM Paramétrico Bernoulli-Lognormal con Kriging Ordinario por Bloq
 
 # --- Paso 1 y 2: Corrección de Sesgo (Bias Correction) ---
 bias_correction:
-  method: "qm.dist"
-  distribution: "Lognormal"         # Distribución Lognormal (bernlnorm en CDT)
+  method: "qmdist"
+  distribution: "bernlnorm"         # Distribución Bernoulli-Lognormal (bernlnorm en CDT)
   interpolation:
-    method: "block_okr"
+    method: "okr"
+    use_block: true
     maxdist: 2.5
     nmin: 6
     nmax: 18
@@ -34,7 +35,8 @@ rnor_mask:
   smoothing: true
   method: "logit"
   interpolation:
-    method: "block_okr"
+    method: "okr"
+    use_block: true
     maxdist: 2.5
     variogram_models: ["Sph", "Exp"]
 
@@ -44,7 +46,7 @@ merging:
   nrun: 3
   passes: [0.70, 0.35, 0.15]
   interpolation:
-    method: "block_okr"
+    method: "okr"
     maxdist: 2.5
     nmin: 6
     nmax: 18

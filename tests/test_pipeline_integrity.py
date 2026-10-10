@@ -251,6 +251,46 @@ class TestPDFGeneration(unittest.TestCase):
             self.assertGreater(generated.stat().st_size, 5000)
 
 
+class TestExperimentYAMLConsistency(unittest.TestCase):
+    """Ensure all 26 experiment YAML configurations are strictly compliant with CDT 8.0."""
+
+    def test_all_experiment_yamls_valid(self):
+        import glob
+        yaml_files = sorted(glob.glob("config/experiments_*/*.yaml"))
+        self.assertEqual(len(yaml_files), 26, f"Expected 26 experiment YAMLs, found {len(yaml_files)}")
+
+        valid_merge_methods = {"SBA", "RK"}
+        valid_interp_methods = {"idw", "okr", "barnes", "cressman", "shepard", "sphere"}
+        valid_bias_methods = {"mbvar", "mbmon", "qmdist", "qmecdf", "qm.ecdf"}
+        valid_distrs = {"berngamma", "bernweibull", "bernlnorm", "norm", "snorm", "gumbel", "lnorm", "gamma"}
+
+        for p in yaml_files:
+            with self.subTest(yaml_file=p):
+                with open(p, "r", encoding="utf-8") as f:
+                    cfg = yaml.safe_load(f)
+
+                # Check merging method
+                merg = cfg.get("merging", {})
+                self.assertIn(merg.get("method"), valid_merge_methods, f"Invalid merge method in {p}")
+
+                # Check interpolation method
+                interp = merg.get("interpolation", {})
+                interp_m = interp.get("method") or merg.get("interp_method")
+                if not interp_m and isinstance(merg.get("passes"), list) and len(merg["passes"]) > 0:
+                    interp_m = merg["passes"][0].get("interp_method")
+                self.assertIn(interp_m, valid_interp_methods, f"Invalid interpolation method '{interp_m}' in {p}")
+
+                # Check bias correction method and distribution if configured
+                bias = cfg.get("bias_correction", {})
+                if bias and bias.get("method"):
+                    b_method = str(bias.get("method")).lower()
+                    self.assertIn(b_method, valid_bias_methods, f"Invalid bias method '{b_method}' in {p}")
+
+                    distr = bias.get("distribution") or bias.get("distr")
+                    if distr:
+                        self.assertIn(str(distr).lower(), valid_distrs, f"Invalid distribution '{distr}' in {p}")
+
+
 if __name__ == "__main__":
     unittest.main()
 

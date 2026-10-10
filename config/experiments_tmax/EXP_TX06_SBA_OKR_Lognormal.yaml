@@ -29,7 +29,7 @@ bias_correction:
     maxdist: 3.5
 
 merging:
-  method: "sba"
+  method: "SBA"
   interp_method: "okr"
   passes:
     - radius: 1.0

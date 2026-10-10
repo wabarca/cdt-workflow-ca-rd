@@ -38,7 +38,7 @@ rnor_mask:
 
 # --- Paso 4: Fusión Espacial Final (Merging Data) ---
 merging:
-  method: "CSc"                     # Cressman Scheme
+  method: "SBA"                     # Simple Bias Adjustment con residuales Cressman
   nrun: 3
   passes: [0.70, 0.35, 0.15]
   interpolation:
