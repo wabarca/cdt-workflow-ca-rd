@@ -69,7 +69,24 @@ class CDTBridge:
         if isinstance(self.nb_cores, int) and self.nb_cores > 0:
             core_setup = f"n_cores <- {self.nb_cores}\n"
         else:
-            core_setup = "n_cores <- max(1, parallel::detectCores() - 1)\n"
+            # Deteccion adaptativa y segura de memoria en Windows:
+            # CDT paralelizado en Windows crea procesos hijos Rscript mediante sockets.
+            # Cada proceso R de interpolacion espacial consume entre 350-500 MB.
+            # Para evitar OOM / rotura de socket (serialize error writing to connection),
+            # calculamos el maximo seguro con base en la memoria libre disponible.
+            core_setup = (
+                "avail_mem_gb <- tryCatch({\n"
+                "  if (.Platform$OS.type == 'windows') {\n"
+                "    mem_info <- system2('wmic', c('OS', 'get', 'FreePhysicalMemory', '/Value'), stdout = TRUE, stderr = FALSE)\n"
+                "    free_kb <- as.numeric(gsub('[^0-9]', '', grep('FreePhysicalMemory', mem_info, value = TRUE)))\n"
+                "    if (length(free_kb) > 0 && !is.na(free_kb)) free_kb / 1024^2 else 6.0\n"
+                "  } else 8.0\n"
+                "}, error = function(e) 6.0)\n"
+                "# Limite seguro de memoria: maximo 1 nucleo por cada 0.8 GB libre, con tope de 8\n"
+                "max_safe_cores <- max(2, min(8, floor(avail_mem_gb / 0.8)))\n"
+                "n_cores <- max(1, min(parallel::detectCores() - 1, max_safe_cores))\n"
+                "cat(sprintf('[Parallel] Asignados %d nucleos (Memoria libre detectada: %.2f GB)\\n', n_cores, avail_mem_gb))\n"
+            )
         
         full_r_script = (
             "suppressPackageStartupMessages({\n"
@@ -92,7 +109,8 @@ class CDTBridge:
             "  assign('cdtLocalConfigData', function(...) {\n"
             "    orig_local_cfg(...)\n"
             "    if (exists('.cdtData', envir = asNamespace('CDT'))) {\n"
-            "      get('.cdtData', envir = asNamespace('CDT'))$Config$parallel <- list(dopar = TRUE, detect.cores = FALSE, nb.cores = n_cores)\n"
+            "      .cd <- get('.cdtData', envir = asNamespace('CDT'))\n"
+            "      .cd$Config$parallel <- list(dopar = TRUE, detect.cores = FALSE, nb.cores = n_cores)\n"
             "    }\n"
             "  }, envir = cdt_env)\n"
             "  lockBinding('cdtLocalConfigData', cdt_env)\n"

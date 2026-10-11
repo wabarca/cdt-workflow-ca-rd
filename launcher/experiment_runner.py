@@ -408,6 +408,14 @@ class ExperimentRunner:
             exp_exec["paths"] = dict(paths)
             exp_exec["paths"]["stations_file"] = training_station_file
 
+            # Sync nb_cores from experiment system config if defined
+            exp_sys_cores = exp.get("system", {}).get("nb_cores")
+            if exp_sys_cores is not None and self.bridge.nb_cores in (None, "auto"):
+                if isinstance(exp_sys_cores, int):
+                    self.bridge.nb_cores = exp_sys_cores
+                elif isinstance(exp_sys_cores, str) and exp_sys_cores.isdigit():
+                    self.bridge.nb_cores = int(exp_sys_cores)
+
             t0 = time.time()
             if var_type in ("rainfall", "rain", "precip"):
                 ret_code, stdout, stderr, elapsed = self._run_rainfall_experiment(exp_exec, out_dir, log_dir)
