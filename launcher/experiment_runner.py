@@ -27,6 +27,7 @@ import time
 from typing import Any, Dict, List, Optional, Union
 
 from launcher.env_checker import check_system_environment, print_environment_report
+from launcher.netcdf_assembler import assemble_daily_netcdfs_to_cf18
 
 
 def _check_python_requirements() -> bool:
@@ -448,6 +449,8 @@ class ExperimentRunner:
             if ret_code == 0 and post_proc.get("assemble_3d_netcdf", True):
                 try:
                     cand_dirs = [d for d in [out_dir] + list(out_dir.glob("**/DATA")) + list(out_dir.glob("MERGED_*")) if d.is_dir() and list(d.glob("*.nc"))]
+                    # Select the directory with the maximum number of daily netcdf files
+                    cand_dirs.sort(key=lambda d: len(list(d.glob("*.nc"))), reverse=True)
                     daily_nc_dir = cand_dirs[0] if cand_dirs else out_dir
                     
                     if list(daily_nc_dir.glob("*.nc")):
