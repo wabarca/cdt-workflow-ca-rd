@@ -131,6 +131,48 @@ class CDTBridge:
             "  }, envir = cdt_env)\n"
             "  lockBinding('getStnOpenData', cdt_env)\n"
             "}, error = function(e) NULL)\n\n"
+            "# Hook defensivo Headless para extraer metadatos de NetCDF sample sin GUI OpenFiles\n"
+            "tryCatch({\n"
+            "  unlockBinding('getNCDFSampleData', cdt_env)\n"
+            "  assign('getNCDFSampleData', function(file.netcdf) {\n"
+            "    if (is.character(file.netcdf) && file.exists(file.netcdf)) {\n"
+            "      nc <- ncdf4::nc_open(file.netcdf)\n"
+            "      vars <- names(nc$var)\n"
+            "      vname <- vars[1]\n"
+            "      for (v in c('precip', 'rainfall', 'temp', 'tmax', 'tmin', 'elevation', 'dem')) {\n"
+            "        if (v %in% vars) { vname <- v; break }\n"
+            "      }\n"
+            "      dimnames <- tolower(sapply(nc$var[[vname]]$dim, function(d) d$name))\n"
+            "      ilon <- which(dimnames %in% c('lon', 'longitude', 'x'))[1]\n"
+            "      ilat <- which(dimnames %in% c('lat', 'latitude', 'y'))[1]\n"
+            "      if (is.na(ilon) || length(ilon) == 0) ilon <- 1\n"
+            "      if (is.na(ilat) || length(ilat) == 0) ilat <- 2\n"
+            "      lon <- nc$var[[vname]]$dim[[ilon]]$vals\n"
+            "      lat <- nc$var[[vname]]$dim[[ilat]]$vals\n"
+            "      xo <- order(lon)\n"
+            "      yo <- order(lat)\n"
+            "      lon <- lon[xo]\n"
+            "      lat <- lat[yo]\n"
+            "      varinfo <- nc$var[[vname]][c('name', 'prec', 'units', 'longname', 'missval')]\n"
+            "      diminfo <- nc$var[[vname]]$dim\n"
+            "      ncdf4::nc_close(nc)\n"
+            "      return(list(lon = lon, lat = lat, x = lon, y = lat, varid = vname, ilon = ilon, ilat = ilat, xo = xo, yo = yo, nx = length(lon), ny = length(lat), varinfo = varinfo, diminfo = diminfo))\n"
+            "    }\n"
+            "    return(NULL)\n"
+            "  }, envir = cdt_env)\n"
+            "  lockBinding('getNCDFSampleData', cdt_env)\n"
+            "}, error = function(e) NULL)\n\n"
+            "# Hook defensivo Headless para evitar llamadas de GUI Tk tabs\n"
+            "tryCatch({\n"
+            "  unlockBinding('Display_Output_Console_Tab', cdt_env)\n"
+            "  assign('Display_Output_Console_Tab', function(...) NULL, envir = cdt_env)\n"
+            "  lockBinding('Display_Output_Console_Tab', cdt_env)\n"
+            "}, error = function(e) NULL)\n"
+            "tryCatch({\n"
+            "  unlockBinding('update.OpenTabs', cdt_env)\n"
+            "  assign('update.OpenTabs', function(...) NULL, envir = cdt_env)\n"
+            "  lockBinding('update.OpenTabs', cdt_env)\n"
+            "}, error = function(e) NULL)\n\n"
             f"{r_code}\n"
         )
 
@@ -280,6 +322,7 @@ class CDTBridge:
             f".cd$GalParams$output <- list(dir = {_to_r_val(output_dir)})\n"
             ".cd$GalParams$message <- list('7' = 'Computing bias coefficients...', '8' = 'Error reading sample', '9' = 'Error reading DEM', '10' = 'Error grid', '11' = 'Error NetCDF info', '12' = 'Not enough years')\n"
             "res <- CDT:::computeBiasCoeffClimData()\n"
+            "if (is.null(res) || res != 0) stop('computeBiasCoeffClimData fallo: retorno NULL o codigo no-cero')\n"
         )
         r_lines.append(r_cmd)
         return self._execute_r_code("\n".join(r_lines), log_dir=log_dir, job_name=f"compute_bias_{var_clim}")
@@ -346,6 +389,7 @@ class CDTBridge:
             f".cd$GalParams$output <- list(dir = {_to_r_val(output_dir)}, format = {_to_r_val(output_format)})\n"
             ".cd$GalParams$message <- list('7' = 'Applying bias correction...', '8' = 'Error sample NetCDF', '9' = 'Error NetCDF info', '10' = 'Bounding box error')\n"
             "res <- CDT:::biasCorrectionClimData()\n"
+            "if (is.null(res) || res != 0) stop('biasCorrectionClimData (precip) fallo: retorno NULL o codigo no-cero')\n"
         )
         return self._execute_r_code(r_cmd, log_dir=log_dir, job_name=f"apply_bias_precip_{start_date}_{end_date}")
 
@@ -407,6 +451,7 @@ class CDTBridge:
             f".cd$GalParams$output <- list(dir = {_to_r_val(output_dir)}, format = {_to_r_val(output_format)})\n"
             ".cd$GalParams$message <- list('7' = 'Applying bias correction...', '8' = 'Error sample NetCDF', '9' = 'Error NetCDF info', '10' = 'Bounding box error')\n"
             "res <- CDT:::biasCorrectionClimData()\n"
+            "if (is.null(res) || res != 0) stop('biasCorrectionClimData (temp) fallo: retorno NULL o codigo no-cero')\n"
         )
         return self._execute_r_code(r_cmd, log_dir=log_dir, job_name=f"apply_bias_temp_{start_date}_{end_date}")
 
@@ -448,7 +493,14 @@ class CDTBridge:
         Path(output_dir).mkdir(parents=True, exist_ok=True)
 
         mm = str(merge_method).upper()
-        cdt_merge_m = "RK" if mm in ("RK", "REGR.KRIGING", "REGR_KRIGING") else "SBA"
+        if mm in ("RK", "REGR.KRIGING", "REGR_KRIGING"):
+            cdt_merge_m = "RK"
+        elif mm in ("BSC", "BARNES"):
+            cdt_merge_m = "BSc"
+        elif mm in ("CSC", "CRESSMAN"):
+            cdt_merge_m = "CSc"
+        else:
+            cdt_merge_m = "SBA"
 
         im = str(interp_method).lower()
         if im == "block_okr":
@@ -527,6 +579,7 @@ class CDTBridge:
             f"  precision = list(from.data = TRUE, prec = 'short'),\n"
             "  GUI = FALSE\n"
             ")\n"
+            "if (is.null(res) || res != 0) stop('cdtMergingClimDataCMD (rainfall) fallo: retorno NULL o codigo no-cero')\n"
         )
         r_lines.append(r_cmd)
         return self._execute_r_code("\n".join(r_lines), log_dir=log_dir, job_name=f"merge_precip_{start_date}_{end_date}")
@@ -562,7 +615,14 @@ class CDTBridge:
         Path(output_dir).mkdir(parents=True, exist_ok=True)
 
         mm = str(merge_method).upper()
-        cdt_merge_m = "RK" if mm in ("RK", "REGR.KRIGING", "REGR_KRIGING") else "SBA"
+        if mm in ("RK", "REGR.KRIGING", "REGR_KRIGING"):
+            cdt_merge_m = "RK"
+        elif mm in ("BSC", "BARNES"):
+            cdt_merge_m = "BSc"
+        elif mm in ("CSC", "CRESSMAN"):
+            cdt_merge_m = "CSc"
+        else:
+            cdt_merge_m = "SBA"
 
         im = str(interp_method).lower()
         if im == "block_okr":
@@ -641,6 +701,7 @@ class CDTBridge:
             f"  precision = list(from.data = TRUE, prec = 'short'),\n"
             "  GUI = FALSE\n"
             ")\n"
+            "if (is.null(res) || res != 0) stop('cdtMergingClimDataCMD (temperature) fallo: retorno NULL o codigo no-cero')\n"
         )
         r_lines.append(r_cmd)
         return self._execute_r_code("\n".join(r_lines), log_dir=log_dir, job_name=f"merge_temp_{start_date}_{end_date}")

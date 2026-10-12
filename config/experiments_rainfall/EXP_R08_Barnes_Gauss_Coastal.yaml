@@ -39,7 +39,7 @@ rnor_mask:
 merging:
   method: "SBA"                     # Simple Bias Adjustment con residuales Barnes
   nrun: 3
-  passes: [0.70, 0.35, 0.15]
+  passes: [1.0, 0.75, 0.50]
   interpolation:
     method: "barnes"
     maxdist: 2.5

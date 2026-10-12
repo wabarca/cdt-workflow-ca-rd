@@ -38,7 +38,7 @@ rnor_mask:
 merging:
   method: "SBA"                     # Simple Bias Adjustment
   nrun: 3                           # 3 pasadas de corrección sucesiva anidada
-  passes: [0.70, 0.35, 0.15]        # Radios relativos decrecientes: ~260 km, ~130 km, ~55 km
+  passes: [1.0, 0.75, 0.50]        # Radios relativos decrecientes: ~260 km, ~130 km, ~55 km
   interpolation:
     method: "idw"
     maxdist: 2.5
