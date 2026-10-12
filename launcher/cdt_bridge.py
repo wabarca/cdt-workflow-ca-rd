@@ -115,6 +115,14 @@ class CDTBridge:
             "  }, envir = cdt_env)\n"
             "  lockBinding('cdtLocalConfigData', cdt_env)\n"
             "}, error = function(e) NULL)\n\n"
+            "# Hook defensivo Headless para redirigir mensajes de GUI a la consola (evita error Tcl/Tk)\n"
+            "tryCatch({\n"
+            "  unlockBinding('Insert.Messages.Out', cdt_env)\n"
+            "  assign('Insert.Messages.Out', function(texta, format = FALSE, type = c('error', 'warning', 'info', 'success'), GUI = FALSE) {\n"
+            "    cat(paste(texta, collapse = '\\n'), '\\n')\n"
+            "  }, envir = cdt_env)\n"
+            "  lockBinding('Insert.Messages.Out', cdt_env)\n"
+            "}, error = function(e) NULL)\n\n"
             f"{r_code}\n"
         )
 
