@@ -123,6 +123,14 @@ class CDTBridge:
             "  }, envir = cdt_env)\n"
             "  lockBinding('Insert.Messages.Out', cdt_env)\n"
             "}, error = function(e) NULL)\n\n"
+            "# Hook defensivo Headless para permitir lectura automatica de STN.file sin GUI OpenFiles\n"
+            "tryCatch({\n"
+            "  unlockBinding('getStnOpenData', cdt_env)\n"
+            "  assign('getStnOpenData', function(file.stnfl) {\n"
+            "    read.table(file.stnfl, sep = ',', na.strings = '-99', stringsAsFactors = FALSE, header = FALSE)\n"
+            "  }, envir = cdt_env)\n"
+            "  lockBinding('getStnOpenData', cdt_env)\n"
+            "}, error = function(e) NULL)\n\n"
             f"{r_code}\n"
         )
 
