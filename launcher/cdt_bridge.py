@@ -250,17 +250,18 @@ class CDTBridge:
             r_lines.append(self.set_global_bias_options(global_bias_opts))
 
         r_cmd = (
+            ".cdt_env <- asNamespace('CDT')\n"
             "CDT:::cdtLocalConfigData()\n"
-            f"CDT:::.cdtData$GalParams$action <- 'coefbias.{var_clim}'\n"
-            f"CDT:::.cdtData$GalParams$period <- {_to_r_val(time_step)}\n"
-            f"CDT:::.cdtData$GalParams$STN.file <- {_to_r_val(station_file)}\n"
-            f"CDT:::.cdtData$GalParams$INPUT <- list(dir = {_to_r_val(netcdf_dir)}, format = {_to_r_val(netcdf_format)}, sample = {_to_r_val(sample_path)}, varid = {_to_r_val(effective_varid)}, ilon = 1, ilat = 2)\n"
-            f"CDT:::.cdtData$GalParams$base.period <- list(all.years = {_to_r_val(base_period_all_years)}, start.year = {start_year}, end.year = {end_year}, min.year = {min_year})\n"
-            f"CDT:::.cdtData$GalParams$BIAS <- list(method = {_to_r_val(cdt_bias_m)}, distr.name = {_to_r_val(cdt_distr)}, min.length = {min_length}, ts.support = 'points')\n"
-            f"CDT:::.cdtData$GalParams$interp <- list(method = {_to_r_val(cdt_interp_m)}, nmin = {nmin}, nmax = {nmax}, maxdist = {maxdist}, use.block = {_to_r_val(use_block)}, vgm.model = {_to_r_val(vgm_models)}, minstn = 10, demfile = {_to_r_val(dem_str)})\n"
-            "CDT:::.cdtData$GalParams$grid <- list(from = 'data', pars = NULL)\n"
-            f"CDT:::.cdtData$GalParams$output <- list(dir = {_to_r_val(output_dir)})\n"
-            "CDT:::.cdtData$GalParams$message <- list('7' = 'Computing bias coefficients...', '8' = 'Error reading sample', '9' = 'Error reading DEM', '10' = 'Error grid', '11' = 'Error NetCDF info', '12' = 'Not enough years')\n"
+            f".cdt_env$.cdtData$GalParams$action <- 'coefbias.{var_clim}'\n"
+            f".cdt_env$.cdtData$GalParams$period <- {_to_r_val(time_step)}\n"
+            f".cdt_env$.cdtData$GalParams$STN.file <- {_to_r_val(station_file)}\n"
+            f".cdt_env$.cdtData$GalParams$INPUT <- list(dir = {_to_r_val(netcdf_dir)}, format = {_to_r_val(netcdf_format)}, sample = {_to_r_val(sample_path)}, varid = {_to_r_val(effective_varid)}, ilon = 1, ilat = 2)\n"
+            f".cdt_env$.cdtData$GalParams$base.period <- list(all.years = {_to_r_val(base_period_all_years)}, start.year = {start_year}, end.year = {end_year}, min.year = {min_year})\n"
+            f".cdt_env$.cdtData$GalParams$BIAS <- list(method = {_to_r_val(cdt_bias_m)}, distr.name = {_to_r_val(cdt_distr)}, min.length = {min_length}, ts.support = 'points')\n"
+            f".cdt_env$.cdtData$GalParams$interp <- list(method = {_to_r_val(cdt_interp_m)}, nmin = {nmin}, nmax = {nmax}, maxdist = {maxdist}, use.block = {_to_r_val(use_block)}, vgm.model = {_to_r_val(vgm_models)}, minstn = 10, demfile = {_to_r_val(dem_str)})\n"
+            ".cdt_env$.cdtData$GalParams$grid <- list(from = 'data', pars = NULL)\n"
+            f".cdt_env$.cdtData$GalParams$output <- list(dir = {_to_r_val(output_dir)})\n"
+            ".cdt_env$.cdtData$GalParams$message <- list('7' = 'Computing bias coefficients...', '8' = 'Error reading sample', '9' = 'Error reading DEM', '10' = 'Error grid', '11' = 'Error NetCDF info', '12' = 'Not enough years')\n"
             "res <- CDT:::computeBiasCoeffClimData()\n"
         )
         r_lines.append(r_cmd)
@@ -317,14 +318,15 @@ class CDTBridge:
         e_dy = int(ed_str[6:8]) if len(ed_str) >= 8 else 31
 
         r_cmd = (
+            ".cdt_env <- asNamespace('CDT')\n"
             "CDT:::cdtLocalConfigData()\n"
-            "CDT:::.cdtData$GalParams$action <- 'rmbias.rain'\n"
-            f"CDT:::.cdtData$GalParams$period <- {_to_r_val(time_step)}\n"
-            f"CDT:::.cdtData$GalParams$date.range <- list(start.year = {s_yr}, start.mon = {s_mo}, start.day = {s_dy}, end.year = {e_yr}, end.mon = {e_mo}, end.day = {e_dy})\n"
-            f"CDT:::.cdtData$GalParams$INPUT <- list(dir = {_to_r_val(netcdf_dir)}, format = {_to_r_val(netcdf_format)}, sample = {_to_r_val(sample_path)}, varid = {_to_r_val(var_id)}, ilon = 1, ilat = 2)\n"
-            f"CDT:::.cdtData$GalParams$BIAS <- list(method = {_to_r_val(cdt_bias_m)}, dir = {_to_r_val(eff_bias_dir)})\n"
-            f"CDT:::.cdtData$GalParams$output <- list(dir = {_to_r_val(output_dir)}, format = {_to_r_val(output_format)})\n"
-            "CDT:::.cdtData$GalParams$message <- list('7' = 'Applying bias correction...', '8' = 'Error sample NetCDF', '9' = 'Error NetCDF info', '10' = 'Bounding box error')\n"
+            ".cdt_env$.cdtData$GalParams$action <- 'rmbias.rain'\n"
+            f".cdt_env$.cdtData$GalParams$period <- {_to_r_val(time_step)}\n"
+            f".cdt_env$.cdtData$GalParams$date.range <- list(start.year = {s_yr}, start.mon = {s_mo}, start.day = {s_dy}, end.year = {e_yr}, end.mon = {e_mo}, end.day = {e_dy})\n"
+            f".cdt_env$.cdtData$GalParams$INPUT <- list(dir = {_to_r_val(netcdf_dir)}, format = {_to_r_val(netcdf_format)}, sample = {_to_r_val(sample_path)}, varid = {_to_r_val(var_id)}, ilon = 1, ilat = 2)\n"
+            f".cdt_env$.cdtData$GalParams$BIAS <- list(method = {_to_r_val(cdt_bias_m)}, dir = {_to_r_val(eff_bias_dir)})\n"
+            f".cdt_env$.cdtData$GalParams$output <- list(dir = {_to_r_val(output_dir)}, format = {_to_r_val(output_format)})\n"
+            ".cdt_env$.cdtData$GalParams$message <- list('7' = 'Applying bias correction...', '8' = 'Error sample NetCDF', '9' = 'Error NetCDF info', '10' = 'Bounding box error')\n"
             "res <- CDT:::biasCorrectionClimData()\n"
         )
         return self._execute_r_code(r_cmd, log_dir=log_dir, job_name=f"apply_bias_precip_{start_date}_{end_date}")
@@ -376,14 +378,15 @@ class CDTBridge:
         e_dy = int(ed_str[6:8]) if len(ed_str) >= 8 else 31
 
         r_cmd = (
+            ".cdt_env <- asNamespace('CDT')\n"
             "CDT:::cdtLocalConfigData()\n"
-            "CDT:::.cdtData$GalParams$action <- 'rmbias.temp'\n"
-            f"CDT:::.cdtData$GalParams$period <- {_to_r_val(time_step)}\n"
-            f"CDT:::.cdtData$GalParams$date.range <- list(start.year = {s_yr}, start.mon = {s_mo}, start.day = {s_dy}, end.year = {e_yr}, end.mon = {e_mo}, end.day = {e_dy})\n"
-            f"CDT:::.cdtData$GalParams$INPUT <- list(dir = {_to_r_val(netcdf_dir)}, format = {_to_r_val(netcdf_format)}, sample = {_to_r_val(sample_path)}, varid = {_to_r_val(var_id)}, ilon = 1, ilat = 2)\n"
-            f"CDT:::.cdtData$GalParams$BIAS <- list(method = {_to_r_val(cdt_bias_m)}, dir = {_to_r_val(eff_bias_dir)})\n"
-            f"CDT:::.cdtData$GalParams$output <- list(dir = {_to_r_val(output_dir)}, format = {_to_r_val(output_format)})\n"
-            "CDT:::.cdtData$GalParams$message <- list('7' = 'Applying bias correction...', '8' = 'Error sample NetCDF', '9' = 'Error NetCDF info', '10' = 'Bounding box error')\n"
+            ".cdt_env$.cdtData$GalParams$action <- 'rmbias.temp'\n"
+            f".cdt_env$.cdtData$GalParams$period <- {_to_r_val(time_step)}\n"
+            f".cdt_env$.cdtData$GalParams$date.range <- list(start.year = {s_yr}, start.mon = {s_mo}, start.day = {s_dy}, end.year = {e_yr}, end.mon = {e_mo}, end.day = {e_dy})\n"
+            f".cdt_env$.cdtData$GalParams$INPUT <- list(dir = {_to_r_val(netcdf_dir)}, format = {_to_r_val(netcdf_format)}, sample = {_to_r_val(sample_path)}, varid = {_to_r_val(var_id)}, ilon = 1, ilat = 2)\n"
+            f".cdt_env$.cdtData$GalParams$BIAS <- list(method = {_to_r_val(cdt_bias_m)}, dir = {_to_r_val(eff_bias_dir)})\n"
+            f".cdt_env$.cdtData$GalParams$output <- list(dir = {_to_r_val(output_dir)}, format = {_to_r_val(output_format)})\n"
+            ".cdt_env$.cdtData$GalParams$message <- list('7' = 'Applying bias correction...', '8' = 'Error sample NetCDF', '9' = 'Error NetCDF info', '10' = 'Bounding box error')\n"
             "res <- CDT:::biasCorrectionClimData()\n"
         )
         return self._execute_r_code(r_cmd, log_dir=log_dir, job_name=f"apply_bias_temp_{start_date}_{end_date}")
