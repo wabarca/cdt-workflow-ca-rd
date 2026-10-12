@@ -316,7 +316,7 @@ class CDTBridge:
             f".cd$GalParams$STN.file <- {_to_r_val(station_file)}\n"
             f".cd$GalParams$INPUT <- list(dir = {_to_r_val(netcdf_dir)}, format = {_to_r_val(netcdf_format)}, sample = {_to_r_val(sample_path)}, varid = {_to_r_val(effective_varid)}, ilon = 1, ilat = 2)\n"
             f".cd$GalParams$base.period <- list(all.years = {_to_r_val(base_period_all_years)}, start.year = {start_year}, end.year = {end_year}, min.year = {min_year})\n"
-            f".cd$GalParams$BIAS <- list(method = {_to_r_val(cdt_bias_m)}, distr.name = {_to_r_val(cdt_distr)}, min.length = {min_length}, ts.support = 'points')\n"
+            f".cd$GalParams$BIAS <- list(method = {_to_r_val(cdt_bias_m)}, distr.name = {_to_r_val(cdt_distr)}, min.length = {min_length}, ts.support = 'points', chunks.exist = FALSE, chunks.dir = '', blon = 1, blat = 1)\n"
             f".cd$GalParams$interp <- list(method = {_to_r_val(cdt_interp_m)}, nmin = {nmin}, nmax = {nmax}, maxdist = {maxdist}, use.block = {_to_r_val(use_block)}, vgm.model = {_to_r_val(vgm_models)}, minstn = 10, demfile = {_to_r_val(dem_str)})\n"
             ".cd$GalParams$grid <- list(from = 'data', pars = NULL)\n"
             f".cd$GalParams$output <- list(dir = {_to_r_val(output_dir)})\n"
