@@ -179,20 +179,20 @@ python launcher/experiment_runner.py --config config/experiments_tmin/EXP_TN04_R
 Permite correr secuencialmente todos los experimentos asociados a una variable física:
 
 ```bash
-# Suite de Precipitación (EXP-R01 a EXP-R10) -> ~5.8 a 6.7 horas
+# Suite de Precipitación (EXP-R01 a EXP-R10) -> ~29 a 31 horas (o ~20h con Kriging puntual)
 python launcher/experiment_runner.py --suite rainfall
 
-# Suite de Temperatura Máxima (EXP-TX01 a EXP-TX08) -> ~11.0 a 12.5 horas
+# Suite de Temperatura Máxima (EXP-TX01 a EXP-TX08) -> ~15 a 16 horas
 python launcher/experiment_runner.py --suite tmax
 
-# Suite de Temperatura Mínima (EXP-TN01 a EXP-TN08) -> ~11.0 a 12.5 horas
+# Suite de Temperatura Mínima (EXP-TN01 a EXP-TN08) -> ~15 a 16 horas
 python launcher/experiment_runner.py --suite tmin
 ```
 
 #### 4. Ejecutar la Batería Completa de 26 Experimentos
 Ejecuta los 10 experimentos de lluvia, 8 de $T_{max}$ y 8 de $T_{min}$ en un único lote desatendido:
 ```bash
-python launcher/experiment_runner.py --suite all
+python launcher/experiment_runner.py --suite all  # 26 Exp. (~60 a 63 horas continuas / ~2.5 días en 18 núcleos)
 ```
 
 ---
@@ -435,14 +435,18 @@ output/experiments_ca/EXP_R07_RK_DEM/
 
 ---
 
-## 8. Rendimiento y Tiempos de Cómputo (Intel Xeon Silver 4210R)
+## 8. Rendimiento y Tiempos de Cómputo Calibrados (Workstation 18 Núcleos)
 
-Configuración de hardware: **Intel Xeon Silver 4210R (10C/20T @ 2.40 GHz), detección automática de núcleos (`N - 1`), 64 GB RAM, NVMe SSD**:
+Configuración de hardware: **Intel Xeon Silver 4210R (10C/20T @ 2.40 GHz), 18 núcleos activos (`--cores 18`), 64 GB RAM, NVMe SSD**:
 
 | Suite | Núm. Exp. | Días por Exp. | Tiempo por Exp. | Tiempo Total Suite | Consumo RAM Máx. |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Precipitación (CHIRPS)** | 10 | 10,958 | 35 – 42 min | **5.8 – 6.7 horas** | 2.5 – 4.5 GB |
-| **Temperatura Máxima ($T_{max}$)** | 8 | 10,958 | 80 – 95 min | **11.0 – 12.5 horas** | 3.5 – 4.6 GB |
-| **Temperatura Mínima ($T_{min}$)** | 8 | 10,958 | 80 – 95 min | **11.0 – 12.5 horas** | 3.5 – 4.6 GB |
-| **Total Global** | **26** | **10,958** | — | **28.0 – 31.5 horas** | **4.6 GB (<8% de 64 GB)** |
+| **Precipitación (CHIRPS)** | 10 | 10,958 | 1.1 h (IDW) – 4.2 h (Block OKR) | **~29.0 – 31.0 horas** | 2.5 – 4.5 GB |
+| **Temperatura Máxima ($T_{max}$)** | 8 | 10,958 | 1.2 h (IDW) – 2.4 h (RK DEM) | **~15.0 – 16.0 horas** | 3.5 – 4.6 GB |
+| **Temperatura Mínima ($T_{min}$)** | 8 | 10,958 | 1.2 h (IDW) – 2.4 h (RK DEM) | **~15.0 – 16.0 horas** | 3.5 – 4.6 GB |
+| **Total Global (26 Experimentos)** | **26** | **10,958** | — | **~60.0 – 63.0 horas** | **4.6 GB (<8% de 64 GB)** |
+
+> **Nota sobre Optimización Geostadística:** Los experimentos de lluvia que implementan Kriging por Bloques con 3 pasadas y máscara logística (`EXP_R03`, `EXP_R04`, `EXP_R05`, `EXP_R07`) requieren ~4.2 h debido a la integración numérica 2D y al doble Kriging diario (residuales + probabilidad logit). Si se configura Kriging puntual (`use_block: false`), el tiempo de dichos experimentos se reduce a ~1.8 h, situando la suite completa en **~48 horas (~2 días continuos)**.
+> 
+> **Formato de Tiempos en Consola:** El lanzador (`launcher/experiment_runner.py`) formatea automáticamente el tiempo transcurrido en horas y minutos legibles (`format_duration()`, p. ej. `4h 16m 40s`), preservando el valor numérico en segundos dentro del `manifest.json`.
 

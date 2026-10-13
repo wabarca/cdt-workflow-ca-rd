@@ -604,20 +604,21 @@ def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos
     story.append(t_table_hw)
     story.append(Spacer(1, 4))
 
-    story.append(Paragraph("6.2. Diagnóstico Técnico de la GUI de CDT y Tiempos de Cómputo Estimados", h2_style))
+    story.append(Paragraph("6.2. Diagnóstico Técnico de CDT y Tiempos de Cómputo Calibrados (18 Núcleos)", h2_style))
     story.append(Paragraph(
-        "<b>Diagnóstico de Paralelización en GUI:</b> (1) <i>Desconexión de Ámbito:</i> Los cuadros de diálogo reinicializan <code>nb.cores = 2</code>, ignorando la configuración global. (2) <i>Bloqueo Tcl/Tk:</i> <code>doSNOW</code> ejecuta <code>tcl(\"update\")</code> en cada fecha, colapsando sockets en Windows con &gt;4-8 workers. (3) <i>Penalización Hyper-Threading:</i> 19 workers compiten por unidades FPU y saturan la caché L3. "
-        "<b>Solución Python Headless (<code>launcher/cdt_bridge.py</code>):</b> Corre en batch sin Tcl/Tk e inyecta <code>nb.cores = 9L</code> fijos, logrando <b>100% de uso de CPU</b>.",
+        "<b>Diagnóstico de Paralelización y Rendimiento:</b> (1) <i>Modo Headless:</i> La orquestación en Python elimina la dependencia de Tcl/Tk e inyecta paralelismo estable en <code>.cdtData$Config$parallel</code> mediante clústeres de sockets en Windows con hasta 18 workers activos. "
+        "(2) <i>Diferenciación de Carga:</i> Los métodos algebraicos (IDW, Barnes, Shepard) computan 30 años en ~1.1–2.3 h; Regression Kriging en temperatura con DEM toma ~2.2–2.6 h (sin máscara de lluvia); y Kriging por Bloques con 3 pasadas y máscara logística (R03, R04, R05, R07) requiere ~4.0–4.5 h debido a la integración numérica 2D y doble Kriging diario. "
+        "(3) <i>Formato de Monitoreo:</i> El orquestador presenta los tiempos transcurridos en formato legible de horas y minutos (ej. <code>4h 16m 40s</code>) en consola y en el <code>manifest.json</code>.",
         body_style
     ))
     story.append(Spacer(1, 2))
 
-    th_tm = [Paragraph("Suite de Experimentos", th_style), Paragraph("Número de Exp. y Métodos Clave", th_style), Paragraph("Tiempo Estimado (30 años)", th_style), Paragraph("Memoria RAM", th_style)]
+    th_tm = [Paragraph("Suite de Experimentos", th_style), Paragraph("Número de Exp. y Métodos Clave", th_style), Paragraph("Tiempo Calibrado (18 Núcleos)", th_style), Paragraph("Memoria RAM", th_style)]
     rows_tm = [
-        [Paragraph("<b>Precipitación (CHIRPS)</b>", td_bold), Paragraph("<b>10 Experimentos (EXP-R01 a R10):</b> RnoR Logit, QM Gamma/Weibull/Lognorm/ECDF, RK Orográfico, Barnes, CSc y NN-3D", td_style), Paragraph("<b>~5.8 a 6.7 horas</b>", td_style), Paragraph("~2.5–4.5 GB", td_style)],
-        [Paragraph("<b>Temperatura Máxima (Tmax)</b>", td_bold), Paragraph("<b>8 Experimentos (EXP-TX01 a TX08):</b> Control, RK Solo DEM, Skew-Normal, NN-3D Aspecto, Gumbel Olas Calor, Lognorm, Admon, Barnes", td_style), Paragraph("<b>~11.0 a 12.5 horas</b>", td_style), Paragraph("~3.5–4.6 GB", td_style)],
-        [Paragraph("<b>Temperatura Mínima (Tmin)</b>", td_bold), Paragraph("<b>8 Experimentos (EXP-TN01 a TN08):</b> Control, RK Solo DEM, Skew-Normal 'Nortes', NN-3D Inversiones, Gumbel Heladas, Lognorm, Admon, Barnes", td_style), Paragraph("<b>~11.0 a 12.5 horas</b>", td_style), Paragraph("~3.5–4.6 GB", td_style)],
-        [Paragraph("<b>TOTAL BATERÍA COMPLETA</b>", td_bold), Paragraph("<b>26 Experimentos Completos (Precipitación + Tmax + Tmin / 1991–2020)</b>", td_bold), Paragraph("<b>~28.0 a 31.5 horas</b>", td_bold), Paragraph("<b>Máx. 4.6 GB</b>", td_bold)],
+        [Paragraph("<b>Precipitación (CHIRPS)</b>", td_bold), Paragraph("<b>10 Experimentos (EXP-R01 a R10):</b> RnoR Logit, QM Gamma/Weibull/Lognorm/ECDF, RK Orográfico, Barnes, CSc y NN-3D", td_style), Paragraph("<b>~29.0 a 31.0 horas</b><br/><font size=6.5 color='#64748B'>(~20 h si Kriging puntual)</font>", td_style), Paragraph("~2.5–4.5 GB", td_style)],
+        [Paragraph("<b>Temperatura Máxima (Tmax)</b>", td_bold), Paragraph("<b>8 Experimentos (EXP-TX01 a TX08):</b> Control, RK Solo DEM, Skew-Normal, NN-3D Aspecto, Gumbel Olas Calor, Lognorm, Admon, Barnes", td_style), Paragraph("<b>~15.0 a 16.0 horas</b>", td_style), Paragraph("~3.5–4.6 GB", td_style)],
+        [Paragraph("<b>Temperatura Mínima (Tmin)</b>", td_bold), Paragraph("<b>8 Experimentos (EXP-TN01 a TN08):</b> Control, RK Solo DEM, Skew-Normal 'Nortes', NN-3D Inversiones, Gumbel Heladas, Lognorm, Admon, Barnes", td_style), Paragraph("<b>~15.0 a 16.0 horas</b>", td_style), Paragraph("~3.5–4.6 GB", td_style)],
+        [Paragraph("<b>TOTAL BATERÍA COMPLETA</b>", td_bold), Paragraph("<b>26 Experimentos Completos (Precipitación + Tmax + Tmin / 1991–2020)</b>", td_bold), Paragraph("<b>~60.0 a 63.0 horas</b><br/><font size=6.5 color='#64748B'>(~48 h con Kriging puntual)</font>", td_bold), Paragraph("<b>Máx. 4.6 GB</b>", td_bold)],
     ]
     t_table_tm = Table([th_tm] + rows_tm, colWidths=[1.50 * inch, 3.10 * inch, 1.45 * inch, 1.45 * inch])
     t_table_tm.setStyle(TableStyle([

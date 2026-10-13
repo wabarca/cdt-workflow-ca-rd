@@ -191,14 +191,26 @@ Configurados en [`config/experiments_tmin/`](file:///d:/Workspace/CDT-8.0/config
 
 ## 7. Rendimiento de Hardware y Modo de Uso del Lanzador en Python
 
-### Evaluación en Servidor Intel Xeon Silver 4210R (9 Workers, 64 GB RAM, NVMe):
+### Evaluación y Calibración en Workstation (18 Núcleos Paralelos, 64 GB RAM, NVMe):
 
-| Suite de Experimentos | Núm. Exp. | Días / Exp. | Tiempo por Exp. | Tiempo Total Suite | Consumo RAM Máx. |
+| Suite de Experimentos | Núm. Exp. | Días / Exp. | Rango Tiempo por Exp. | Tiempo Total Suite | Consumo RAM Máx. |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Precipitación (CHIRPS)** | 10 | 10,958 | 35 – 42 min | **5.8 – 6.7 horas** | 2.5 – 4.5 GB |
-| **Temperatura Máxima ($T_{max}$)** | 8 | 10,958 | 80 – 95 min | **11.0 – 12.5 horas** | 3.5 – 4.6 GB |
-| **Temperatura Mínima ($T_{min}$)** | 8 | 10,958 | 80 – 95 min | **11.0 – 12.5 horas** | 3.5 – 4.6 GB |
-| **TOTAL GENERAL 26 EXPERIMENTOS** | **26** | **10,958** | — | **28.0 – 31.5 horas** | **Máx. 4.6 GB (<8% RAM)** |
+| **Precipitación (CHIRPS)** | 10 | 10,958 | 1.1 h (IDW) a 4.2 h (Block OKR) | **~29.0 – 31.0 horas** | 2.5 – 4.5 GB |
+| **Temperatura Máxima ($T_{max}$)** | 8 | 10,958 | 1.2 h (IDW) a 2.4 h (RK DEM) | **~15.0 – 16.0 horas** | 3.5 – 4.6 GB |
+| **Temperatura Mínima ($T_{min}$)** | 8 | 10,958 | 1.2 h (IDW) a 2.4 h (RK DEM) | **~15.0 – 16.0 horas** | 3.5 – 4.6 GB |
+| **TOTAL GENERAL 26 EXPERIMENTOS** | **26** | **10,958** | — | **~60.0 – 63.0 horas** | **Máx. 4.6 GB (<8% RAM)** |
+
+> [!NOTE]
+> **Diferenciación de Carga Computacional:**
+> - **Interpolaciones algebraicas (IDW, Barnes, Shepard):** Evalúan funciones analíticas directas ($O(N)$), completando 30 años en ~1.1 a 2.3 horas.
+> - **Regression Kriging en Temperatura con DEM:** No utiliza máscara binomial de lluvia, completando cada experimento en ~2.2 a 2.6 horas.
+> - **Kriging Ordinario por Bloques con Máscara Logística (Lluvia):** Al tener `use_block: true` y `RnoR: logit`, ejecuta 2 procesos de Kriging por cada una de las 3 pasadas diarias (6 Krigings por día con integración numérica 2D), requiriendo ~4.0 a 4.5 horas. Con Kriging puntual (`use_block: false`), el tiempo desciende a ~1.8 horas, reduciendo la batería completa a **~48 horas (~2 días)**.
+
+### Formato de Salida y Monitoreo de Tiempos:
+El orquestador (`launcher/experiment_runner.py`) implementa la utilidad `format_duration()` que presenta los tiempos de ejecución en formato legible de horas, minutos y segundos:
+- Al terminar cada corrida: `>>> [OK] EXP_R03 completado con estado SUCCESS en 4h 16m 40s (15400.25s)`.
+- En la tabla resumen: columna `Tiempo` formateada y pie con el `TIEMPO TOTAL ACUMULADO DE LA SUITE`.
+- En el archivo `manifest.json`: se preserva `execution_time_sec` (numérico) y se añade `execution_time_formatted`.
 
 ### Comandos de Ejecución CLI (`launcher/experiment_runner.py`):
 
@@ -206,16 +218,16 @@ Configurados en [`config/experiments_tmin/`](file:///d:/Workspace/CDT-8.0/config
 # Diagnóstico de dependencias
 python launcher/experiment_runner.py --check-env
 
-# Ejecutar suites completas
-python launcher/experiment_runner.py --suite rainfall   # 10 Exp. Lluvia (~6 h)
-python launcher/experiment_runner.py --suite tmax       # 8 Exp. Tmax (~11.5 h)
-python launcher/experiment_runner.py --suite tmin       # 8 Exp. Tmin (~11.5 h)
+# Ejecutar suites completas (Workstation con 18 núcleos)
+python launcher/experiment_runner.py --suite rainfall --cores 18   # 10 Exp. Lluvia (~29-31 h)
+python launcher/experiment_runner.py --suite tmax     --cores 18   # 8 Exp. Tmax (~15-16 h)
+python launcher/experiment_runner.py --suite tmin     --cores 18   # 8 Exp. Tmin (~15-16 h)
 
 # Ejecutar corrida batch completa de los 26 experimentos
-python launcher/experiment_runner.py --suite all        # 26 Exp. (~28-31.5 h)
+python launcher/experiment_runner.py --suite all      --cores 18   # 26 Exp. (~60-63 h continuas)
 
 # Ejecutar un experimento individual parametrizado
-python launcher/experiment_runner.py --config config/experiments_rainfall/EXP_R05_RK_Topography_BernoulliWeibull.yaml
+python launcher/experiment_runner.py --config config/experiments_rainfall/EXP_R03_SBA_OKR_BernoulliGamma.yaml --cores 18
 ```
 
 ---

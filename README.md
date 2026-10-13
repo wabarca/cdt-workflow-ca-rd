@@ -352,28 +352,28 @@ python launcher/experiment_runner.py --check-env
 python launcher/experiment_runner.py --check-data             # Valida región por defecto (Centroamérica)
 python launcher/experiment_runner.py --check-data --region rd # Valida República Dominicana
 
-# 3. Ejecutar suite de Precipitación (10 Experimentos, ~6h con detección automática de núcleos)
-python launcher/experiment_runner.py --suite rainfall
-python launcher/experiment_runner.py --suite rainfall --region rd
+# 3. Ejecutar suite de Precipitación (10 Experimentos, ~29-31h en 18 núcleos; o ~20h con Kriging puntual)
+python launcher/experiment_runner.py --suite rainfall --cores 18
+python launcher/experiment_runner.py --suite rainfall --region rd --cores 18
 
-# 4. Ejecutar suite de Temperatura Máxima (8 Experimentos, ~11.5h)
-python launcher/experiment_runner.py --suite tmax
-python launcher/experiment_runner.py --suite tmax --region rd
+# 4. Ejecutar suite de Temperatura Máxima (8 Experimentos, ~15-16h)
+python launcher/experiment_runner.py --suite tmax --cores 18
+python launcher/experiment_runner.py --suite tmax --region rd --cores 18
 
-# 5. Ejecutar suite de Temperatura Mínima (8 Experimentos, ~11.5h)
-python launcher/experiment_runner.py --suite tmin
-python launcher/experiment_runner.py --suite tmin --region rd
+# 5. Ejecutar suite de Temperatura Mínima (8 Experimentos, ~15-16h)
+python launcher/experiment_runner.py --suite tmin --cores 18
+python launcher/experiment_runner.py --suite tmin --region rd --cores 18
 
-# 6. Ejecutar corrida batch completa (26 Experimentos, ~28-31.5h)
-python launcher/experiment_runner.py --suite all
-python launcher/experiment_runner.py --suite all --region rd
+# 6. Ejecutar corrida batch completa (26 Experimentos, ~60-63h continuas)
+python launcher/experiment_runner.py --suite all --cores 18
+python launcher/experiment_runner.py --suite all --region rd --cores 18
 
 # 7. Generar reporte de benchmark, diagramas de Taylor y dashboard interactivo HTML
 python launcher/experiment_runner.py --benchmark
 python launcher/experiment_runner.py --benchmark --region rd
 ```
 
-> **Paralelismo automático:** Por defecto, el orquestador detecta automáticamente el número de núcleos de la máquina y reserva 1 para el sistema (`N - 1`). Puedes forzar un número específico usando `--cores 8`.
+> **Paralelismo y Formato de Tiempo:** Por defecto, el orquestador detecta automáticamente los núcleos disponibles (`N - 1`), o puedes asignar explícitamente los núcleos deseados con `--cores 18`. Los tiempos de ejecución se visualizan dinámicamente en formato legible de horas, minutos y segundos (`4h 16m 40s`).
 
 ### Opción B: Ejecución en Contenedores Docker / Docker Compose (Cero Dependencias en el Host)
 
