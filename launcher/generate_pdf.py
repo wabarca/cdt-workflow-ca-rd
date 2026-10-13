@@ -1,10 +1,11 @@
 """PDF Document Generator for CDT Experiments Matrix (Central America & Dominican Republic).
 
 Generates a publication-grade scientific technical document in PORTRAIT format (8.5 x 11 inches),
-with standard readable font sizes (10 pt body text), harmonious spacing, elegant card containers,
-numbered pages (Página X de Y), professional running headers/footers, comprehensive summary matrices
-for all 26 experiments (10 Rainfall, 8 Tmax, 8 Tmin), detailed per-cell parameter rationales,
-typographically rendered mathematical equations, and 15 annotated scientific references.
+with standard readable font sizes, harmonious spacing, elegant card containers, numbered pages (Página X de Y),
+professional running headers/footers, complete step-by-step CDT architecture tables (Rainfall: 3 steps;
+Temperature: 5 steps), comprehensive matrices for all 26 experiments (10 Rainfall, 8 Tmax, 8 Tmin) with
+detailed per-step parameter breakdowns and physical rationales, typographically rendered mathematical equations,
+calibrated hardware benchmarks, and 19 annotated scientific references.
 """
 
 from __future__ import annotations
@@ -17,7 +18,6 @@ from reportlab.lib.units import inch
 from reportlab.pdfgen import canvas
 from reportlab.platypus import (
     HRFlowable,
-    KeepTogether,
     PageBreak,
     Paragraph,
     SimpleDocTemplate,
@@ -69,54 +69,6 @@ class NumberedCanvas(canvas.Canvas):
         self.restoreState()
 
 
-def create_step_box(
-    step_num: str,
-    title: str,
-    menu_ref: str,
-    details: str,
-    bg_color: colors.Color,
-    border_color: colors.Color,
-    step_style: ParagraphStyle,
-    detail_style: ParagraphStyle,
-    width: float = 7.50 * inch,
-) -> Table:
-    """Helper to create a stylized visual diagram step block."""
-    p_title = Paragraph(f"<b>{step_num}: {title}</b> &nbsp;&nbsp;&nbsp;&nbsp; <font size=8.0 color='#475569'><i>[{menu_ref}]</i></font>", step_style)
-    p_details = Paragraph(details, detail_style)
-    
-    t = Table([[p_title], [p_details]], colWidths=[width])
-    t.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), bg_color),
-        ("BOX", (0, 0), (-1, -1), 1.0, border_color),
-        ("TOPPADDING", (0, 0), (-1, -1), 3.5),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 3.5),
-        ("LEFTPADDING", (0, 0), (-1, -1), 8.0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 8.0),
-    ]))
-    return t
-
-
-def create_arrow_block(text: str = "▼", width: float = 7.50 * inch) -> Table:
-    """Helper to create a directional flow arrow between diagram steps."""
-    style = ParagraphStyle(
-        "ArrowStyle",
-        fontName="Helvetica-Bold",
-        fontSize=8.5,
-        leading=10.0,
-        textColor=colors.HexColor("#0D9488"),
-        alignment=1,
-    )
-    p = Paragraph(f"<b>{text}</b>", style)
-    t = Table([[p]], colWidths=[width])
-    t.setStyle(TableStyle([
-        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("TOPPADDING", (0, 0), (-1, -1), 1.0),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 1.0),
-    ]))
-    return t
-
-
 def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos_CDT_Centroamerica_Dominicana.pdf") -> Path:
     output_pdf = Path(output_path).resolve()
     output_pdf.parent.mkdir(parents=True, exist_ok=True)
@@ -138,19 +90,15 @@ def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos
     DARK_TEXT = colors.HexColor("#0F172A") # Slate Dark
     LIGHT_BG = colors.HexColor("#F8FAFC")  # Table Alt Row
     BORDER_COLOR = colors.HexColor("#CBD5E1")
-    BOX_BG_BLUE = colors.HexColor("#EFF6FF")
-    BOX_BORDER_BLUE = colors.HexColor("#93C5FD")
     BOX_BG_TEAL = colors.HexColor("#F0FDFA")
     BOX_BORDER_TEAL = colors.HexColor("#99F6E4")
-    BOX_BG_AMBER = colors.HexColor("#FFFBEB")
-    BOX_BORDER_AMBER = colors.HexColor("#FDE68A")
 
     title_style = ParagraphStyle(
         "DocTitle",
         parent=styles["Heading1"],
         fontName="Helvetica-Bold",
-        fontSize=15.0,
-        leading=18.5,
+        fontSize=14.5,
+        leading=18.0,
         textColor=PRIMARY,
         alignment=1,
         spaceAfter=3,
@@ -164,17 +112,17 @@ def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos
         leading=13.0,
         textColor=SECONDARY,
         alignment=1,
-        spaceAfter=6,
+        spaceAfter=5,
     )
 
     h1_style = ParagraphStyle(
         "H1Style",
         parent=styles["Heading2"],
         fontName="Helvetica-Bold",
-        fontSize=11.5,
-        leading=14.5,
+        fontSize=11.0,
+        leading=14.0,
         textColor=PRIMARY,
-        spaceBefore=6.0,
+        spaceBefore=5.0,
         spaceAfter=3.0,
     )
 
@@ -182,29 +130,29 @@ def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos
         "H2Style",
         parent=styles["Heading3"],
         fontName="Helvetica-Bold",
-        fontSize=10.2,
-        leading=13.2,
+        fontSize=9.8,
+        leading=12.5,
         textColor=SECONDARY,
-        spaceBefore=5.0,
-        spaceAfter=2.5,
+        spaceBefore=4.0,
+        spaceAfter=2.0,
     )
 
     body_style = ParagraphStyle(
         "BodyDark",
         parent=styles["BodyText"],
         fontName="Helvetica",
-        fontSize=9.5,
-        leading=13.0,
+        fontSize=9.0,
+        leading=12.2,
         textColor=DARK_TEXT,
-        spaceAfter=4.0,
+        spaceAfter=3.5,
     )
 
     formula_style = ParagraphStyle(
         "FormulaBox",
         parent=styles["Normal"],
         fontName="Helvetica",
-        fontSize=9.0,
-        leading=12.5,
+        fontSize=8.2,
+        leading=11.2,
         textColor=DARK_TEXT,
     )
 
@@ -212,35 +160,19 @@ def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos
         "RefText",
         parent=styles["BodyText"],
         fontName="Helvetica",
-        fontSize=8.5,
-        leading=11.5,
+        fontSize=7.2,
+        leading=9.0,
         textColor=DARK_TEXT,
-        spaceAfter=3.5,
+        spaceAfter=1.4,
         leftIndent=10,
         firstLineIndent=-10,
-    )
-
-    step_title_style = ParagraphStyle(
-        "StepTitle",
-        fontName="Helvetica-Bold",
-        fontSize=9.5,
-        leading=12.0,
-        textColor=PRIMARY,
-    )
-
-    step_detail_style = ParagraphStyle(
-        "StepDetail",
-        fontName="Helvetica",
-        fontSize=8.8,
-        leading=11.5,
-        textColor=DARK_TEXT,
     )
 
     th_style = ParagraphStyle(
         "TableHeader",
         fontName="Helvetica-Bold",
-        fontSize=8.5,
-        leading=11.0,
+        fontSize=8.0,
+        leading=10.2,
         textColor=colors.white,
         alignment=1,
     )
@@ -248,16 +180,69 @@ def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos
     td_style = ParagraphStyle(
         "TableCell",
         fontName="Helvetica",
-        fontSize=8.0,
-        leading=10.5,
+        fontSize=7.8,
+        leading=10.0,
         textColor=DARK_TEXT,
     )
 
     td_bold = ParagraphStyle(
         "TableCellBold",
         fontName="Helvetica-Bold",
-        fontSize=8.0,
-        leading=10.5,
+        fontSize=7.8,
+        leading=10.0,
+        textColor=PRIMARY,
+        alignment=1,
+    )
+
+    # Estilos compactos para tablas de experimentos
+    th_sm = ParagraphStyle(
+        "TableHeaderSm",
+        fontName="Helvetica-Bold",
+        fontSize=7.5,
+        leading=9.5,
+        textColor=colors.white,
+        alignment=1,
+    )
+
+    th_xs = ParagraphStyle(
+        "TableHeaderXs",
+        fontName="Helvetica-Bold",
+        fontSize=7.0,
+        leading=9.0,
+        textColor=colors.white,
+        alignment=1,
+    )
+
+    td_sm = ParagraphStyle(
+        "TableCellSm",
+        fontName="Helvetica",
+        fontSize=7.1,
+        leading=8.8,
+        textColor=DARK_TEXT,
+    )
+
+    td_sm_bold = ParagraphStyle(
+        "TableCellSmBold",
+        fontName="Helvetica-Bold",
+        fontSize=7.1,
+        leading=8.8,
+        textColor=PRIMARY,
+        alignment=1,
+    )
+
+    td_xs = ParagraphStyle(
+        "TableCellXs",
+        fontName="Helvetica",
+        fontSize=6.7,
+        leading=8.2,
+        textColor=DARK_TEXT,
+    )
+
+    td_xs_bold = ParagraphStyle(
+        "TableCellXsBold",
+        fontName="Helvetica-Bold",
+        fontSize=6.7,
+        leading=8.2,
         textColor=PRIMARY,
         alignment=1,
     )
@@ -269,7 +254,7 @@ def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos
     # =========================================================================
     story.append(Paragraph("MATRIZ DE EXPERIMENTOS Y DISEÑO METODOLÓGICO CON CLIMATE DATA TOOLS (CDT)", title_style))
     story.append(Paragraph("Reconstrucción y Fusión Gridded de Alta Resolución (1991–2020) para <b>Centroamérica y República Dominicana</b>", subtitle_style))
-    story.append(HRFlowable(width="100%", thickness=1.5, color=SECONDARY, spaceBefore=0, spaceAfter=6))
+    story.append(HRFlowable(width="100%", thickness=1.5, color=SECONDARY, spaceBefore=0, spaceAfter=5))
 
     story.append(Paragraph("1. Justificación Científica del Problema y Objetivos de la Fusión", h1_style))
     story.append(Paragraph(
@@ -281,7 +266,7 @@ def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos
         "<br/><br/>"
         "• <b>Temperatura Mínima (CHIRTS Tmin):</b> No modela inversiones térmicas nocturnas ni drenaje catabático en valles intramontanos cerrados (Constanza, Valle Nuevo, Quetzaltenango) con heladas (&lt;0 &deg;C), ni caídas térmicas bruscas asimétricas por frentes fríos invernales (<i>Nortes</i>) (Alfaro et al., 2018). "
         "<br/><br/>"
-        "<b>Objetivo:</b> Ejecutar una matriz de <b>26 experimentos controlados</b> (10 de Precipitación, 8 de $T_{max}$ y 8 de $T_{min}$) para determinar la configuración óptima de fusión espacial.",
+        "<b>Objetivo:</b> Ejecutar una matriz de <b>26 experimentos controlados</b> (10 de Precipitación, 8 de Tmax y 8 de Tmin) estructurados estrictamente según las etapas de procesamiento de CDT para determinar la configuración óptima de fusión espacial.",
         body_style
     ))
     story.append(Spacer(1, 4))
@@ -293,7 +278,7 @@ def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos
         [Paragraph("<b>CHIRPS / CHIRTS</b>", td_bold), Paragraph("CHG Infrared Precipitation / Temp. with Stations", td_style), Paragraph("Bases de datos satelitales cuasi-globales a 0.05° (~5.5 km) de precipitación y temperatura diaria.", td_style)],
         [Paragraph("<b>DEM SRTM</b>", td_bold), Paragraph("Shuttle Radar Topography Mission (90m)", td_style), Paragraph("Modelo Digital de Elevación para gradiente vertical (&part;<i>T</i>/&part;<i>z</i> &approx; -6.5 &deg;C/km) y sombras orográficas.", td_style)],
         [Paragraph("<b>SBA / RK</b>", td_bold), Paragraph("Simple Bias Adjustment / Regression Kriging", td_style), Paragraph("SBA aplica ajuste residual directo. RK combina regresión lineal multivariada con Kriging de residuos.", td_style)],
-        [Paragraph("<b>BSc / CSc</b>", td_bold), Paragraph("Barnes Scheme / Cressman Scheme", td_style), Paragraph("Análisis objetivo: Barnes aplica decaimiento gaussiano continuo; Cressman usa radio esférico.", td_style)],
+        [Paragraph("<b>BSc / CSc</b>", td_bold), Paragraph("Barnes Scheme / Cressman Scheme", td_style), Paragraph("Análisis objetivo: Barnes aplica decaimiento gaussiano continuo; Cressman usa radio esférico finito.", td_style)],
         [Paragraph("<b>NN-3D / RnoR</b>", td_bold), Paragraph("Nearest Neighbor 3D / Rain-No-Rain Mask", td_style), Paragraph("NN-3D pondera distancia y cota altimétrica (&Delta;<i>z</i>). RnoR es un filtro logístico para días secos.", td_style)],
         [Paragraph("<b>QM / KGE</b>", td_bold), Paragraph("Quantile Mapping / Kling-Gupta Efficiency", td_style), Paragraph("QM iguala funciones acumuladas de probabilidad. KGE evalúa correlación, sesgo y variabilidad.", td_style)],
     ]
@@ -314,120 +299,103 @@ def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos
     story.append(PageBreak())
 
     # =========================================================================
-    # PÁGINA 2: DIAGRAMA DE FLUJO Y MATRIZ PRECIPITACIÓN (CHIRPS - 10 EXP)
+    # PÁGINA 2: ARQUITECTURA SECUENCIAL DE PASOS EN CDT
     # =========================================================================
-    story.append(Paragraph("3. Diagrama de Flujo y Matriz Experimental: PRECIPITACIÓN (CHIRPS 1991–2020)", h1_style))
+    story.append(Paragraph("3. Arquitectura de Flujo Secuencial por Pasos en CDT y Justificación Climatológica", h1_style))
     story.append(Paragraph(
-        "El flujo de trabajo en CDT para precipitación consta de 3 etapas secuenciales articuladas para corregir volumen, frecuencia de lluvia y forzamiento orográfico:",
+        "La metodología de fusión en CDT se estructura en etapas analíticas secuenciales independientes que permiten aislar y evaluar rigurosamente el impacto de cada técnica en el modelado climático regional:",
         body_style
     ))
     story.append(Spacer(1, 2))
 
-    story.append(create_step_box(
-        "PASO 1 & 2: SESGO", "Compute / Apply Bias (mbvar, qmdist: Gamma, Weibull, Lognormal, qm.ecdf)",
-        "CDT GUI: Merging Data > Rainfall > Compute Bias Coefficients / Apply Bias Correction",
-        "• Ajuste no lineal de CDFs y corrección del error de soporte espacial mediante Ordinary Kriging por Bloques (<code>block_okr</code> a 0.05°).",
-        BOX_BG_AMBER, BOX_BORDER_AMBER, step_title_style, step_detail_style
-    ))
-    story.append(create_arrow_block("▼"))
-    story.append(create_step_box(
-        "PASO 3: RNOR", "Máscara Probabilística Lluvia/No-Lluvia (Regresión Logística GLM, wet=1.0 mm, CutOff=3)",
-        "CDT GUI: Merging Data > Rainfall > Compute Rain-No-Rain Mask / Apply Rain-No-Rain Mask",
-        "• Modela espacialmente <i>P</i>(Lluvia &gt; 0) para suprimir el drizzle espurio de cirros y restituir las rachas secas de Canícula en el Corredor Seco.",
-        BOX_BG_TEAL, BOX_BORDER_TEAL, step_title_style, step_detail_style
-    ))
-    story.append(create_arrow_block("▼"))
-    story.append(create_step_box(
-        "PASO 4 & 5: MERGING & CF-1.8", "Fusión Espacial Multiescala (SBA, RK con DEM/Pendiente, Barnes, Cressman, NN-3D) y Ensamblado 3D",
-        "CDT GUI: Merging Data > Rainfall > Merging Data | Python: launcher/netcdf_assembler.py",
-        "• 3 pasadas anidadas [0.70 (~260 km), 0.35 (~130 km), 0.15 (~55 km)] y ensamblado multitemporal CF-1.8 en NetCDF 3D (time, lat, lon).",
-        BOX_BG_BLUE, BOX_BORDER_BLUE, step_title_style, step_detail_style
-    ))
+    story.append(Paragraph("3.1. Cadena de Procesamiento para Precipitación (3 Etapas en CDT)", h2_style))
+    story.append(Paragraph("<font size=7.5 color='#475569'><i>Ruta en CDT GUI: Gridding > Merging Climate Data > Rainfall Data</i></font>", body_style))
+
+    th_arch_r = [
+        Paragraph("Paso en CDT", th_sm),
+        Paragraph("Acción en CDT", th_sm),
+        Paragraph("Opciones y Parámetros que se Varían", th_sm),
+        Paragraph("Justificación Física y Climatológica Regional", th_sm),
+    ]
+    rows_arch_r = [
+        [
+            Paragraph("<b>Paso 1:<br/>Compute Bias Coefficients</b><br/><i>(Cálculo de Coefs. de Sesgo)</i>", td_sm_bold),
+            Paragraph("Modela estadísticamente las discrepancias espaciales y distribucionales entre satélite y estaciones.", td_sm),
+            Paragraph("• Método: Multiplicativo móvil (<code>mbvar</code>), Mensual (<code>mbmon</code>), Quantile Mapping (<code>qmdist</code>), QM empírico (<code>qmecdf</code>).<br/>• Distribuciones: Bernoulli-Gamma, Bernoulli-Weibull, Bernoulli-LogNormal.<br/>• Interpolación: IDW (<i>p</i>=2), Kriging Ordinario (<code>okr</code>), Kriging por bloques (<code>use_block</code>).<br/>• Umbral de lluvia: <i>wet</i> = 1.0 mm.", td_sm),
+            Paragraph("La lluvia tropical presenta alta variabilidad por convección de mesoescala y forzamiento orográfico. CHIRPS sobreestima lloviznas y subestima tormentas severas. Modelar ocurrencia (Bernoulli) y magnitud (Gamma/Weibull) con Kriging por bloques remueve el sesgo sin crear ojos de buey (<i>bulls-eyes</i>).", td_sm),
+        ],
+        [
+            Paragraph("<b>Paso 2:<br/>Apply Bias Correction</b><br/><i>(Aplicación del Ajuste de Sesgo)</i>", td_sm_bold),
+            Paragraph("Transforma las 10,958 grillas diarias de satélite aplicando los coeficientes calculados.", td_sm),
+            Paragraph("• Rango temporal: 1991–2020 continuo.<br/>• Archivo <code>.rds</code> de parámetros del Paso 1.<br/>• Formato de salida: <code>rr_adj_%s%s%s.nc</code>.", td_sm),
+            Paragraph("Garantiza que las propiedades distribucionales y extremos de la serie satelital completa queden calibrados contra estaciones de superficie antes de intentar cualquier asimilación puntual, preservando la textura sinóptica.", td_sm),
+        ],
+        [
+            Paragraph("<b>Paso 3:<br/>Merging Data</b><br/><i>(Fusión Espacial de Datos)</i>", td_sm_bold),
+            Paragraph("Combina las grillas satelitales corregidas (<i>first guess</i>) con las observaciones de estaciones.", td_sm),
+            Paragraph("• Método de fusión: SBA, Cressman (CSc), Barnes (BSc), Regression Kriging (RK).<br/>• Pasadas multiescala (3 pasadas: 1.0°, 0.75°, 0.5°).<br/>• Máscara Lluvia/No-Lluvia (RnoR: <code>use</code>, <code>wet</code>, <code>smooth</code>).<br/>• Covariables: DEM, pendiente, orientación (<i>aspect</i>), lat/lon.<br/>• Recorte espacial con buffer de 10 km.", td_sm),
+            Paragraph("En zonas semiáridas (Corredor Seco y Azua), propagar lluvia a celdas secas genera lluvia irreal; la máscara RnoR preserva las rachas secas de la Canícula. Las pasadas multiescala corrigen sesgos regionales y ajustan la señal convectiva local en puntos de estación.", td_sm),
+        ],
+    ]
+    t_arch_r = Table([th_arch_r] + rows_arch_r, colWidths=[1.30 * inch, 1.65 * inch, 2.15 * inch, 2.40 * inch])
+    t_arch_r.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), PRIMARY),
+        ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("GRID", (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_BG]),
+        ("TOPPADDING", (0, 0), (-1, -1), 2.2),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2.2),
+        ("LEFTPADDING", (0, 0), (-1, -1), 3.5),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 3.5),
+    ]))
+    story.append(t_arch_r)
     story.append(Spacer(1, 4))
 
-    story.append(Paragraph("3.1. Matriz de Experimentos de Precipitación (10 Experimentos EXP-R01 a EXP-R10)", h2_style))
-    th_r = [
-        Paragraph("ID", th_style),
-        Paragraph("Paso 1: Sesgo *(¿Por qué?)*", th_style),
-        Paragraph("Paso 3: RnoR *(¿Por qué?)*", th_style),
-        Paragraph("Paso 4: Fusión *(¿Por qué?)*", th_style),
-        Paragraph("Justificación Física Global", th_style),
+    story.append(Paragraph("3.2. Cadena de Procesamiento para Temperatura (5 Etapas en CDT)", h2_style))
+    story.append(Paragraph("<font size=7.5 color='#475569'><i>Ruta en CDT GUI: Gridding > Merging Climate Data > Temperatures Data</i></font>", body_style))
+
+    th_arch_t = [
+        Paragraph("Paso en CDT", th_xs),
+        Paragraph("Acción en CDT", th_xs),
+        Paragraph("Opciones y Parámetros que se Varían", th_xs),
+        Paragraph("Justificación Física y Climatológica Regional", th_xs),
     ]
-    rows_r = [
+    rows_arch_t = [
         [
-            Paragraph("<b>EXP-R01</b>", td_bold),
-            Paragraph("<b>mbvar + idw (2.5°)</b><br/>Control simple móvil.", td_style),
-            Paragraph("<b>none (Sin filtro)</b><br/>Mide error por drizzle.", td_style),
-            Paragraph("<b>SBA (1 pasada) + idw</b><br/>Fusión clásica monocapa.", td_style),
-            Paragraph("<b>Línea Base:</b> Control nulo de referencia para medir mejoras.", td_style),
+            Paragraph("<b>Paso 1:<br/>Compute Downscaling Coeffs</b><br/><i>(Coefs. Desescalado)</i>", td_xs_bold),
+            Paragraph("Modela el gradiente térmico vertical (<i>lapse rate</i>) estación–elevación.", td_xs),
+            Paragraph("• Paso temporal: diario, mensual o estacional.<br/>• DEM de alta resolución (SRTM 90m / GEBCO).<br/>• Formato de coeficientes: archivo <code>.rds</code>.", td_xs),
+            Paragraph("La temperatura decrece con la altitud (&part;<i>T</i>/&part;<i>z</i> &approx; -5.5 a -6.5 °C/km). En Centroamérica y RD, la compleja orografía genera fuertes contrastes térmicos en distancias de pocos kilómetros.", td_xs),
         ],
         [
-            Paragraph("<b>EXP-R02</b>", td_bold),
-            Paragraph("<b>mbvar + idw (2.5°)</b><br/>Mantiene sesgo móvil.", td_style),
-            Paragraph("<b>Logit GLM (1.0 mm)</b><br/>Trunca cirros no lluviosos.", td_style),
-            Paragraph("<b>SBA (3 pasadas: 0.70, 0.35, 0.15)</b><br/>Resuelve de 260 km a 55 km.", td_style),
-            Paragraph("<b>Impacto RnoR:</b> Restaura días secos de Canícula en Corredor Seco.", td_style),
+            Paragraph("<b>Paso 2:<br/>Downscaling Data</b><br/><i>(Desescalado Grillas)</i>", td_xs_bold),
+            Paragraph("Proyecta las grillas térmicas sobre la malla topográfica fina del DEM.", td_xs),
+            Paragraph("• Interpolación: Bilineal (<code>blin</code>), IDW, Kriging Ordinario (<code>okr</code>).<br/>• Grilla objetivo: Resolución 0.05° (~5.5 km).<br/>• Formato de salida: <code>tmax_down_%s%s%s.nc</code>.", td_xs),
+            Paragraph("Corrige la distorsión de altura de la grilla satelital/reanálisis. Alta montaña (Cordillera Central en RD, Talamanca en CR/PA, Sierra Madre en GT/HN) y valles quedan con su cota real.", td_xs),
         ],
         [
-            Paragraph("<b>EXP-R03</b>", td_bold),
-            Paragraph("<b>qm.dist Gamma + okr</b><br/>Gamma asimetría convectiva.", td_style),
-            Paragraph("<b>Logit GLM + okr</b><br/>Pesos geoestadísticos.", td_style),
-            Paragraph("<b>SBA (3 pasadas) + okr</b><br/>Geoestadística óptima.", td_style),
-            Paragraph("<b>Régimen Convectivo:</b> Bernoulli-Gamma estándar.", td_style),
+            Paragraph("<b>Paso 3:<br/>Compute Bias Coefficients</b><br/><i>(Cálculo Coefs. Sesgo)</i>", td_xs_bold),
+            Paragraph("Calcula el sesgo de las temperaturas desescaladas contra estaciones.", td_xs),
+            Paragraph("• Método: Multiplicativo (<code>mbvar</code>), QM paramétrico (<code>qmdist</code>: Normal, Skew-Normal, Gumbel, Lognormal), QM empírico (<code>qmecdf</code>).<br/>• Interpolación: IDW vs OKR (Sph, Exp, Gau, Pen). Radio 3.5°.", td_xs),
+            Paragraph("La temperatura sigue distribuciones casi continuas, pero Tmax presenta asimetría positiva en olas de calor (Skew-Normal o Gumbel) y Tmin presenta colas frías por heladas en zonas altas.", td_xs),
         ],
         [
-            Paragraph("<b>EXP-R04</b>", td_bold),
-            Paragraph("<b>qm.dist Weibull + okr</b><br/>Weibull colas pesadas.", td_style),
-            Paragraph("<b>Logit GLM + okr</b><br/>Soporte continuo.", td_style),
-            Paragraph("<b>SBA (3 pasadas) + okr</b><br/>Varianza en picos extremos.", td_style),
-            Paragraph("<b>Extremos Ciclónicos:</b> Huracanes (>150 mm/d) y Giros (CAG).", td_style),
+            Paragraph("<b>Paso 4:<br/>Apply Bias Correction</b><br/><i>(Aplicación Ajuste Sesgo)</i>", td_xs_bold),
+            Paragraph("Aplica los coeficientes a las 10,958 grillas diarias desescaladas.", td_xs),
+            Paragraph("• Rango temporal: 1991–2020 continuo.<br/>• Archivo <code>.rds</code> de coeficientes del Paso 3.<br/>• Formato: <code>tmax_adj_%s%s%s.nc</code> / <code>tmin_adj_%s%s%s.nc</code>.", td_xs),
+            Paragraph("Remueve derivas estacionales y sesgos térmicos regionales previos a la interpolación de residuales con las estaciones de superficie.", td_xs),
         ],
         [
-            Paragraph("<b>EXP-R05</b>", td_bold),
-            Paragraph("<b>qm.dist Lognorm + okr</b><br/>Procesos multiplicativos.", td_style),
-            Paragraph("<b>Logit GLM + okr</b><br/>Separación de días secos.", td_style),
-            Paragraph("<b>SBA (3 pasadas) + okr</b><br/>Escala logarítmica.", td_style),
-            Paragraph("<b>Proceso Multiplicativo:</b> Hipótesis lognormal en tormentas.", td_style),
-        ],
-        [
-            Paragraph("<b>EXP-R06</b>", td_bold),
-            Paragraph("<b>qm.ecdf + idw (2.5°)</b><br/>Mapeo empírico libre.", td_style),
-            Paragraph("<b>Logit GLM + idw</b><br/>Umbral empírico.", td_style),
-            Paragraph("<b>SBA (3 pasadas) + idw</b><br/>Anomalías de cuantiles.", td_style),
-            Paragraph("<b>Mapeo Empírico:</b> No paramétrico para regímenes multimodales.", td_style),
-        ],
-        [
-            Paragraph("<b>EXP-R07</b>", td_bold),
-            Paragraph("<b>qm.dist Weibull + okr</b><br/>Preserva extremos.", td_style),
-            Paragraph("<b>Logit DEM + okr</b><br/>Altitud modula disparo.", td_style),
-            Paragraph("<b>RK (DEM + Pendiente)</b><br/>GLM con relieve y krigeo.", td_style),
-            Paragraph("<b>Forzamiento Orográfico:</b> Ascenso Alisios/CLLJ y sombras.", td_style),
-        ],
-        [
-            Paragraph("<b>EXP-R08</b>", td_bold),
-            Paragraph("<b>mbvar + barnes (2.5°)</b><br/>Decaimiento gaussiano.", td_style),
-            Paragraph("<b>Logit GLM + barnes</b><br/>Suavizado regularizado.", td_style),
-            Paragraph("<b>Barnes (3 pasadas)</b><br/>Filtro pasa-altos progresivo.", td_style),
-            Paragraph("<b>Continuidad Litoral:</b> Elimina ojos de buey en costas e islas.", td_style),
-        ],
-        [
-            Paragraph("<b>EXP-R09</b>", td_bold),
-            Paragraph("<b>mbvar + cressman</b><br/>Función de radio esférico.", td_style),
-            Paragraph("<b>Logit GLM + cressman</b><br/>Pesos escalonados.", td_style),
-            Paragraph("<b>Cressman (3 pasadas)</b><br/>Correcciones sucesivas.", td_style),
-            Paragraph("<b>Benchmark Clásico:</b> Contrasta corte esférico frente a Barnes.", td_style),
-        ],
-        [
-            Paragraph("<b>EXP-R10</b>", td_bold),
-            Paragraph("<b>mbvar + nn3d (DEM)</b><br/>Pondera cota vertical (&Delta;<i>z</i>).", td_style),
-            Paragraph("<b>Logit GLM + nn3d</b><br/>Discrimina valle vs cumbre.", td_style),
-            Paragraph("<b>SBA / Fast (nn3d)</b><br/>Fusión rápida sin matrices.", td_style),
-            Paragraph("<b>Fusión Rápida 3D:</b> Control de cota en microcuencas con bajo CPU.", td_style),
+            Paragraph("<b>Paso 5:<br/>Merging Data</b><br/><i>(Fusión Espacial)</i>", td_xs_bold),
+            Paragraph("Fusión final entre grillas desescaladas/ajustadas y estaciones.", td_xs),
+            Paragraph("• Métodos: Regression Kriging (RK) vs SBA.<br/>• Covariables físicas: DEM (altitud), Pendiente, Orientación (<i>aspect</i>), Coordenadas.<br/>• Pasadas multiescala: 1.0°, 0.75°, 0.5°.<br/>• Interp. residuales: IDW, OKR, Shepard, NN-3D, Barnes.", td_xs),
+            Paragraph("Para Tmax, pendiente y orientación modulan la radiación solar directa. Para Tmin, el drenaje de aire frío e inversión térmica nocturna en valles se capturan físicamente mediante elevación relativa en RK.", td_xs),
         ],
     ]
-    t_table_r = Table([th_r] + rows_r, colWidths=[0.65 * inch, 1.65 * inch, 1.45 * inch, 1.65 * inch, 2.10 * inch])
-    t_table_r.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), PRIMARY),
+    t_arch_t = Table([th_arch_t] + rows_arch_t, colWidths=[1.30 * inch, 1.65 * inch, 2.15 * inch, 2.40 * inch])
+    t_arch_t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), SECONDARY),
         ("ALIGN", (0, 0), (-1, 0), "CENTER"),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("GRID", (0, 0), (-1, -1), 0.5, BORDER_COLOR),
@@ -437,156 +405,331 @@ def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos
         ("LEFTPADDING", (0, 0), (-1, -1), 3.5),
         ("RIGHTPADDING", (0, 0), (-1, -1), 3.5),
     ]))
+    story.append(t_arch_t)
+
+    story.append(PageBreak())
+
+    # =========================================================================
+    # PÁGINA 3: SUITE A - PRECIPITACIÓN (CHIRPS - 10 EXP)
+    # =========================================================================
+    story.append(Paragraph("4. Suite A: Precipitación Diaria (CHIRPS 1991–2020: 10 Experimentos)", h1_style))
+    story.append(Paragraph(
+        "Batería experimental estructurada según los 3 pasos de CDT para aislar efectos de corrección de sesgo, filtro RnoR y fusión espacial:",
+        body_style
+    ))
+    story.append(Spacer(1, 2))
+
+    th_r = [
+        Paragraph("ID Exp.", th_sm),
+        Paragraph("Paso 1: Compute Bias Coeffs", th_sm),
+        Paragraph("Paso 2: Apply Bias", th_sm),
+        Paragraph("Paso 3: Merging Data (Fusión)", th_sm),
+        Paragraph("Hipótesis Física y Climatológica Regional", th_sm),
+    ]
+    rows_r = [
+        [
+            Paragraph("<b>EXP-R01</b>", td_sm_bold),
+            Paragraph("• Método: <code>mbvar</code> (móvil &plusmn;5 d)<br/>• Interp: IDW (<i>p</i>=2.0, radio 1.5°, nmin=4, nmax=12)", td_sm),
+            Paragraph("• Ajuste multiplicativo sobre grillas CHIRPS 1991–2020<br/>• Salida: <code>rr_adj_*.nc</code>", td_sm),
+            Paragraph("• Método: <b>SBA</b> monocapa (1 pasada a 1.0°)<br/>• Interp: IDW (1.5°)<br/>• RnoR: <b>Desactivada</b> (<code>use=false</code>)<br/>• Covariables: Ninguna", td_sm),
+            Paragraph("<b>Control Nulo Determinista (Línea Base):</b> Mide discrepancia satelital pura sin control de lloviznas espurias (<i>drizzle</i>) ni esquemas multiescala.", td_sm),
+        ],
+        [
+            Paragraph("<b>EXP-R02</b>", td_sm_bold),
+            Paragraph("• Método: <code>mbvar</code> (&plusmn;5 d)<br/>• Interp: IDW (<i>p</i>=2.0, radio 1.5°)", td_sm),
+            Paragraph("• Ajuste multiplicativo sobre grillas CHIRPS<br/>• Salida: <code>rr_adj_*.nc</code>", td_sm),
+            Paragraph("• Método: <b>SBA multiescala</b> (3 pasadas: 1.0°, 0.75°, 0.5°)<br/>• Interp: IDW (1.5°)<br/>• RnoR: <b>Activada</b> (Logit GLM, wet=1.0 mm, CutOff=3)", td_sm),
+            Paragraph("<b>Impacto del Filtro RnoR:</b> Evalúa la restauración de rachas secas reales durante la <b>Canícula</b> en Corredor Seco y Azua, eliminando falsa lluvia satelital.", td_sm),
+        ],
+        [
+            Paragraph("<b>EXP-R03</b>", td_sm_bold),
+            Paragraph("• Método: <code>qmdist</code> (Quantile Mapping)<br/>• Distribución: <b>Bernoulli-Gamma</b><br/>• Interp: OKR por Bloques (Sph/Exp/Gau, radio 2.0°)", td_sm),
+            Paragraph("• Corrección cuantil a cuantil de la CDF sobre CHIRPS<br/>• Salida: <code>rr_adj_*.nc</code>", td_sm),
+            Paragraph("• Método: <b>SBA multiescala</b> (3 pasadas: 1.0°, 0.75°, 0.5°)<br/>• Interp: OKR por Bloques (<code>use_block=TRUE</code>)<br/>• RnoR: Activada (Logit GLM)", td_sm),
+            Paragraph("<b>Régimen Convectivo Tropical Típico:</b> Gamma modela asimetría convectiva; Kriging por bloques corrige error de soporte espacial (estación puntual vs píxel 5.5 km).", td_sm),
+        ],
+        [
+            Paragraph("<b>EXP-R04</b>", td_sm_bold),
+            Paragraph("• Método: <code>qmdist</code><br/>• Distribución: <b>Bernoulli-Weibull</b><br/>• Interp: OKR por Bloques (radio 2.0°)", td_sm),
+            Paragraph("• Mapeo no lineal enfocado en cuantiles extremos (&gt;P95)<br/>• Salida: <code>rr_adj_*.nc</code>", td_sm),
+            Paragraph("• Método: <b>SBA multiescala</b> (3 pasadas: 1.0°, 0.75°, 0.5°)<br/>• Interp: OKR por Bloques<br/>• RnoR: Activada (Logit GLM)", td_sm),
+            Paragraph("<b>Extremos Ciclónicos y Tormentas Severas:</b> Weibull captura colas pesadas (&gt;150 mm/día) provocadas por ondas del este, ciclones en el Caribe y giros monzónicos (CAG).", td_sm),
+        ],
+        [
+            Paragraph("<b>EXP-R05</b>", td_sm_bold),
+            Paragraph("• Método: <code>qmdist</code><br/>• Distribución: Bernoulli-Weibull<br/>• Interp: OKR por Bloques (radio 2.0°)", td_sm),
+            Paragraph("• Corrección de extremos sobre grillas CHIRPS<br/>• Salida: <code>rr_adj_*.nc</code>", td_sm),
+            Paragraph("• Método: <b>Regression Kriging (RK)</b> (3 pasadas)<br/>• <b>Covariables: DEM + Pendiente + Lat + Lon</b><br/>• Residuos: OKR por bloques<br/>• RnoR: Activada (Logit GLM)", td_sm),
+            Paragraph("<b>Forzamiento Orográfico Vertical:</b> Acopla el relieve en regresión determinística; modela ascenso forzado por Alisios en barlovento y sombras de lluvia en sotavento.", td_sm),
+        ],
+        [
+            Paragraph("<b>EXP-R06</b>", td_sm_bold),
+            Paragraph("• Método: <code>mbvar</code> (&plusmn;5 d)<br/>• Interp: <b>NN-3D con elevación DEM (&Delta;<i>z</i>)</b>", td_sm),
+            Paragraph("• Ajuste proporcional tridimensional sobre CHIRPS<br/>• Salida: <code>rr_adj_*.nc</code>", td_sm),
+            Paragraph("• Método: <b>Barnes Objective Analysis (BSc)</b> (3 pasadas gaussianas decrecientes)<br/>• RnoR: Activada (Logit GLM)<br/>• Covariables: Ninguna", td_sm),
+            Paragraph("<b>Gradientes Costeros e Insulares Suaves:</b> Función gaussiana continua de Barnes evita singularidades y ojos de buey (<i>bulls-eyes</i>) en islas y franjas litorales.", td_sm),
+        ],
+        [
+            Paragraph("<b>EXP-R07</b>", td_sm_bold),
+            Paragraph("• Método: <code>mbvar</code> (&plusmn;5 d)<br/>• Interp: IDW (<i>p</i>=2.0, radio 1.5°)", td_sm),
+            Paragraph("• Ajuste sobre grillas satelitales<br/>• Salida: <code>rr_adj_*.nc</code>", td_sm),
+            Paragraph("• Método: <b>Cressman Scheme (CSc)</b> (4 pasadas: 1.0°, 0.75°, 0.5°, 0.25°)<br/>• RnoR: Activada (Logit GLM)<br/>• Covariables: Ninguna", td_sm),
+            Paragraph("<b>Celdas Convectivas Aisladas:</b> Radios estrictamente finitos en última pasada (0.25° &approx; 27 km) para ajustar núcleos de tormenta muy localizados en la costa del Pacífico.", td_sm),
+        ],
+        [
+            Paragraph("<b>EXP-R08</b>", td_sm_bold),
+            Paragraph("• Método: <code>mbvar</code> (&plusmn;5 d)<br/>• Interp: <b>Shepard Modificado</b>", td_sm),
+            Paragraph("• Ajuste de sesgo con polinomios locales<br/>• Salida: <code>rr_adj_*.nc</code>", td_sm),
+            Paragraph("• Método: <b>SBA multiescala</b> (3 pasadas)<br/>• Interp: Shepard Modificado con control de derivadas<br/>• RnoR: Activada (Logit GLM)", td_sm),
+            Paragraph("<b>Relieve Escarpado y Cañones:</b> Polinomios de Taylor de Shepard evitan sobreoscilaciones numéricas en transiciones topográficas abruptas (cañones y fallas tectónicas).", td_sm),
+        ],
+        [
+            Paragraph("<b>EXP-R09</b>", td_sm_bold),
+            Paragraph("• Método: <code>mbvar</code> (&plusmn;5 d)<br/>• Interp: <b>Spheremap (Gran Círculo)</b>", td_sm),
+            Paragraph("• Ajuste sobre CHIRPS en coordenadas esféricas<br/>• Salida: <code>rr_adj_*.nc</code>", td_sm),
+            Paragraph("• Método: <b>SBA multiescala</b> (3 pasadas)<br/>• Interp: Spheremap en esfera terrestre real<br/>• RnoR: Activada (Logit GLM)", td_sm),
+            Paragraph("<b>Geometría Esférica Trans-Caribe:</b> Corrige la distorsión métrica longitudinal en distancias zonales amplias a lo largo del arco de las Antillas Mayores.", td_sm),
+        ],
+        [
+            Paragraph("<b>EXP-R10</b>", td_sm_bold),
+            Paragraph("• Método: <code>qmdist</code><br/>• Distribución: Bernoulli-Weibull<br/>• Interp: OKR por Bloques", td_sm),
+            Paragraph("• Corrección distribucional de extremos ciclónicos<br/>• Salida: <code>rr_adj_*.nc</code>", td_sm),
+            Paragraph("• Método: <b>Regression Kriging (RK)</b> multiescala<br/>• <b>Covariables: DEM + Pendiente + Aspect + Lat + Lon</b><br/>• Residuos: OKR por bloques<br/>• RnoR: Activada", td_sm),
+            Paragraph("<b>Máxima Complejidad Física Acoplada:</b> Incorpora orientación de ladera (<i>aspect</i>) para capturar la intercepción directa de humedad del Chorro del Caribe (CLLJ).", td_sm),
+        ],
+    ]
+    t_table_r = Table([th_r] + rows_r, colWidths=[0.65 * inch, 1.65 * inch, 1.20 * inch, 1.80 * inch, 2.20 * inch])
+    t_table_r.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), PRIMARY),
+        ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("GRID", (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_BG]),
+        ("TOPPADDING", (0, 0), (-1, -1), 1.8),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 1.8),
+        ("LEFTPADDING", (0, 0), (-1, -1), 3.0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 3.0),
+    ]))
     story.append(t_table_r)
 
     story.append(PageBreak())
 
     # =========================================================================
-    # PÁGINA 3: MATRIZ TEMPERATURA MÁXIMA (TMAX - 8 EXP)
+    # PÁGINA 4: SUITE B - TEMPERATURA MÁXIMA (TMAX - 8 EXP)
     # =========================================================================
-    story.append(Paragraph("4. Matriz Experimental: TEMPERATURA MÁXIMA (CHIRTS Tmax: 8 Experimentos)", h1_style))
+    story.append(Paragraph("5. Suite B: Temperatura Máxima Diurna (CHIRTS Tmax: 8 Experimentos)", h1_style))
     story.append(Paragraph(
-        "El flujo de trabajo en CDT para temperatura máxima desescala el fondo satelital, ajusta sesgos diurnos y fusiona con covariables topoclimáticas:",
+        "Batería experimental estructurada según los 5 pasos de CDT: desescalado topográfico, ajuste de sesgo diurno y fusión con radiación solar e insolación:",
         body_style
     ))
     story.append(Spacer(1, 2))
 
-    story.append(create_step_box(
-        "PASO 1 & 2: DESESCALADO", "Downscaling Estadístico con DEM SRTM (Bilineal, Bicúbico, IDW)",
-        "CDT GUI: Merging Data > Temperature > Compute Downscaling Coefficients / Downscaling Data",
-        "• Desescalado de CHIRTS (0.05°) a la malla DEM (0.01° ~1.1 km) proyectando el gradiente vertical diurno (&part;<i>T</i>/&part;<i>z</i> &approx; -6.5 &deg;C/km) a cumbres (&gt;3,000 m) y depresiones.",
-        BOX_BG_TEAL, BOX_BORDER_TEAL, step_title_style, step_detail_style
-    ))
-    story.append(create_arrow_block("▼"))
-    story.append(create_step_box(
-        "PASO 3 & 4: SESGO DIURNO", "Compute / Apply Bias (mbvar, qm.dist: Normal, Skew-Normal, Gumbel, Lognormal, admon)",
-        "CDT GUI: Merging Data > Temperature > Compute Bias Coefficients / Apply Bias Correction",
-        "• Modela asimetría por nubosidad (Skew-Normal), olas de calor &gt;38 &deg;C en Azua, Enriquillo y Fonseca (Gumbel P95/P99), o diferencias móviles en radio de 3.5°.",
-        BOX_BG_AMBER, BOX_BORDER_AMBER, step_title_style, step_detail_style
-    ))
-    story.append(create_arrow_block("▼"))
-    story.append(create_step_box(
-        "PASO 5 & 6: FUSIÓN & CF-1.8", "Fusión Orográfica Multiescala (RK con DEM+Aspect+Slope, Barnes, SBA, NN-3D) y Ensamblado 3D",
-        "CDT GUI: Merging Data > Temperature > Merging Data | Python: launcher/netcdf_assembler.py",
-        "• 3 pasadas térmicas [1.0° (~380 km), 0.75° (~285 km), 0.50° (~190 km)], insolación mañana vs tarde (Aspect) y ensamblado 3D CF-1.8.",
-        BOX_BG_BLUE, BOX_BORDER_BLUE, step_title_style, step_detail_style
-    ))
-    story.append(Spacer(1, 4))
-
     th_tx = [
-        Paragraph("ID", th_style),
-        Paragraph("Paso 2: Desescalado *(¿Por qué?)*", th_style),
-        Paragraph("Paso 3: Sesgo *(¿Por qué?)*", th_style),
-        Paragraph("Paso 5: Fusión *(¿Por qué?)*", th_style),
-        Paragraph("Justificación Física Diurna (Tmax)", th_style),
+        Paragraph("ID Exp.", th_xs),
+        Paragraph("Pasos 1-2: Desescalado", th_xs),
+        Paragraph("Paso 3: Compute Bias", th_xs),
+        Paragraph("Paso 4: Apply Bias", th_xs),
+        Paragraph("Paso 5: Merging Data", th_xs),
+        Paragraph("Hipótesis Física Diurna (Tmax)", th_xs),
     ]
     rows_tx = [
-        [Paragraph("<b>EXP-TX01</b>", td_bold), Paragraph("<b>Bilineal (blin)</b><br/>Control geométrico sin DEM.", td_style), Paragraph("<b>mbvar + idw (3.5°)</b><br/>Razón móvil determinista.", td_style), Paragraph("<b>SBA (1 pasada: 1.0) + idw</b><br/>Fusión directa monocapa.", td_style), Paragraph("<b>Línea Base Diurna:</b> Mide el sesgo al ignorar relieve y radiación solar.", td_style)],
-        [Paragraph("<b>EXP-TX02</b>", td_bold), Paragraph("<b>Bilineal (blin)</b><br/>Mantiene fondo satelital.", td_style), Paragraph("<b>qm.dist Normal + idw</b><br/>Distribución simétrica gauss.", td_style), Paragraph("<b>RK Solo DEM (3 pasadas)</b><br/>Proyecta gradiente adiabático.", td_style), Paragraph("<b>Gradiente Adiabático:</b> Enfriamiento diurno (&part;<i>T</i>/&part;<i>z</i> &approx; -6.5 &deg;C/km) en cumbres.", td_style)],
-        [Paragraph("<b>EXP-TX03</b>", td_bold), Paragraph("<b>IDW local (2.5°, nmin=4)</b><br/>Preserva gradientes locales.", td_style), Paragraph("<b>qm.dist Skew-Normal + okr</b><br/>Asimetría por nubosidad.", td_style), Paragraph("<b>RK DEM + Pend + Coords</b><br/>Captura relieve y coordenadas.", td_style), Paragraph("<b>Asimetría Convectiva:</b> Modela bloqueo nuboso y asimetría diurna.", td_style)],
-        [Paragraph("<b>EXP-TX04</b>", td_bold), Paragraph("<b>Bicúbico (bicub)</b><br/>Relieve suave de orden 2.", td_style), Paragraph("<b>mbvar + nn3d (DEM)</b><br/>Pondera cota vertical (&Delta;<i>z</i>).", td_style), Paragraph("<b>RK DEM + Aspecto + Pend</b><br/>Insolación este vs oeste.", td_style), Paragraph("<b>Radiación y Topoclima:</b> Insolación mañana (este) vs tarde (oeste).", td_style)],
-        [Paragraph("<b>EXP-TX05</b>", td_bold), Paragraph("<b>Bilineal (blin)</b><br/>Desescalado estándar.", td_style), Paragraph("<b>qm.dist Gumbel + okr</b><br/>Valores extremos de Tmax.", td_style), Paragraph("<b>RK DEM + Coordenadas</b><br/>Corrige depresiones profundas.", td_style), Paragraph("<b>Olas de Calor:</b> Ajusta P95/P99 en <b>Azua/Enriquillo</b> y <b>Fonseca</b> (&gt;38 &deg;C).", td_style)],
-        [Paragraph("<b>EXP-TX06</b>", td_bold), Paragraph("<b>Bilineal (blin)</b><br/>Desescalado base.", td_style), Paragraph("<b>qm.dist Lognormal + okr</b><br/>Asimetría positiva en calor.", td_style), Paragraph("<b>SBA (3 pasadas) + okr</b><br/>Geoestadística multiescala.", td_style), Paragraph("<b>Llanuras Cálidas:</b> Tierras bajas tropicales del Caribe y Mosquitia.", td_style)],
-        [Paragraph("<b>EXP-TX07</b>", td_bold), Paragraph("<b>Bilineal (blin)</b><br/>Desescalado base.", td_style), Paragraph("<b>admon (Mensual) + idw</b><br/>12 factores estacionales fijos.", td_style), Paragraph("<b>SBA (3 pasadas) + idw</b><br/>Fusión estacional clásica.", td_style), Paragraph("<b>Ciclo Estacional Medio:</b> Evalúa la suficiencia de 12 factores fijos.", td_style)],
-        [Paragraph("<b>EXP-TX08</b>", td_bold), Paragraph("<b>Bilineal (blin)</b><br/>Desescalado base.", td_style), Paragraph("<b>mbvar + barnes (3.5°)</b><br/>Suavizado continuo.", td_style), Paragraph("<b>Barnes (3 pasadas)</b><br/>Difusión sin artefactos.", td_style), Paragraph("<b>Consistencia Litoral:</b> Penetración de brisas marinas en islas y costas.", td_style)],
+        [
+            Paragraph("<b>EXP-TX01</b>", td_xs_bold),
+            Paragraph("<b>[P1]</b> Coefs neutros.<br/><b>[P2]</b> Bilineal a 0.05° sin DEM.<br/>Salida: <code>tmax_down_*.nc</code>", td_xs),
+            Paragraph("• Método: <code>mbvar</code> (&plusmn;5 d)<br/>• Interp: IDW (3.5°, nmin=4, nmax=12)", td_xs),
+            Paragraph("• Ajuste multiplicativo sobre grillas desescaladas.<br/>Salida: <code>tmax_adj_*.nc</code>", td_xs),
+            Paragraph("• Método: <b>SBA monocapa</b> (1 pasada a 1.0°)<br/>• Interp: IDW (3.5°)<br/>• Covariables: Ninguna", td_xs),
+            Paragraph("<b>Control Nulo Térmico Diurno:</b> Cuantifica el error sistemático al ignorar el relieve y la insolación solar diurna.", td_xs),
+        ],
+        [
+            Paragraph("<b>EXP-TX02</b>", td_xs_bold),
+            Paragraph("<b>[P1]</b> Regresión estación–DEM.<br/><b>[P2]</b> Bilineal sobre DEM SRTM 90m (0.05°).", td_xs),
+            Paragraph("• Método: <code>qmdist</code><br/>• Distribución: <b>Normal (norm)</b><br/>• Interp: IDW (3.5°)", td_xs),
+            Paragraph("• Mapeo cuantil gaussiano.<br/>Salida: <code>tmax_adj_*.nc</code>", td_xs),
+            Paragraph("• Método: <b>RK</b> (3 pasadas: 1.0°, 0.75°, 0.5°)<br/>• <b>Covariable: DEM</b><br/>• Residuos: OKR", td_xs),
+            Paragraph("<b>Gradiente Adiabático Diurno:</b> Modela enfriamiento por ascenso adiabático (&part;<i>T</i>/&part;<i>z</i> &approx; -6.5 °C/km) en Cordillera Central y Sierra Madre.", td_xs),
+        ],
+        [
+            Paragraph("<b>EXP-TX03</b>", td_xs_bold),
+            Paragraph("<b>[P1]</b> Regresión DEM + Pendiente.<br/><b>[P2]</b> IDW local sobre DEM SRTM.", td_xs),
+            Paragraph("• Método: <code>qmdist</code><br/>• Distribución: <b>Skew-Normal (snorm)</b><br/>• Interp: OKR por bloques (3.5°)", td_xs),
+            Paragraph("• Mapeo cuantil asimétrico.<br/>Salida: <code>tmax_adj_*.nc</code>", td_xs),
+            Paragraph("• Método: <b>RK</b> (3 pasadas)<br/>• <b>Covariables: DEM + Pend + Lat + Lon</b><br/>• Residuos: OKR por bloques", td_xs),
+            Paragraph("<b>Asimetría por Laderas y Frentes Fríos:</b> Captura asimetría térmica por inclinación del terreno y descensos térmicos transitorios por <i>Nortes</i>.", td_xs),
+        ],
+        [
+            Paragraph("<b>EXP-TX04</b>", td_xs_bold),
+            Paragraph("<b>[P1]</b> Desescalado orográfico 3D.<br/><b>[P2]</b> Bilineal sobre DEM SRTM.", td_xs),
+            Paragraph("• Método: <code>mbvar</code> (&plusmn;5 d)<br/>• Interp: <b>NN-3D con DEM (&Delta;<i>z</i>)</b>", td_xs),
+            Paragraph("• Ajuste con control altimétrico vertical.<br/>Salida: <code>tmax_adj_*.nc</code>", td_xs),
+            Paragraph("• Método: <b>RK</b> (3 pasadas)<br/>• <b>Covariables: DEM + Pend + Aspect</b><br/>• Residuos: OKR", td_xs),
+            Paragraph("<b>Insolación Diferencial según Orientación:</b> Laderas este reciben calentamiento matutino; laderas oeste acumulan el máximo vespertino.", td_xs),
+        ],
+        [
+            Paragraph("<b>EXP-TX05</b>", td_xs_bold),
+            Paragraph("<b>[P1]</b> Regresión mensual altimétrica.<br/><b>[P2]</b> Bilineal sobre DEM SRTM.", td_xs),
+            Paragraph("• Método: <code>qmdist</code><br/>• Distribución: <b>Gumbel Máximos</b><br/>• Interp: OKR por bloques", td_xs),
+            Paragraph("• Mapeo cuantil para extremos (&gt;P95).<br/>Salida: <code>tmax_adj_*.nc</code>", td_xs),
+            Paragraph("• Método: <b>RK</b> (3 pasadas)<br/>• <b>Covariables: DEM + Lat + Lon</b><br/>• Residuos: OKR por bloques", td_xs),
+            Paragraph("<b>Olas de Calor en Depresiones Áridas:</b> Ajusta picos extremos (&gt;38 °C a 40 °C) en Hoya de Enriquillo (-40 msnm), Valle de Azua y Golfo de Fonseca.", td_xs),
+        ],
+        [
+            Paragraph("<b>EXP-TX06</b>", td_xs_bold),
+            Paragraph("<b>[P1]</b> Regresión regional con DEM.<br/><b>[P2]</b> Bilineal sobre DEM SRTM.", td_xs),
+            Paragraph("• Método: <code>mbvar</code> (&plusmn;5 d)<br/>• Interp: IDW (3.5°)", td_xs),
+            Paragraph("• Ajuste proporcional estándar.<br/>Salida: <code>tmax_adj_*.nc</code>", td_xs),
+            Paragraph("• Método: <b>Barnes (BSc)</b> (3 pasadas)<br/>• Residuos: Filtro gaussiano continuo<br/>• Covariables: Ninguna", td_xs),
+            Paragraph("<b>Llanuras y Brisas Costeras Diurnas:</b> Transición espacial continua sin saltos abruptos a lo largo de llanuras litorales del Caribe y planicies de RD.", td_xs),
+        ],
+        [
+            Paragraph("<b>EXP-TX07</b>", td_xs_bold),
+            Paragraph("<b>[P1]</b> Regresión altimétrica con DEM.<br/><b>[P2]</b> Bilineal sobre DEM SRTM.", td_xs),
+            Paragraph("• Método: <code>mbmon</code> (sesgo mensual fijo)<br/>• Interp: IDW (3.5°)", td_xs),
+            Paragraph("• Ajuste por mes climatológico.<br/>Salida: <code>tmax_adj_*.nc</code>", td_xs),
+            Paragraph("• Método: <b>Cressman (CSc)</b> (4 pasadas: 1.0°, 0.75°, 0.5°, 0.25°)<br/>• Covariables: Ninguna", td_xs),
+            Paragraph("<b>Valles Intermontanos Confinados:</b> Radios decrecientes para evitar que estaciones cálidas de valles profundos contaminen laderas altas vecinas.", td_xs),
+        ],
+        [
+            Paragraph("<b>EXP-TX08</b>", td_xs_bold),
+            Paragraph("<b>[P1]</b> Multivariado DEM + Slope + Aspect.<br/><b>[P2]</b> Proyección topográfica completa.", td_xs),
+            Paragraph("• Método: <code>qmdist</code><br/>• Distribución: Skew-Normal<br/>• Interp: OKR por bloques", td_xs),
+            Paragraph("• Corrección distribucional asimétrica.<br/>Salida: <code>tmax_adj_*.nc</code>", td_xs),
+            Paragraph("• Método: <b>RK</b> (3 pasadas)<br/>• <b>Covariables: DEM + Slope + Aspect + Coords</b><br/>• Residuos: OKR por bloques", td_xs),
+            Paragraph("<b>Máxima Complejidad Diurna:</b> Acoplamiento determinístico completo de topografía, insolación solar y modelación asimétrica de residuales.", td_xs),
+        ],
     ]
-    t_table_tx = Table([th_tx] + rows_tx, colWidths=[0.65 * inch, 1.65 * inch, 1.50 * inch, 1.60 * inch, 2.10 * inch])
+    t_table_tx = Table([th_tx] + rows_tx, colWidths=[0.60 * inch, 1.35 * inch, 1.30 * inch, 1.05 * inch, 1.35 * inch, 1.85 * inch])
     t_table_tx.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), PRIMARY),
         ("ALIGN", (0, 0), (-1, 0), "CENTER"),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("GRID", (0, 0), (-1, -1), 0.5, BORDER_COLOR),
         ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_BG]),
-        ("TOPPADDING", (0, 0), (-1, -1), 2.2),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 2.2),
-        ("LEFTPADDING", (0, 0), (-1, -1), 3.5),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 3.5),
+        ("TOPPADDING", (0, 0), (-1, -1), 1.8),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 1.8),
+        ("LEFTPADDING", (0, 0), (-1, -1), 3.0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 3.0),
     ]))
     story.append(t_table_tx)
 
     story.append(PageBreak())
 
     # =========================================================================
-    # PÁGINA 4: MATRIZ TEMPERATURA MÍNIMA (TMIN - 8 EXP)
+    # PÁGINA 5: SUITE C - TEMPERATURA MÍNIMA (TMIN - 8 EXP)
     # =========================================================================
-    story.append(Paragraph("5. Matriz Experimental: TEMPERATURA MÍNIMA (CHIRTS Tmin: 8 Experimentos)", h1_style))
+    story.append(Paragraph("6. Suite C: Temperatura Mínima Nocturna (CHIRTS Tmin: 8 Experimentos)", h1_style))
     story.append(Paragraph(
-        "El flujo de trabajo en CDT para temperatura mínima controla cotas altimétricas, caídas por frentes fríos e inversiones nocturnas en valles:",
+        "Batería experimental estructurada según los 5 pasos de CDT: desescalado altimétrico, enfriamiento radiativo, inversiones nocturnas y frentes fríos:",
         body_style
     ))
     story.append(Spacer(1, 2))
 
-    story.append(create_step_box(
-        "PASO 1 & 2: DESESCALADO", "Downscaling Estadístico y Ajuste Altimétrico con DEM SRTM (0.01°)",
-        "CDT GUI: Merging Data > Temperature > Compute Downscaling Coefficients / Downscaling Data",
-        "• Proyecta el enfriamiento libre en cumbres y ajusta las cotas de estación al DEM de alta resolución (0.01° ~1.1 km) previo al análisis de sesgo.",
-        BOX_BG_TEAL, BOX_BORDER_TEAL, step_title_style, step_detail_style
-    ))
-    story.append(create_arrow_block("▼"))
-    story.append(create_step_box(
-        "PASO 3 & 4: SESGO NOCTURNO", "Compute / Apply Bias (mbvar, qm.dist: Skew-Normal, Gumbel, Normal, admon, nn3d)",
-        "CDT GUI: Merging Data > Temperature > Compute Bias Coefficients / Apply Bias Correction",
-        "• Modela caídas bruscas por frentes fríos 'Nortes' (Skew-Normal), heladas agronómicas &lt;0 &deg;C en valles altos (Gumbel P01/P05) y control 3D (&Delta;<i>z</i>).",
-        BOX_BG_AMBER, BOX_BORDER_AMBER, step_title_style, step_detail_style
-    ))
-    story.append(create_arrow_block("▼"))
-    story.append(create_step_box(
-        "PASO 5 & 6: FUSIÓN & CF-1.8", "Fusión de Inversiones Térmicas (RK con DEM+Slope+Laderas N, Barnes, NN-3D) y Ensamblado 3D",
-        "CDT GUI: Merging Data > Temperature > Merging Data | Python: launcher/netcdf_assembler.py",
-        "• 3 pasadas térmicas [1.0°, 0.75°, 0.50°], aislamiento de valles fríos sin contaminar cumbres (NN-3D), amortiguamiento marino (Barnes) y NetCDF 3D CF-1.8.",
-        BOX_BG_BLUE, BOX_BORDER_BLUE, step_title_style, step_detail_style
-    ))
-    story.append(Spacer(1, 4))
-
     th_tn = [
-        Paragraph("ID", th_style),
-        Paragraph("Paso 2: Desescalado *(¿Por qué?)*", th_style),
-        Paragraph("Paso 3: Sesgo *(¿Por qué?)*", th_style),
-        Paragraph("Paso 5: Fusión *(¿Por qué?)*", th_style),
-        Paragraph("Justificación Física Nocturna (Tmin)", th_style),
+        Paragraph("ID Exp.", th_xs),
+        Paragraph("Pasos 1-2: Desescalado", th_xs),
+        Paragraph("Paso 3: Compute Bias", th_xs),
+        Paragraph("Paso 4: Apply Bias", th_xs),
+        Paragraph("Paso 5: Merging Data", th_xs),
+        Paragraph("Hipótesis Física Nocturna (Tmin)", th_xs),
     ]
     rows_tn = [
-        [Paragraph("<b>EXP-TN01</b>", td_bold), Paragraph("<b>Bilineal (blin)</b><br/>Control geométrico simple.", td_style), Paragraph("<b>mbvar + idw (3.5°)</b><br/>Razón móvil determinista.", td_style), Paragraph("<b>SBA (1 pasada: 1.0) + idw</b><br/>Fusión monocapa sin covariables.", td_style), Paragraph("<b>Línea Base Nocturna:</b> Control nulo sin considerar relieve ni inversiones.", td_style)],
-        [Paragraph("<b>EXP-TN02</b>", td_bold), Paragraph("<b>Bilineal (blin)</b><br/>Desescalado estándar.", td_style), Paragraph("<b>qm.dist Normal + idw</b><br/>Distribución normal clásica.", td_style), Paragraph("<b>RK Solo DEM (3 pasadas)</b><br/>Proyecta enfriamiento libre.", td_style), Paragraph("<b>Gradiente Nocturno Libre:</b> Enfriamiento en cumbres de montaña (&gt;3,000 m).", td_style)],
-        [Paragraph("<b>EXP-TN03</b>", td_bold), Paragraph("<b>IDW local (2.5°, nmin=4)</b><br/>Preserva gradientes locales.", td_style), Paragraph("<b>qm.dist Skew-Normal + okr</b><br/>Caídas bruscas por Nortes.", td_style), Paragraph("<b>RK DEM + Pend + Laderas N</b><br/>Exposición a vientos polares.", td_style), Paragraph("<b>Frentes Fríos ('Nortes'):</b> Caídas bruscas en laderas norteñas en invierno.", td_style)],
-        [Paragraph("<b>EXP-TN04</b>", td_bold), Paragraph("<b>Bicúbico (bicub)</b><br/>Relieve continuo de orden 2.", td_style), Paragraph("<b>mbvar + nn3d (DEM)</b><br/>Pondera cota vertical (&Delta;<i>z</i>).", td_style), Paragraph("<b>RK DEM + Slope + Coords</b><br/>Drenaje de aire frío en valles.", td_style), Paragraph("<b>Inversiones Térmicas:</b> Aísla valles fríos (Constanza) sin contaminar cimas.", td_style)],
-        [Paragraph("<b>EXP-TN05</b>", td_bold), Paragraph("<b>Bilineal (blin)</b><br/>Desescalado estándar.", td_style), Paragraph("<b>qm.dist Gumbel + okr</b><br/>Extremos inferiores (P01/P05).", td_style), Paragraph("<b>RK DEM + Coordenadas</b><br/>Regresión altimétrica de heladas.", td_style), Paragraph("<b>Heladas Agronómicas:</b> Ajusta eventos bajo cero (&lt;0 &deg;C) en valles altos.", td_style)],
-        [Paragraph("<b>EXP-TN06</b>", td_bold), Paragraph("<b>Bilineal (blin)</b><br/>Desescalado base.", td_style), Paragraph("<b>qm.dist Lognormal + okr</b><br/>Asimetría en noches cálidas.", td_style), Paragraph("<b>SBA (3 pasadas) + okr</b><br/>Geoestadística multiescala.", td_style), Paragraph("<b>Noches Cálidas Tropicales:</b> Noches húmedas continuas (&gt;24 &deg;C) en costas.", td_style)],
-        [Paragraph("<b>EXP-TN07</b>", td_bold), Paragraph("<b>Bilineal (blin)</b><br/>Desescalado base.", td_style), Paragraph("<b>admon (Mensual) + idw</b><br/>12 factores estacionales fijos.", td_style), Paragraph("<b>SBA (3 pasadas) + idw</b><br/>Fusión estacional nocturna.", td_style), Paragraph("<b>Climatología Mensual Tmin:</b> Ajuste estacional medio en temperaturas mínimas.", td_style)],
-        [Paragraph("<b>EXP-TN08</b>", td_bold), Paragraph("<b>Bilineal (blin)</b><br/>Desescalado base.", td_style), Paragraph("<b>mbvar + barnes (3.5°)</b><br/>Suavizado gaussiano costero.", td_style), Paragraph("<b>Barnes (3 pasadas)</b><br/>Amortiguamiento regularizado.", td_style), Paragraph("<b>Amortiguamiento Marino Nocturno:</b> Preserva el calor del océano en islas.", td_style)],
+        [
+            Paragraph("<b>EXP-TN01</b>", td_xs_bold),
+            Paragraph("<b>[P1]</b> Coefs neutros.<br/><b>[P2]</b> Bilineal a 0.05° sin DEM.<br/>Salida: <code>tmin_down_*.nc</code>", td_xs),
+            Paragraph("• Método: <code>mbvar</code> (&plusmn;5 d)<br/>• Interp: IDW (3.5°)", td_xs),
+            Paragraph("• Ajuste sobre grillas desescaladas 1991–2020.<br/>Salida: <code>tmin_adj_*.nc</code>", td_xs),
+            Paragraph("• Método: <b>SBA monocapa</b> (1 pasada a 1.0°)<br/>• Interp: IDW (3.5°)<br/>• Covariables: Ninguna", td_xs),
+            Paragraph("<b>Control Nulo Nocturno:</b> Mide el sesgo nocturno base al ignorar el enfriamiento radiativo y el drenaje de aire frío.", td_xs),
+        ],
+        [
+            Paragraph("<b>EXP-TN02</b>", td_xs_bold),
+            Paragraph("<b>[P1]</b> Regresión estación–DEM.<br/><b>[P2]</b> Bilineal sobre DEM SRTM 90m (0.05°).", td_xs),
+            Paragraph("• Método: <code>qmdist</code><br/>• Distribución: <b>Normal (norm)</b><br/>• Interp: IDW (3.5°)", td_xs),
+            Paragraph("• Mapeo cuantil gaussiano.<br/>Salida: <code>tmin_adj_*.nc</code>", td_xs),
+            Paragraph("• Método: <b>RK Solo DEM</b> (3 pasadas: 1.0°, 0.75°, 0.5°)<br/>• <b>Covariable: DEM</b><br/>• Residuos: OKR", td_xs),
+            Paragraph("<b>Gradiente Térmico Nocturno Ambiental:</b> Modela la tasa vertical nocturna estándar en zonas abiertas sin inversión térmica marcada.", td_xs),
+        ],
+        [
+            Paragraph("<b>EXP-TN03</b>", td_xs_bold),
+            Paragraph("<b>[P1]</b> Regresión DEM + Pendiente.<br/><b>[P2]</b> IDW local sobre DEM SRTM.", td_xs),
+            Paragraph("• Método: <code>qmdist</code><br/>• Distribución: <b>Skew-Normal (snorm)</b><br/>• Interp: OKR por bloques (3.5°)", td_xs),
+            Paragraph("• Mapeo cuantil en cola fría.<br/>Salida: <code>tmin_adj_*.nc</code>", td_xs),
+            Paragraph("• Método: <b>RK</b> (3 pasadas)<br/>• <b>Covariables: DEM + Pend + Lat + Lon</b><br/>• Residuos: OKR por bloques", td_xs),
+            Paragraph("<b>Invasiones de Frentes Fríos ('Nortes'):</b> Captura las caídas abruptas y asimétricas de temperatura en la vertiente Atlántica durante el invierno boreal.", td_xs),
+        ],
+        [
+            Paragraph("<b>EXP-TN04</b>", td_xs_bold),
+            Paragraph("<b>[P1]</b> Desescalado orográfico 3D.<br/><b>[P2]</b> Bilineal sobre DEM SRTM.", td_xs),
+            Paragraph("• Método: <code>mbvar</code> (&plusmn;5 d)<br/>• Interp: <b>NN-3D con DEM (&Delta;<i>z</i>)</b>", td_xs),
+            Paragraph("• Ajuste con aislamiento vertical estricto.<br/>Salida: <code>tmin_adj_*.nc</code>", td_xs),
+            Paragraph("• Método: <b>RK</b> (3 pasadas)<br/>• <b>Covariables: DEM + Pend + Lat + Lon</b><br/>• Residuos: OKR por bloques", td_xs),
+            Paragraph("<b>Inversiones Térmicas Nocturnas (Cold-Air Pooling):</b> Evita contaminación térmica entre cimas cálidas y valles fríos (Constanza, Valle Nuevo, Quetzaltenango).", td_xs),
+        ],
+        [
+            Paragraph("<b>EXP-TN05</b>", td_xs_bold),
+            Paragraph("<b>[P1]</b> Regresión altimétrica con DEM.<br/><b>[P2]</b> Bilineal sobre DEM SRTM.", td_xs),
+            Paragraph("• Método: <code>qmdist</code><br/>• Distribución: <b>Gumbel Mínimos</b><br/>• Interp: OKR por bloques", td_xs),
+            Paragraph("• Mapeo cuantil para colas frías (&lt;P05).<br/>Salida: <code>tmin_adj_*.nc</code>", td_xs),
+            Paragraph("• Método: <b>RK</b> (3 pasadas)<br/>• <b>Covariables: DEM + Lat + Lon</b><br/>• Residuos: OKR por bloques", td_xs),
+            Paragraph("<b>Heladas Agronómicas y Extremos Bajo Cero:</b> Modela eventos de temperaturas mínimas extremas (&lt;0 °C) en altiplanos y cumbres montañosas elevadas.", td_xs),
+        ],
+        [
+            Paragraph("<b>EXP-TN06</b>", td_xs_bold),
+            Paragraph("<b>[P1]</b> Regresión regional con DEM.<br/><b>[P2]</b> Bilineal sobre DEM SRTM.", td_xs),
+            Paragraph("• Método: <code>mbvar</code> (&plusmn;5 d)<br/>• Interp: IDW (3.5°)", td_xs),
+            Paragraph("• Ajuste proporcional estándar.<br/>Salida: <code>tmin_adj_*.nc</code>", td_xs),
+            Paragraph("• Método: <b>Barnes (BSc)</b> (3 pasadas gaussianas)<br/>• Residuos: Ponderación gaussiana<br/>• Covariables: Ninguna", td_xs),
+            Paragraph("<b>Amortiguamiento Marino y Llanuras Homogéneas:</b> Representa el efecto regulador térmico del océano en costas caribeñas y valles aluviales amplios.", td_xs),
+        ],
+        [
+            Paragraph("<b>EXP-TN07</b>", td_xs_bold),
+            Paragraph("<b>[P1]</b> Regresión altimétrica con DEM.<br/><b>[P2]</b> Bilineal sobre DEM SRTM.", td_xs),
+            Paragraph("• Método: <code>mbmon</code> (sesgo mensual fijo)<br/>• Interp: IDW (3.5°)", td_xs),
+            Paragraph("• Corrección mensual estacional.<br/>Salida: <code>tmin_adj_*.nc</code>", td_xs),
+            Paragraph("• Método: <b>Cressman (CSc)</b> (4 pasadas: 1.0°, 0.75°, 0.5°, 0.25°)<br/>• Covariables: Ninguna", td_xs),
+            Paragraph("<b>Pozas de Aire Frío Confinadas:</b> Radios decrecientes para evitar disipar el aire frío estancado en depresiones hacia cordilleras adyacentes.", td_xs),
+        ],
+        [
+            Paragraph("<b>EXP-TN08</b>", td_xs_bold),
+            Paragraph("<b>[P1]</b> Multivariado DEM + Slope + Aspect.<br/><b>[P2]</b> Proyección topográfica completa.", td_xs),
+            Paragraph("• Método: <code>qmdist</code><br/>• Distribución: Skew-Normal<br/>• Interp: <b>NN-3D con DEM (&Delta;<i>z</i>)</b>", td_xs),
+            Paragraph("• Corrección con restricción vertical &Delta;<i>z</i>.<br/>Salida: <code>tmin_adj_*.nc</code>", td_xs),
+            Paragraph("• Método: <b>RK</b> (3 pasadas)<br/>• <b>Covariables: DEM + Slope + Aspect + Coords</b><br/>• Residuos: OKR por bloques", td_xs),
+            Paragraph("<b>Máxima Complejidad Nocturna:</b> Acoplamiento total de drenaje catabático gravitacional en laderas inclinadas y formación de pozas frías en valles cerrados.", td_xs),
+        ],
     ]
-    t_table_tn = Table([th_tn] + rows_tn, colWidths=[0.65 * inch, 1.65 * inch, 1.50 * inch, 1.60 * inch, 2.10 * inch])
+    t_table_tn = Table([th_tn] + rows_tn, colWidths=[0.60 * inch, 1.35 * inch, 1.30 * inch, 1.05 * inch, 1.35 * inch, 1.85 * inch])
     t_table_tn.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), SECONDARY),
         ("ALIGN", (0, 0), (-1, 0), "CENTER"),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("GRID", (0, 0), (-1, -1), 0.5, BORDER_COLOR),
         ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_BG]),
-        ("TOPPADDING", (0, 0), (-1, -1), 2.2),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 2.2),
-        ("LEFTPADDING", (0, 0), (-1, -1), 3.5),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 3.5),
+        ("TOPPADDING", (0, 0), (-1, -1), 1.8),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 1.8),
+        ("LEFTPADDING", (0, 0), (-1, -1), 3.0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 3.0),
     ]))
     story.append(t_table_tn)
 
     story.append(PageBreak())
 
     # =========================================================================
-    # PÁGINA 5: GRILLAS, BUFFER, HARDWARE Y RENDIMIENTO
+    # PÁGINA 6: GRILLAS, BUFFER, HARDWARE Y RENDIMIENTO
     # =========================================================================
-    story.append(Paragraph("6. Configuración de Grilla, Recorte con Buffer y Recursos de Cómputo", h1_style))
+    story.append(Paragraph("7. Configuración Espacial, Recursos de Cómputo y Tiempos de Ejecución", h1_style))
     story.append(Paragraph(
-        "• <b>Opciones de Grilla en CDT (<code>grid$from</code>):</b> <b><code>from: \"data\"</code></b> (Grilla nativa satelital 0.05° ~5.5 km) garantiza <b>coincidencia geométrica 1:1</b> con CHIRPS crudo en <code>EXP-R01</code> a <code>EXP-R06</code> y <code>EXP-R08</code> a <code>EXP-R10</code>, permitiendo diferencias directas píxel a píxel (&Delta; = Corregido - Original). <b><code>from: \"ncdf\"</code></b> (DEM SRTM 0.01° ~1.1 km) es <b>obligatorio</b> en Desescalado de Temperatura (<code>Downscaling Data</code>) para proyectar el gradiente adiabático (&part;<i>T</i>/&part;<i>z</i> &approx; -6.5 &deg;C/km) a cumbres &gt;3,000 m (Pico Duarte, Tajumulco) y valles (Constanza, Azua), y en <code>EXP-R07</code> (RK Orográfico).<br/><br/>"
+        "• <b>Opciones de Grilla en CDT (<code>grid$from</code>):</b> <b><code>from: \"data\"</code></b> (Grilla nativa satelital 0.05° ~5.5 km) garantiza <b>coincidencia geométrica 1:1</b> con CHIRPS crudo en <code>EXP-R01</code> a <code>EXP-R06</code> y <code>EXP-R08</code> a <code>EXP-R10</code>, permitiendo diferencias directas píxel a píxel (&Delta; = Corregido - Original). <b><code>from: \"ncdf\"</code></b> (DEM SRTM 0.01° ~1.1 km) es <b>obligatorio</b> en Desescalado de Temperatura (<code>Downscaling Data</code>) para proyectar el gradiente adiabático (&part;<i>T</i>/&part;<i>z</i> &approx; -6.5 °C/km) a cumbres &gt;3,000 m (Pico Duarte, Tajumulco) y valles (Constanza, Azua), y en <code>EXP-R07</code> (RK Orográfico).<br/><br/>"
         "• <b>Recorte con Shapefile (<i>Blanking</i>) y Buffer Óptimo de 10 km:</b> Para una celda de 0.05° (diagonal = 7.73 km), un <b>buffer de 10 km (~2 celdas)</b> supera la diagonal, evita pérdidas en costas oblicuas (45°) y asegura la cobertura completa de islas (Roatán, Saona, Beata), golfos y cuencas binacionales.",
         body_style
     ))
-    story.append(Spacer(1, 4))
+    story.append(Spacer(1, 3))
 
-    story.append(Paragraph("6.1. Evaluación de Hardware: Servidor Intel Xeon Silver 4210R + 64 GB RAM + NVMe", h2_style))
+    story.append(Paragraph("7.1. Evaluación de Hardware: Servidor Intel Xeon Silver 4210R + 64 GB RAM + NVMe", h2_style))
     th_hw = [Paragraph("Componente", th_style), Paragraph("Especificación Servidor", th_style), Paragraph("Evaluación de Desempeño en CDT", th_style)]
     rows_hw = [
-        [Paragraph("<b>CPU</b>", td_bold), Paragraph("<b>Intel Xeon Silver 4210R</b><br/>10 Cores / 20 Hilos (2.4-3.2 GHz)<br/>Caché L3: 13.75 MB", td_style), Paragraph("<b>Óptimo para Procesamiento por Lotes:</b> 10 núcleos físicos con FPU/AVX dedicadas. Permite despachar <b>9 procesos de R simultáneos</b> sin contención ni degradación térmica.", td_style)],
-        [Paragraph("<b>RAM</b>", td_bold), Paragraph("<b>64 GB DDR4 @ 2400 MT/s</b><br/>Quad-Channel (~76.8 GB/s)", td_style), Paragraph("<b>Capacidad Excedente (Cero OOM):</b> En mallas 0.05° consume ~2.5-3.0 GB para 9 workers (<b>4.6% de la RAM</b>). En mallas 0.01° consume ~8-12 GB (<b>&lt;18% de la RAM</b>). Sin swapping.", td_style)],
+        [Paragraph("<b>CPU</b>", td_bold), Paragraph("<b>Intel Xeon Silver 4210R</b><br/>10 Cores / 20 Hilos (2.4-3.2 GHz)<br/>Caché L3: 13.75 MB", td_style), Paragraph("<b>Óptimo para Procesamiento por Lotes:</b> 10 núcleos físicos con FPU/AVX dedicadas. Permite despachar <b>hasta 18 workers simultáneos</b> sin contención ni degradación térmica.", td_style)],
+        [Paragraph("<b>RAM</b>", td_bold), Paragraph("<b>64 GB DDR4 @ 2400 MT/s</b><br/>Quad-Channel (~76.8 GB/s)", td_style), Paragraph("<b>Capacidad Excedente (Cero OOM):</b> En mallas 0.05° consume ~2.5-4.5 GB con 18 workers (<b>&lt;7% de la RAM</b>). En mallas 0.01° consume ~8-12 GB (<b>&lt;18% de la RAM</b>). Sin swapping.", td_style)],
         [Paragraph("<b>Disco</b>", td_bold), Paragraph("<b>SSD NVMe M.2 PCIe</b><br/>Lectura/Escritura &gt; 3000 MB/s", td_style), Paragraph("<b>Elimina Cuello de Botella I/O:</b> La lectura/escritura de <b>21,916 archivos NetCDF diarios</b> (30 años) se ejecuta a velocidad de bus PCIe sin latencia mecánica.", td_style)],
     ]
     t_table_hw = Table([th_hw] + rows_hw, colWidths=[0.90 * inch, 2.30 * inch, 4.30 * inch])
@@ -596,15 +739,15 @@ def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("GRID", (0, 0), (-1, -1), 0.5, BORDER_COLOR),
         ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_BG]),
-        ("TOPPADDING", (0, 0), (-1, -1), 2.5),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 2.5),
+        ("TOPPADDING", (0, 0), (-1, -1), 2.2),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2.2),
         ("LEFTPADDING", (0, 0), (-1, -1), 4.0),
         ("RIGHTPADDING", (0, 0), (-1, -1), 4.0),
     ]))
     story.append(t_table_hw)
-    story.append(Spacer(1, 4))
+    story.append(Spacer(1, 3))
 
-    story.append(Paragraph("6.2. Diagnóstico Técnico de CDT y Tiempos de Cómputo Calibrados (18 Núcleos)", h2_style))
+    story.append(Paragraph("7.2. Diagnóstico Técnico de CDT y Tiempos de Cómputo Calibrados (18 Núcleos)", h2_style))
     story.append(Paragraph(
         "<b>Diagnóstico de Paralelización y Rendimiento:</b> (1) <i>Modo Headless:</i> La orquestación en Python elimina la dependencia de Tcl/Tk e inyecta paralelismo estable en <code>.cdtData$Config$parallel</code> mediante clústeres de sockets en Windows con hasta 18 workers activos. "
         "(2) <i>Diferenciación de Carga:</i> Los métodos algebraicos (IDW, Barnes, Shepard) computan 30 años en ~1.1–2.3 h; Regression Kriging en temperatura con DEM toma ~2.2–2.6 h (sin máscara de lluvia); y Kriging por Bloques con 3 pasadas y máscara logística (R03, R04, R05, R07) requiere ~4.0–4.5 h debido a la integración numérica 2D y doble Kriging diario. "
@@ -637,9 +780,9 @@ def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos
     story.append(PageBreak())
 
     # =========================================================================
-    # PÁGINA 6: VALIDACIÓN, CF-1.8 Y REFERENCIAS BIBLIOGRÁFICAS
+    # PÁGINA 7: VALIDACIÓN, CF-1.8 Y REFERENCIAS BIBLIOGRÁFICAS
     # =========================================================================
-    story.append(Paragraph("7. Validación Cruzada Independiente (Holdout por CSV) y Métricas Cuantitativas", h1_style))
+    story.append(Paragraph("8. Validación Cruzada Independiente (Holdout por CSV) y Métricas Cuantitativas", h1_style))
     story.append(Paragraph(
         "• <b>Partición Automática por CSV (<code>holdout_stations_file</code>):</b> El usuario suministra un listado CSV con los códigos de estación a omitir. "
         "El módulo <code>launcher/station_manager.py</code> separa automáticamente el archivo CDT en subconjuntos de <i>Entrenamiento</i> (usado en la fusión) "
@@ -654,6 +797,10 @@ def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos
         "<b>Eficiencia Kling-Gupta:</b> &nbsp; <b>KGE</b> = 1 &minus; &radic;[(<i>r</i> &minus; 1)<sup>2</sup> + (&beta; &minus; 1)<sup>2</sup> + (&gamma; &minus; 1)<sup>2</sup>] &nbsp;&nbsp;|&nbsp;&nbsp; "
         "<b>Sesgo relativo:</b> &beta; = &mu;<sub>S</sub> / &mu;<sub>O</sub> &nbsp;&nbsp;|&nbsp;&nbsp; "
         "<b>Variabilidad:</b> &gamma; = (&sigma;<sub>S</sub> / &mu;<sub>S</sub>) / (&sigma;<sub>O</sub> / &mu;<sub>O</sub>)<br/>"
+        "<b>Métricas Continuas:</b> &nbsp; "
+        "<b>RMSE</b> = &radic;[&Sigma;(<i>S</i> &minus; <i>O</i>)<sup>2</sup> / <i>N</i>] &nbsp;|&nbsp; "
+        "<b>MAE</b> = &Sigma;|<i>S</i> &minus; <i>O</i>| / <i>N</i> &nbsp;|&nbsp; "
+        "<b>PBIAS</b> = [&Sigma;(<i>S</i> &minus; <i>O</i>) / &Sigma;<i>O</i>] &times; 100%<br/>"
         "<b>Métricas Categóricas (Lluvia &ge; 1.0 mm/día):</b> &nbsp; "
         "<b>POD</b> = <i>a</i> / (<i>a</i> + <i>c</i>) &nbsp;|&nbsp; "
         "<b>FAR</b> = <i>b</i> / (<i>a</i> + <i>b</i>) &nbsp;|&nbsp; "
@@ -665,15 +812,15 @@ def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos
     t_form.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, -1), BOX_BG_TEAL),
         ("BOX", (0, 0), (-1, -1), 1.0, BOX_BORDER_TEAL),
-        ("TOPPADDING", (0, 0), (-1, -1), 3.5),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 3.5),
+        ("TOPPADDING", (0, 0), (-1, -1), 3.0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3.0),
         ("LEFTPADDING", (0, 0), (-1, -1), 6.0),
         ("RIGHTPADDING", (0, 0), (-1, -1), 6.0),
     ]))
     story.append(t_form)
-    story.append(Spacer(1, 4))
+    story.append(Spacer(1, 3))
 
-    story.append(Paragraph("8. Ensamblado Multitemporal y Cumplimiento Estricto del Estándar CF-1.8", h1_style))
+    story.append(Paragraph("8.1. Ensamblado Multitemporal y Cumplimiento Estricto del Estándar CF-1.8", h2_style))
     story.append(Paragraph(
         "El módulo <code>launcher/netcdf_assembler.py</code> consolida los 10,958 archivos diarios 2D en un único archivo NetCDF 3D (time, lat, lon):<br/>"
         "• <b>Ejes estándar:</b> <code>time</code> (días gregorianos estándar desde 1991-01-01, eje 'T'), <code>latitude</code> (degrees_north, eje 'Y'), <code>longitude</code> (degrees_east, eje 'X').<br/>"
@@ -681,8 +828,12 @@ def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos
         "• <b>Atributos Globales y Optimización:</b> <i>Conventions = \"CF-1.8\"</i>, compresión <i>Deflate (level=4)</i> con chunking espacial optimizado para consultas temporales rápidas.",
         body_style
     ))
-    story.append(Spacer(1, 4))
 
+    story.append(PageBreak())
+
+    # =========================================================================
+    # PÁGINA 8: REFERENCIAS BIBLIOGRÁFICAS CIENTÍFICAS VERIFICADAS
+    # =========================================================================
     story.append(Paragraph("9. Referencias Bibliográficas Científicas Verificadas", h1_style))
     story.append(Paragraph("Las siguientes 19 publicaciones indexadas sustentan física, estadística y metodológicamente los experimentos propuestos:", body_style))
     story.append(Spacer(1, 1))
