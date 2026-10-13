@@ -13,7 +13,7 @@ description: >
   la contaminación térmica entre valles y cumbres con ponderación altimétrica NN-3D.
 
 variable_type: "tmax"
-var_id: "tmax"
+var_id: "temp"
 
 downscaling:
   method: "bicubic"

@@ -12,7 +12,7 @@ description: >
   tierra-mar y amortiguamiento térmico marino nocturno en costas y archipiélagos.
 
 variable_type: "tmin"
-var_id: "tmin"
+var_id: "temp"
 
 downscaling:
   method: "bilinear"

@@ -13,7 +13,7 @@ description: >
   (Petén, Caribe guatemalteco/hondureño, vertiente Atlántica dominicana).
 
 variable_type: "tmin"
-var_id: "tmin"
+var_id: "temp"
 
 downscaling:
   method: "idw"

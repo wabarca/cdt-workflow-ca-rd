@@ -277,15 +277,16 @@ def evaluate_netcdf_against_stations(
     ds = xr.open_dataset(nc_path)
 
     # Detect data variable
-    if not var_name:
+    if not var_name or var_name not in ds.data_vars:
         possible_vars = ["precip", "precipitation", "precip_amount", "temp", "tmax", "tmin", "air_temperature"]
         for pv in possible_vars:
             if pv in ds.data_vars:
                 var_name = pv
                 break
-        if not var_name:
+        if not var_name or var_name not in ds.data_vars:
             # Pick first data variable
-            var_name = list(ds.data_vars.keys())[0]
+            non_coords = [v for v in ds.data_vars if v not in ("lon", "lat", "time", "longitude", "latitude")]
+            var_name = non_coords[0] if non_coords else list(ds.data_vars.keys())[0]
 
     da = ds[var_name]
 

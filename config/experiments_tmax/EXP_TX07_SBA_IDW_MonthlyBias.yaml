@@ -12,7 +12,7 @@ description: >
   para capturar el ciclo anual medio de temperatura máxima.
 
 variable_type: "tmax"
-var_id: "tmax"
+var_id: "temp"
 
 downscaling:
   method: "bilinear"

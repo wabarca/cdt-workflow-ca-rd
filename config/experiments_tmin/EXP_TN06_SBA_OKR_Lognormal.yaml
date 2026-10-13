@@ -12,7 +12,7 @@ description: >
   en costas del Caribe y llanuras costeras mediante distribución lognormal.
 
 variable_type: "tmin"
-var_id: "tmin"
+var_id: "temp"
 
 downscaling:
   method: "bilinear"

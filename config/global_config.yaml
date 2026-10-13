@@ -35,7 +35,7 @@ paths:
   # Si se especifican estas rutas, el lanzador los dividirá automáticamente en paralelo:
   raw_3d_netcdf_rainfall: "data/raw_netcdf/chirps-AC.nc"     # Ej: "data/raw_netcdf/chirps_daily_1991_2020.nc"
   raw_3d_netcdf_tmax: "data/raw_netcdf/CHIRTS-ERA5.daily_Tmax.1991-2020.nc"         # Ej: "data/raw_netcdf/chirts_tmax_daily_1991_2020.nc"
-  raw_3d_netcdf_tmin: "data/raw_netcdf/CHIRTS-ERA5.daily_Tmin.1991-2020.nc"         # Ej: "data/raw_netcdf/chirts_tmin_daily_1991_2020.nc"
+  raw_3d_netcdf_tmin: "data/raw_netcdf/CHIRTS-ERA5.daily_Tmin.1991-2024.nc"         # Ej: "data/raw_netcdf/chirts_tmin_daily_1991_2020.nc"
 
   # --- Opción B: Directorios con Grillas Diarias 2D en Formato CDT (0.05° ~5.5 km) ---
   satellite_rainfall_dir: "data/chirps_daily"                # Directorio con archivos NetCDF diarios de CHIRPS v2.0

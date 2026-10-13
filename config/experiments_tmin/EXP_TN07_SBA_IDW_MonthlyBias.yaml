@@ -12,7 +12,7 @@ description: >
   para capturar el ciclo anual medio de temperatura mínima nocturna.
 
 variable_type: "tmin"
-var_id: "tmin"
+var_id: "temp"
 
 downscaling:
   method: "bilinear"

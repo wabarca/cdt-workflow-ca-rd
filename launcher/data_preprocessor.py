@@ -96,16 +96,17 @@ def _batch_slice_worker(args: Tuple[str, List[Tuple[int, str]], str, str, str, s
             out_file = out_dir_path / fname
             # Re-generate if missing or corrupted (size < 512 bytes)
             if not out_file.exists() or out_file.stat().st_size < 512:
-                data_2d = ds[var_id].isel(time=time_idx)
+                eff_var = var_id if var_id in ds.data_vars else next((v for v in ds.data_vars if len(ds[v].dims) >= 3), list(ds.data_vars)[0])
+                data_2d = ds[eff_var].isel(time=time_idx)
                 ds_out = xr.Dataset(
-                    data_vars={var_id: (data_2d.dims, data_2d.values, data_2d.attrs)},
+                    data_vars={eff_var: (data_2d.dims, data_2d.values, data_2d.attrs)},
                     coords={
                         lon_name: (ds[lon_name].dims, ds[lon_name].values, ds[lon_name].attrs),
                         lat_name: (ds[lat_name].dims, ds[lat_name].values, ds[lat_name].attrs),
                     },
                     attrs=ds.attrs,
                 )
-                ds_out.to_netcdf(out_file, encoding={var_id: {"zlib": True, "complevel": 4}})
+                ds_out.to_netcdf(out_file, encoding={eff_var: {"zlib": True, "complevel": 4}})
                 written_count += 1
     return written_count
 
@@ -144,12 +145,17 @@ def split_3d_netcdf_to_daily_parallel(
 
     t0 = time.time()
     with xr.open_dataset(nc_path) as ds:
-        # Detect variable
-        if not var_id:
+        # Detect variable with resilient fallback
+        if not var_id or var_id not in ds.data_vars:
             candidates = [v for v in ds.data_vars if len(ds[v].dims) >= 3]
             if not candidates:
+                candidates = [v for v in ds.data_vars if v not in ("lon", "lat", "time", "longitude", "latitude", "x", "y")]
+            if not candidates:
                 candidates = list(ds.data_vars)
-            var_id = candidates[0] if candidates else list(ds.data_vars)[0]
+            detected_var = candidates[0] if candidates else list(ds.data_vars)[0]
+            if var_id and var_id not in ds.data_vars and verbose:
+                print(f"  [i] Variable '{var_id}' no encontrada en {nc_path.name}. Auto-detectada: '{detected_var}'")
+            var_id = detected_var
 
         # Detect spatial coordinates
         lon_candidates = ["lon", "longitude", "x", "X", "long"]
@@ -204,6 +210,7 @@ def split_3d_netcdf_to_daily_parallel(
         "newly_written": new_written,
         "elapsed_sec": round(elapsed, 2),
         "variable_id": var_id,
+        "var_id": var_id,
         "workers_used": workers,
     }
 
@@ -545,6 +552,22 @@ def validate_project_inputs(
                 if cand_raw.exists():
                     raw_path_obj = cand_raw.resolve()
             raw_found = raw_path_obj.exists() and raw_path_obj.is_file()
+
+        if not raw_found and Path("data/raw_netcdf").exists():
+            for cf in Path("data/raw_netcdf").glob("*.nc"):
+                c_name = cf.name.lower()
+                if "tmin" in raw_3d_key and "tmin" in c_name:
+                    raw_path_obj = cf.resolve()
+                    raw_found = True
+                    break
+                elif "tmax" in raw_3d_key and "tmax" in c_name:
+                    raw_path_obj = cf.resolve()
+                    raw_found = True
+                    break
+                elif "rainfall" in raw_3d_key and ("chirps" in c_name or "precip" in c_name):
+                    raw_path_obj = cf.resolve()
+                    raw_found = True
+                    break
 
         if nc_count >= expected_days:
             details[dir_key] = {"path": str(t_dir), "file_count": nc_count, "status": "COMPLETE"}

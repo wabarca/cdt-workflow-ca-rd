@@ -13,7 +13,7 @@ description: >
   SBA mediante IDW monocapa (1 pasada a 1.0°).
 
 variable_type: "tmax"
-var_id: "tmax"
+var_id: "temp"
 
 downscaling:
   method: "bilinear"

@@ -228,6 +228,27 @@ class TestRegionalRouting(unittest.TestCase):
         self.assertIn("holdout_stations_file", cfg_rain["paths"])
         self.assertIn("holdout_stations_file", cfg_tmax["paths"])
 
+    def test_temperature_variable_normalization(self):
+        from launcher.experiment_runner import ExperimentRunner
+        runner_tx = ExperimentRunner(
+            config_target="config/experiments_tmax/EXP_TX01_SBA_IDW_Baseline.yaml",
+            base_config_path="config/global_config.yaml",
+            region="ca",
+        )
+        cfg_tx = runner_tx.load_configs()[0]
+        # In CHIRTS NetCDFs and CDT temperature engine, the internal variable is 'temp'
+        self.assertEqual(cfg_tx["paths"]["var_id"], "temp")
+        self.assertIn("tmax", cfg_tx["paths"]["satellite_format"])
+
+        runner_tn = ExperimentRunner(
+            config_target="config/experiments_tmin/EXP_TN01_SBA_IDW_Baseline.yaml",
+            base_config_path="config/global_config.yaml",
+            region="ca",
+        )
+        cfg_tn = runner_tn.load_configs()[0]
+        self.assertEqual(cfg_tn["paths"]["var_id"], "temp")
+        self.assertIn("tmin", cfg_tn["paths"]["satellite_format"])
+
 
 class TestParallelCores(unittest.TestCase):
     """Test automatic and explicit core configuration."""
@@ -289,6 +310,16 @@ class TestExperimentYAMLConsistency(unittest.TestCase):
                     distr = bias.get("distribution") or bias.get("distr")
                     if distr:
                         self.assertIn(str(distr).lower(), valid_distrs, f"Invalid distribution '{distr}' in {p}")
+
+    def test_all_temperature_yamls_have_temp_var_id(self):
+        import glob
+        temp_yamls = sorted(glob.glob("config/experiments_tm*/*.yaml"))
+        self.assertEqual(len(temp_yamls), 16)
+        for p in temp_yamls:
+            with self.subTest(yaml_file=p):
+                with open(p, "r", encoding="utf-8") as f:
+                    cfg = yaml.safe_load(f)
+                self.assertEqual(cfg.get("var_id"), "temp", f"Expected var_id 'temp' for CHIRTS NetCDFs in {p}")
 
 
 if __name__ == "__main__":

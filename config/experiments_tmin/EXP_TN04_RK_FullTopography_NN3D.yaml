@@ -13,7 +13,7 @@ description: >
   evitando que el enfriamiento contamine térmicamente las cimas adyacentes mediante NN-3D con ponderación vertical.
 
 variable_type: "tmin"
-var_id: "tmin"
+var_id: "temp"
 
 downscaling:
   method: "bicubic"

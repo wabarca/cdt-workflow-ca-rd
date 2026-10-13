@@ -12,7 +12,7 @@ description: >
   en cumbres montañosas (>3,000 m, Pico Duarte, Tajumulco, Chirripó) con QM Normal.
 
 variable_type: "tmin"
-var_id: "tmin"
+var_id: "temp"
 
 downscaling:
   method: "bilinear"

@@ -12,7 +12,7 @@ description: >
   y Mosquitia hondureña/nicaragüense mediante distribución lognormal.
 
 variable_type: "tmax"
-var_id: "tmax"
+var_id: "temp"
 
 downscaling:
   method: "bilinear"

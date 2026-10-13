@@ -82,6 +82,30 @@ def _deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any
     return merged
 
 
+def _probe_netcdf_data_var(nc_path: Union[str, Path], preferred: Optional[str] = None) -> Optional[str]:
+    """Inspect a NetCDF file and return its primary climate data variable name."""
+    try:
+        import netCDF4 as nc
+        with nc.Dataset(str(nc_path), "r") as ds:
+            coords = ("lon", "lat", "longitude", "latitude", "time", "x", "y")
+            data_vars = [
+                v for v in ds.variables
+                if v.lower() not in coords and len(ds.variables[v].dimensions) >= 2
+            ]
+            if not data_vars:
+                data_vars = [v for v in ds.variables if v.lower() not in coords]
+            if not data_vars:
+                return None
+            if preferred and preferred in data_vars:
+                return preferred
+            for c in ("precip", "temp", "tmax", "tmin", "precipitation", "tasmax", "tasmin"):
+                if c in data_vars:
+                    return c
+            return data_vars[0]
+    except Exception:
+        return None
+
+
 class ExperimentRunner:
     """Orchestrates batches or individual CDT experiments defined via YAML configuration."""
 
@@ -194,15 +218,20 @@ class ExperimentRunner:
             elif var_type in ("tmax", "tx", "temp_max", "temperature_max"):
                 paths["satellite_dir"] = paths.get("satellite_tmax_dir", paths.get("satellite_temperature_dir", "data/chirts_daily/tmax"))
                 paths["satellite_format"] = paths.get("satellite_tmax_format", "tmax_%s%s%s.nc")
-                paths["var_id"] = paths.get("var_id", "tmax")
+                paths["var_id"] = "temp" if paths.get("var_id") in (None, "tmax", "") else paths.get("var_id")
             elif var_type in ("tmin", "tn", "temp_min", "temperature_min"):
                 paths["satellite_dir"] = paths.get("satellite_tmin_dir", paths.get("satellite_temperature_dir", "data/chirts_daily/tmin"))
                 paths["satellite_format"] = paths.get("satellite_tmin_format", "tmin_%s%s%s.nc")
-                paths["var_id"] = paths.get("var_id", "tmin")
+                paths["var_id"] = "temp" if paths.get("var_id") in (None, "tmin", "") else paths.get("var_id")
             else:
                 paths["satellite_dir"] = paths.get("satellite_temperature_dir", "data/chirts_daily")
                 paths["satellite_format"] = paths.get("satellite_temperature_format", "tmax_%s%s%s.nc")
                 paths["var_id"] = paths.get("var_id", "temp")
+        else:
+            if var_type in ("tmax", "tx", "temp_max", "temperature_max") and paths.get("var_id") in (None, "tmax", ""):
+                paths["var_id"] = "temp"
+            elif var_type in ("tmin", "tn", "temp_min", "temperature_min") and paths.get("var_id") in (None, "tmin", ""):
+                paths["var_id"] = "temp"
 
         if "stations_file" not in paths:
             reg_suffix = f"_{self.region}" if self.region in ("ca", "rd") else "_all"
@@ -394,7 +423,7 @@ class ExperimentRunner:
             if sat_dir and current_nc_count < expected_days:
                 raw_key = f"raw_3d_netcdf_{var_type}" if var_type in ("rainfall", "precip") else f"raw_3d_netcdf_{var_type}"
                 raw_path_str = paths.get(raw_key) or paths.get("raw_3d_netcdf_rainfall" if var_type in ("rainfall", "precip") else "raw_3d_netcdf_tmax")
-                if not raw_path_str:
+                if not raw_path_str or not Path(raw_path_str).exists():
                     cand_3d_files = list(Path("data/raw_netcdf").glob("*.nc")) if Path("data/raw_netcdf").exists() else []
                     for cf in cand_3d_files:
                         if var_type in ("rainfall", "precip") and "chirps" in cf.name.lower():
@@ -413,7 +442,7 @@ class ExperimentRunner:
                     else:
                         print(f"  --> Generando {expected_days:,} archivos diarios 2D desde NetCDF 3D: {Path(raw_path_str).name} -> {sat_dir.name}/")
                     
-                    split_3d_netcdf_to_daily_parallel(
+                    split_res = split_3d_netcdf_to_daily_parallel(
                         input_nc_path=raw_path_str,
                         output_dir=sat_dir,
                         filename_format=paths.get("satellite_format", "chirps_%s%s%s.nc" if var_type in ("rainfall", "precip") else f"{var_type}_%s%s%s.nc"),
@@ -421,6 +450,16 @@ class ExperimentRunner:
                         start_date=p_start,
                         end_date=p_end,
                     )
+                    if split_res and "var_id" in split_res:
+                        paths["var_id"] = split_res["var_id"]
+
+            # Ensure paths["var_id"] accurately reflects the actual variable inside daily NetCDFs
+            if sat_dir and sat_dir.exists():
+                existing_ncs = list(sat_dir.glob("*.nc"))
+                if existing_ncs:
+                    probed_var = _probe_netcdf_data_var(existing_ncs[0], preferred=paths.get("var_id"))
+                    if probed_var:
+                        paths["var_id"] = probed_var
 
             # Create working copy of exp dict with effective training station path
             exp_exec = dict(exp)
@@ -477,10 +516,11 @@ class ExperimentRunner:
                         out_nc_name = post_proc.get("output_filename", f"{var_type}_daily_1991_2020_{exp_id}.nc")
                         assembled_nc_path = out_dir / out_nc_name
                         print(f"  --> Ensamblando archivos NetCDF diarios en producto 3D CF-1.8...")
+                        eff_cf_var = "precip" if var_type in ("rainfall", "rain", "precip") else ("tmin" if "tmin" in var_type or "tn" in var_type else "tmax")
                         assemble_daily_netcdfs_to_cf18(
                             input_dir=daily_nc_dir,
                             output_netcdf_path=assembled_nc_path,
-                            variable_name=paths.get("var_id", "precip" if var_type in ("rainfall", "precip") else "temp"),
+                            variable_name=eff_cf_var,
                             variable_type=var_type,
                             title=f"Reconstructed Climate Gridded Dataset (1991-2020) - {exp_id}",
                         )
@@ -495,10 +535,11 @@ class ExperimentRunner:
                 try:
                     from launcher.station_manager import evaluate_netcdf_against_stations
                     wet_thresh = validation_cfg.get("wet_threshold", 1.0)
+                    eff_cf_var = "precip" if var_type in ("rainfall", "rain", "precip") else ("tmin" if "tmin" in var_type or "tn" in var_type else "tmax")
                     df_metrics, val_summary = evaluate_netcdf_against_stations(
                         netcdf_path=assembled_nc_path,
                         station_file=val_target_file,
-                        var_name=paths.get("var_id", "precip" if var_type in ("rainfall", "precip") else "temp"),
+                        var_name=eff_cf_var,
                         var_type=var_type,
                         wet_threshold=wet_thresh,
                     )
@@ -677,8 +718,9 @@ class ExperimentRunner:
                 interp = {"method": first_pass["interp_method"]}
         bias_cfg = exp.get("bias_correction", {}) or {}
 
-        var_raw = str(paths.get("var_id", exp.get("variable_type", "tmax"))).lower()
-        var_prefix = "tmin" if "tmin" in var_raw else "tmax"
+        var_type = str(exp.get("variable_type", exp.get("id", "tmax"))).lower()
+        var_prefix = "tmin" if ("tmin" in var_type or "tn" in var_type or "min" in var_type) else "tmax"
+        eff_var_id = paths.get("var_id", "temp")
 
         # Check if pre-merging Bias Correction is needed
         bias_method = str(bias_cfg.get("method", "")).lower()
@@ -712,7 +754,7 @@ class ExperimentRunner:
                 use_block=b_interp.get("use_block", True),
                 vgm_models=b_interp.get("variogram_models", ["Sph", "Exp", "Gau", "Pen"]),
                 dem_file=paths.get("dem_file"),
-                var_id=paths.get("var_id", var_prefix),
+                var_id=eff_var_id,
                 start_year=int(str(period.get("start_date", "19910101"))[:4]),
                 end_year=int(str(period.get("end_date", "20201231"))[:4]),
                 global_bias_opts=exp.get("global_options"),
@@ -742,7 +784,7 @@ class ExperimentRunner:
                 bias_format=None,
                 bias_method=bias_method,
                 output_dir=adj_dir,
-                var_id=paths.get("var_id", var_prefix),
+                var_id=eff_var_id,
                 output_format=f"{var_prefix}_adj_%s%s%s.nc",
                 log_dir=log_dir,
             )
@@ -776,7 +818,7 @@ class ExperimentRunner:
             netcdf_dir=effective_sat_dir,
             netcdf_format=effective_sat_format,
             output_dir=out_dir,
-            var_id=paths.get("var_id", var_prefix),
+            var_id=eff_var_id,
             merge_method=m_method_clean,
             nrun=merging.get("nrun", 3 if isinstance(merging.get("passes"), list) and len(merging.get("passes")) > 1 else 1),
             pass_ratios=merging.get("passes", [1.0, 0.75, 0.5]),

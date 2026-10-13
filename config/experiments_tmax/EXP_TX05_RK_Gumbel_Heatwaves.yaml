@@ -13,7 +13,7 @@ description: >
   utilizando la distribución de valores extremos de Gumbel.
 
 variable_type: "tmax"
-var_id: "tmax"
+var_id: "temp"
 
 downscaling:
   method: "bilinear"
