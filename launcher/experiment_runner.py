@@ -53,6 +53,24 @@ def _check_python_requirements() -> bool:
 
 
 
+def format_duration(seconds: float) -> str:
+    """Format elapsed seconds into a human-readable string (e.g. '4h 15m 32s', '12m 45s', or '4.70s')."""
+    if seconds is None or seconds < 0:
+        return "0.00s"
+    if seconds < 60:
+        return f"{seconds:.2f}s"
+    
+    total_sec = int(round(seconds))
+    hours = total_sec // 3600
+    rem = total_sec % 3600
+    minutes = rem // 60
+    secs = rem % 60
+    
+    if hours > 0:
+        return f"{hours}h {minutes:02d}m {secs:02d}s"
+    return f"{minutes}m {secs:02d}s"
+
+
 def _deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
     """Recursively merge two dictionaries."""
     merged = dict(base)
@@ -431,8 +449,10 @@ class ExperimentRunner:
                 err_lines = [l.strip() for l in stderr.strip().splitlines() if l.strip()]
                 for el in err_lines[-4:]:
                     print(f"      [R-stderr] {el}")
+            formatted_time = format_duration(elapsed)
             manifest_data["timestamp_end"] = datetime.datetime.now().isoformat()
             manifest_data["execution_time_sec"] = elapsed
+            manifest_data["execution_time_formatted"] = formatted_time
             manifest_data["status"] = status_str
             manifest_data["return_code"] = ret_code
             if split_info:
@@ -512,13 +532,14 @@ class ExperimentRunner:
                 "description": exp_desc,
                 "status": status_str,
                 "time_sec": round(elapsed, 2),
+                "time_formatted": formatted_time,
                 "output_dir": str(out_dir),
                 "assembled_nc": str(assembled_nc_path) if assembled_nc_path else "N/A",
                 "kge": manifest_data.get("validation", {}).get("summary_results", {}).get("mean_kge", "N/A"),
             })
 
             icon = "[OK]" if ret_code == 0 else "[FAIL]"
-            print(f"  >>> {icon} {exp_id} completado con estado {status_str} en {elapsed:.2f}s")
+            print(f"  >>> {icon} {exp_id} completado con estado {status_str} en {formatted_time} ({elapsed:.2f}s)")
 
         self._print_execution_summary()
         return self.results_summary
@@ -781,7 +802,12 @@ class ExperimentRunner:
         print("=" * 80)
         for res in self.results_summary:
             status_tag = f"[{res['status']}]"
-            print(f"  {status_tag:10} | {res['id']:32} | Tiempo: {res['time_sec']:>6.2f}s | {res['description']}")
+            t_str = res.get("time_formatted", f"{res['time_sec']:.2f}s")
+            print(f"  {status_tag:10} | {res['id']:32} | Tiempo: {t_str:>11} | {res['description']}")
+        if len(self.results_summary) > 1:
+            total_sec = sum(res.get("time_sec", 0.0) for res in self.results_summary)
+            print("-" * 80)
+            print(f"  TIEMPO TOTAL ACUMULADO DE LA SUITE: {format_duration(total_sec)} ({total_sec:.2f}s)")
         print("=" * 80 + "\n")
 
 
