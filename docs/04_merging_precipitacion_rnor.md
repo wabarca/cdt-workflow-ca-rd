@@ -91,7 +91,7 @@ $$\text{Mask}(s) = \begin{cases} 0 & \text{si } P(s) < 0.1 \\ P(s) & \text{si } 
 
 ### Opción 3: Rampa Sigmoide Suave (*Smooth Ramp*) - **Recomendada**
 $$\text{Mask}(s) = \begin{cases} 0 & \text{si } P(s) < 0.25 \\ P(s) & \text{si } 0.25 \le P(s) < 0.75 \\ 1 & \text{si } P(s) \geq 0.75 \end{cases}$$
-- *Comportamiento:* Ofrece el mejor equilibrio: anula con seguridad zonas secas (<25%), preserva al 100% las áreas de lluvia consolidada (>75%) y genera una transición espacial continua en el área perimetral.
+- *Comportamiento:* Ofrece el mejor equilibrio: anula con seguridad zonas secas ($< 25\%$), preserva al 100% las áreas de lluvia consolidada ($> 75\%$) y genera una transición espacial continua en el área perimetral.
 
 ---
 

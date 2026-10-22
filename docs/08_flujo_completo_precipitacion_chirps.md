@@ -89,15 +89,15 @@ Para un estudio comparativo o artículo de investigación, la siguiente matriz r
 | **Bias: Umbral Día Lluvioso** | `qmdistRainyDayThres` | $0.1\text{ mm}$, $0.5\text{ mm}$, $1.0\text{ mm}$, $2.0\text{ mm}$ | Sensibilidad a la definición de lluvia efectiva vs trazas / rocío. |
 | **Bias: Función Central** | `mulBiasFunction` | `"mean"` vs `"median"` | Preservación de masa total vs robustez estadística ante tormentas excepcionales. |
 | **Bias: Malla Gruesa de Fondo**| `addCoarseGrid` | `TRUE` vs `FALSE` (`resCoarseGrid = 0.5^\circ, 0.75^\circ`) | Estabilidad numérica del sesgo en zonas oceánicas o fronteras sin estaciones. |
-| **Merging: Método** | `merge.method$method` | `"SBA"`, `"RK"`, `"CSc"` (Cressman), `"BSc"` (Barnes) | Comparación de ajuste aditivo simple vs modelos orográficos multivariados. |
+| **Merging: Método** | `merge.method\$method` | `"SBA"`, `"RK"`, `"CSc"` (Cressman), `"BSc"` (Barnes) | Comparación de ajuste aditivo simple vs modelos orográficos multivariados. |
 | **Merging: Covariables RK** | `auxvar` | - Solo DEM<br>- DEM + Slope + Aspect<br>- DEM + Coordenadas (Lon, Lat) | Impacto de la geometría del relieve y sombras de lluvia en la precipitación. |
 | **Merging: Pasadas** | `nrun` y `pass` | - 1 pasada: `pass = c(1)`<br>- 2 pasadas: `pass = c(1, 0.5)`<br>- 3 pasadas: `pass = c(1, 0.75, 0.5)` | Corrección multiescala de patrones convectivos vs estratiformes. |
-| **Merging: Radio Búsqueda** | `interp.method$maxdist` | $0.75^\circ, 1.25^\circ, 1.75^\circ, 2.5^\circ$ | Rango de decorrelación espacial de tormentas en la cuenca. |
+| **Merging: Radio Búsqueda** | `interp.method\$maxdist` | $0.75^\circ, 1.25^\circ, 1.75^\circ, 2.5^\circ$ | Rango de decorrelación espacial de tormentas en la cuenca. |
 | **Merging: Vecindad** | `nmin` / `nmax` | $(4, 12)$, $(6, 16)$, $(8, 24)$ | Densidad local requerida para no interpolar ruido. |
 | **Merging: Kriging Variograma**| `vgm.model` | `"Sph"`, `"Exp"`, `"Gau"`, `"Pen"` | Estructura de covarianza espacial de los residuales pluviales. |
 | **Merging: Soporte de Celda** | `use.block` | `TRUE` (Block Kriging) vs `FALSE` | Ajuste de escala puntual ($0\text{ m}$) a pixel satelital ($5\text{ km}$). |
 | **RnoR: Modelo** | `RnoRModel` | `"logit"` (Regresión Logística) vs `"additive"` | Modelado probabilístico riguroso vs interpolación continua acotada. |
-| **RnoR: Función de Corte** | `RnoRCutOff` | `1` (Corte duro 0.5), `2` (Lineal >0.1), `3` (Rampa sigmoide) | Balance entre eliminación de lloviznas espurias y preservación de lluvia ligera real. |
+| **RnoR: Función de Corte** | `RnoRCutOff` | `1` (Corte duro 0.5), `2` (Lineal $> 0.1$), `3` (Rampa sigmoide) | Balance entre eliminación de lloviznas espurias y preservación de lluvia ligera real. |
 | **RnoR: Suavizado** | `smooth` y `RnoRSmoothingPixels` | `smooth = TRUE/FALSE`, pixels = $1, 2, 3$ | Continuidad en los bordes de frentes lluviosos. |
 
 ---

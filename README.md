@@ -375,7 +375,24 @@ python launcher/experiment_runner.py --benchmark --region rd
 
 > **Paralelismo y Formato de Tiempo:** Por defecto, el orquestador detecta automáticamente los núcleos disponibles (`N - 1`), o puedes asignar explícitamente los núcleos deseados con `--cores 18`. Los tiempos de ejecución se visualizan dinámicamente en formato legible de horas, minutos y segundos (`4h 16m 40s`).
 
-### Opción B: Ejecución en Contenedores Docker / Docker Compose (Cero Dependencias en el Host)
+### Opción B: Ejecución Desatendida en Segundo Plano (`nohup` en Linux / WSL / Servidores)
+
+Para ejecuciones completas de larga duración (~60 horas), se debe lanzar el proceso desacoplado de la terminal, desactivando la variable `DISPLAY` (para evitar conflictos de `tcltk`/X11 en entornos sin entorno gráfico) y usando el flag `-u` de Python (para registrar logs en tiempo real sin latencia de búfer):
+
+```bash
+# Ejecutar toda la suite en segundo plano (producción desatendida)
+DISPLAY= nohup python -u launcher/experiment_runner.py --suite all --cores 18 > corrida_completa.log 2>&1 &
+
+# Monitorear el progreso en tiempo real
+tail -f corrida_completa.log
+
+# Verificar el proceso activo en el sistema
+ps aux | grep experiment_runner
+```
+
+> **Tolerancia a Fallos y Reanudación:** Si el servidor se reinicia o el proceso se detiene, basta con relanzar el mismo comando. El orquestador detectará las grillas diarias ya generadas y reanudará automáticamente desde el día exacto de interrupción sin reprocesar. Para forzar un reprocesamiento desde cero, utilice la bandera `--force`.
+
+### Opción C: Ejecución en Contenedores Docker / Docker Compose (Cero Dependencias en el Host)
 
 ```bash
 # 1. Construir la imagen del contenedor
@@ -401,8 +418,8 @@ docker compose run --rm cdt-runner python launcher/experiment_runner.py --suite 
   - _(Opcional)_ Archivo general combinado: `precip_stations_all.csv`, `tmax_stations_all.csv`, `tmin_stations_all.csv`
   - Formato CDT (4 líneas de encabezado: `ID`, `LON`, `LAT`, `ELEV`).
   - **Validación Cruzada Independiente (*Holdout*):**
-    - `validation_holdout_stations_rainfall.csv` $\rightarrow$ IDs de estaciones omitidas para **Precipitación**.
-    - `validation_holdout_stations_temperature.csv` $\rightarrow$ IDs de estaciones omitidas para **Temperatura (Tmax/Tmin)**.
+    - `validation_holdout_stations_rainfall.csv` → IDs de estaciones omitidas para **Precipitación**.
+    - `validation_holdout_stations_temperature.csv` → IDs de estaciones omitidas para **Temperatura (Tmax/Tmin)**.
 - **Grillas Satelitales (`data/chirps_daily/` y `data/chirts_daily/{tmax,tmin}/`):** Archivos NetCDF diarios 2D (o NetCDFs 3D multitemporales en `data/raw_netcdf/` para particionar automáticamente).
 - **Topografía (`data/topography/`):** DEM SRTM/GEBCO en NetCDF (`dem_srtm_central_america.nc`, `dem_srtm_dominicana.nc` o `dem_srtm_90m.nc`).
 - **Cartografía GIS (`data/gis/`):** Shapefile con buffer 10 km (`central_america.shp`, `republica_dominicana.shp` o `central_america_dominican_rep.shp` junto con `.shx`, `.dbf`, `.prj`).

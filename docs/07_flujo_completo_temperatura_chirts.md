@@ -101,9 +101,9 @@ Para una investigación publicable, el objetivo es determinar qué combinación 
 | **Bias: Método** | `bias.method` | `"mbmon"`, `"mbvar"` ($\pm 5$ días), `"qmdist"`, `"qmecdf"` | Compara ajuste lineal simple vs mapeo no lineal de cuantiles. |
 | **Bias: Distribución QM** | `distr.name` (en `qmdist`) | `"norm"`, `"lnorm"`, `"snorm"`, `"gumbel"` | Evalúa el ajuste en olas de frío/calor y asimetría térmica. |
 | **Bias: Función Central** | `mulBiasFunction` | `"mean"` vs `"median"` | Robustez frente a valores atípicos (*outliers*). |
-| **Merging: Método** | `merge.method$method` | `"SBA"`, `"RK"`, `"BSc"` (Barnes), `"CSc"` (Cressman) | Determina si la regresión espacial supera al ajuste aditivo simple. |
+| **Merging: Método** | `merge.method\$method` | `"SBA"`, `"RK"`, `"BSc"` (Barnes), `"CSc"` (Cressman) | Determina si la regresión espacial supera al ajuste aditivo simple. |
 | **Merging: Pasadas** | `nrun` y `pass` | - 1 pasada: `pass = c(1)`<br>- 2 pasadas: `pass = c(1, 0.5)`<br>- 3 pasadas: `pass = c(1, 0.75, 0.5)` | Refinamiento multiescala: regional vs local. |
-| **Merging: Radio Búsqueda** | `interp.method$maxdist` | $1.5^\circ, 2.5^\circ, 3.5^\circ, 5.0^\circ$ | Rango de correlación espacial térmica. |
+| **Merging: Radio Búsqueda** | `interp.method\$maxdist` | $1.5^\circ, 2.5^\circ, 3.5^\circ, 5.0^\circ$ | Rango de correlación espacial térmica. |
 | **Merging: Vecindad** | `nmin` / `nmax` | $(4, 12)$, $(8, 16)$, $(10, 30)$ | Densidad y suavidad en la interpolación de residuales. |
 | **Merging: Kriging Variograma**| `vgm.model` | `"Sph"`, `"Exp"`, `"Gau"`, `"Pen"` | Forma de la autocorrelación espacial de residuales. |
 | **Merging: Soporte de Celda** | `use.block` | `TRUE` (Block Kriging) vs `FALSE` (Point Kriging) | Corrección del error de cambio de soporte espacial. |

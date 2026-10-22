@@ -25,11 +25,11 @@ Esta carpeta contiene la documentación técnica, matemática y metodológica pa
    - Scripts listos para ejecución en producción, servidores headless, tareas programadas (cron / Task Scheduler) y orquestadores Python.
 
 7. [**07. Flujo Completo de Temperatura (CHIRTS) y Diseño Experimental**](file:///d:/Workspace/CDT-8.0/docs/07_flujo_completo_temperatura_chirts.md)
-   - Cadena: _Split 3D NC $\rightarrow$ Downscaling Coef $\rightarrow$ Downscale Data $\rightarrow$ Bias Coef $\rightarrow$ Bias Correction $\rightarrow$ Merging $\rightarrow$ Concatenate 3D_.
+   - Cadena: _Split 3D NC → Downscaling Coef → Downscale Data → Bias Coef → Bias Correction → Merging → Concatenate 3D_.
    - Justificación de dinámicas diurnas ($T_{max}$) vs nocturnas ($T_{min}$), inversiones térmicas y frentes fríos (_Nortes_).
 
 8. [**08. Flujo Completo de Precipitación (CHIRPS) y Diseño Experimental**](file:///d:/Workspace/CDT-8.0/docs/08_flujo_completo_precipitacion_chirps.md)
-   - Cadena: _Split 3D NC $\rightarrow$ Bias Coef $\rightarrow$ Bias Correction $\rightarrow$ Merging + RnoR $\rightarrow$ Concatenate 3D_.
+   - Cadena: _Split 3D NC → Bias Coef → Bias Correction → Merging + RnoR → Concatenate 3D_.
    - Modelado de variables mixtas cero-continuas (Bernoulli-Gamma, Bernoulli-Weibull) y métricas de validación.
 
 9. [**09. Arquitectura de Lanzadores en Python y Verificación de Dependencias**](file:///d:/Workspace/CDT-8.0/docs/09_arquitectura_lanzadores_python_y_dependencias.md)

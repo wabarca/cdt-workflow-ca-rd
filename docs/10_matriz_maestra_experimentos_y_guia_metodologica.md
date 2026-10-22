@@ -18,7 +18,7 @@ Los conjuntos de datos climáticos grillados basados exclusivamente en sensores 
    - **Subestimación de olas de calor en depresiones áridas:** En valles encajonados y zonas por debajo del nivel del mar (Hoya de Enriquillo a -40 msnm, Valle de Azua en RD, y Golfo de Fonseca en Centroamérica), las temperaturas máximas extremas superan con frecuencia los $38\ ^\circ\text{C}$ a $40\ ^\circ\text{C}$, fenómeno que los reanálisis globales alisan drásticamente (Coles, 2001; Funk et al., 2019).
 
 3. **Discrepancias en Temperatura Mínima Diurna ($T_{min}$ - CHIRTS):**
-   - **Falta de resolución de inversiones térmicas nocturnas y drenaje catabático:** Durante la noche, el enfriamiento radiativo provoca el drenaje de aire denso y frío (*cold-air pooling*) hacia el fondo de valles intramontanos cerrados (Constanza y Valle Nuevo en RD, Quetzaltenango en Guatemala), registrándose heladas y temperaturas bajo cero ($<0\ ^\circ\text{C}$), mientras que las cumbres adyacentes permanecen más cálidas (inversión térmica). Los modelos globales no resuelven este desacople sin ponderación vertical estricta ($\Delta z$).
+   - **Falta de resolución de inversiones térmicas nocturnas y drenaje catabático:** Durante la noche, el enfriamiento radiativo provoca el drenaje de aire denso y frío (*cold-air pooling*) hacia el fondo de valles intramontanos cerrados (Constanza y Valle Nuevo en RD, Quetzaltenango en Guatemala), registrándose heladas y temperaturas bajo cero ($< 0\ ^\circ\text{C}$), mientras que las cumbres adyacentes permanecen más cálidas (inversión térmica). Los modelos globales no resuelven este desacople sin ponderación vertical estricta ($\Delta z$).
    - **Asimetría por intrusiones de frentes fríos invernales (*Nortes*):** Las invasiones de aire polar modificado generan descensos térmicos abruptos y asimétricos en laderas expuestas al norte que las distribuciones gaussianas estándar no capturan (Alfaro et al., 2018).
 
 **Estructura de la Matriz de Evaluación (26 Experimentos):**
@@ -171,7 +171,7 @@ Configurados en [`config/experiments_tmin/`](file:///d:/Workspace/CDT-8.0/config
 | **`EXP-TN02`** | **[P1]** Coefs: Regresión mensual estación–DEM.<br>**[P2]** Downscale: Bilineal sobre DEM SRTM 90m ($0.05^\circ$). | • Método: `qmdist`<br>• Distribución: **Normal (`norm`)**<br>• Interp: IDW ($3.5^\circ$) | • Mapeo de cuantiles gaussiano.<br>• Salida: `tmin_adj_%s%s%s.nc` | • Método: **RK** (3 pasadas: $1.0^\circ, 0.75^\circ, 0.5^\circ$)<br>• **Covariables: DEM (Elevación)**<br>• Interp. residuales: OKR (Sph/Exp/Gau/Pen) | **Gradiente Térmico Nocturno Ambiental:** Modela la tasa vertical nocturna estándar en zonas abiertas sin inversión térmica marcada. |
 | **`EXP-TN03`** | **[P1]** Coefs: Regresión DEM + Pendiente.<br>**[P2]** Downscale: IDW local sobre DEM SRTM. | • Método: `qmdist`<br>• Distribución: **Skew-Normal (`snorm`)**<br>• Interp: OKR por bloques ($3.5^\circ$) | • Mapeo cuantil con asimetría en cola fría.<br>• Salida: `tmin_adj_%s%s%s.nc` | • Método: **RK** (3 pasadas multiescala)<br>• **Covariables: DEM + Pendiente + Lat + Lon**<br>• Interp: OKR por bloques | **Invasiones de Frentes Fríos Invernales (*Nortes*):** Captura las caídas abruptas y asimétricas de temperatura en la vertiente Atlántica durante el invierno boreal. |
 | **`EXP-TN04`** | **[P1]** Coefs: Desescalado orográfico 3D.<br>**[P2]** Downscale: Bilineal sobre DEM SRTM. | • Método: `mbvar` ($\pm 5$ d)<br>• Interp: **NN-3D con elevación DEM ($\Delta z$)** | • Ajuste con aislamiento vertical estricto.<br>• Salida: `tmin_adj_%s%s%s.nc` | • Método: **RK** (3 pasadas)<br>• **Covariables: DEM + Pendiente + Lat + Lon**<br>• Interp: OKR por bloques | **Inversiones Térmicas Nocturnas (*Cold-Air Pooling*):** Evita la contaminación térmica entre cimas cálidas y valles altos fríos (ej. Constanza y Valle Nuevo en RD, Quetzaltenango en GT). |
-| **`EXP-TN05`** | **[P1]** Coefs: Regresión altimétrica con DEM.<br>**[P2]** Downscale: Bilineal sobre DEM SRTM. | • Método: `qmdist`<br>• Distribución: **Gumbel Mínimos (`gumbel`)**<br>• Interp: OKR por bloques | • Mapeo cuantil para colas frías extremas ($<P05$).<br>• Salida: `tmin_adj_%s%s%s.nc` | • Método: **RK** (3 pasadas)<br>• **Covariables: DEM + Latitud + Longitud**<br>• Interp: OKR por bloques | **Heladas Agronómicas y Extremos Bajo Cero:** Modela eventos de temperaturas mínimas extremas ($<0\ ^\circ\text{C}$) en altiplanos y cumbres montañosas elevadas. |
+| **`EXP-TN05`** | **[P1]** Coefs: Regresión altimétrica con DEM.<br>**[P2]** Downscale: Bilineal sobre DEM SRTM. | • Método: `qmdist`<br>• Distribución: **Gumbel Mínimos (`gumbel`)**<br>• Interp: OKR por bloques | • Mapeo cuantil para colas frías extremas ($< \text{P}_{05}$).<br>• Salida: `tmin_adj_%s%s%s.nc` | • Método: **RK** (3 pasadas)<br>• **Covariables: DEM + Latitud + Longitud**<br>• Interp: OKR por bloques | **Heladas Agronómicas y Extremos Bajo Cero:** Modela eventos de temperaturas mínimas extremas ($< 0\ ^\circ\text{C}$) en altiplanos y cumbres montañosas elevadas. |
 | **`EXP-TN06`** | **[P1]** Coefs: Regresión regional con DEM.<br>**[P2]** Downscale: Bilineal sobre DEM SRTM. | • Método: `mbvar` ($\pm 5$ d)<br>• Interp: IDW ($3.5^\circ$) | • Ajuste proporcional estándar.<br>• Salida: `tmin_adj_%s%s%s.nc` | • Método: **Barnes (BSc)** (3 pasadas gaussianas)<br>• Interp. residuales: Ponderación gaussiana<br>• Covariables: Ninguna | **Amortiguamiento Marino y Llanuras Homogéneas:** Representa el efecto regulador térmico del océano en costas caribeñas y valles aluviales amplios. |
 | **`EXP-TN07`** | **[P1]** Coefs: Regresión altimétrica con DEM.<br>**[P2]** Downscale: Bilineal sobre DEM SRTM. | • Método: `mbmon` (sesgo medio mensual fijo)<br>• Interp: IDW ($3.5^\circ$) | • Corrección mensual estacional.<br>• Salida: `tmin_adj_%s%s%s.nc` | • Método: **Cressman (CSc)** (4 pasadas: $1.0^\circ, 0.75^\circ, 0.5^\circ, 0.25^\circ$)<br>• Covariables: Ninguna | **Pozas de Aire Frío Confinadas:** Radios de búsqueda decrecientes para evitar disipar el aire frío estancado en depresiones hacia cordilleras adyacentes. |
 | **`EXP-TN08`** | **[P1]** Coefs: Multivariado DEM + Slope + Aspect.<br>**[P2]** Downscale: Proyección topográfica completa. | • Método: `qmdist`<br>• Distribución: Skew-Normal (`snorm`)<br>• Interp: **NN-3D con DEM ($\Delta z$)** | • Corrección distribucional con restricción vertical $\Delta z$.<br>• Salida: `tmin_adj_%s%s%s.nc` | • Método: **RK** (3 pasadas)<br>• **Covariables: DEM + Pendiente + Aspect + Lat + Lon**<br>• Interp: OKR por bloques | **Máxima Complejidad Nocturna:** Acoplamiento total de drenaje catabático gravitacional en laderas inclinadas y formación de pozas frías en valles cerrados. |
@@ -224,7 +224,7 @@ Configurados en [`config/experiments_tmin/`](file:///d:/Workspace/CDT-8.0/config
 | **Precipitación (CHIRPS)** | 10 | 10,958 | 1.1 h (IDW) a 4.2 h (Block OKR) | **~29.0 – 31.0 horas** | 2.5 – 4.5 GB |
 | **Temperatura Máxima ($T_{max}$)** | 8 | 10,958 | 1.2 h (IDW) a 2.4 h (RK DEM) | **~15.0 – 16.0 horas** | 3.5 – 4.6 GB |
 | **Temperatura Mínima ($T_{min}$)** | 8 | 10,958 | 1.2 h (IDW) a 2.4 h (RK DEM) | **~15.0 – 16.0 horas** | 3.5 – 4.6 GB |
-| **TOTAL GENERAL 26 EXPERIMENTOS** | **26** | **10,958** | — | **~60.0 – 63.0 horas** | **Máx. 4.6 GB (<8% RAM)** |
+| **TOTAL GENERAL 26 EXPERIMENTOS** | **26** | **10,958** | — | **~60.0 – 63.0 horas** | **Máx. 4.6 GB (< 8% RAM)** |
 
 > [!NOTE]
 > **Diferenciación de Carga Computacional:**
@@ -254,16 +254,31 @@ python launcher/experiment_runner.py --suite all      --cores 18   # 26 Exp. (~6
 
 # Ejecutar un experimento individual parametrizado
 python launcher/experiment_runner.py --config config/experiments_rainfall/EXP_R03_SBA_OKR_BernoulliGamma.yaml --cores 18
-```
+`
+
+### Ejecución Desatendida en Segundo Plano (
+ohup en Linux / WSL / Servidores):
+
+Para corridas prolongadas (~60 h), lance el proceso desacoplado de la terminal, limpiando DISPLAY (para evitar el error connect localhost port 6000: Connection refused de 	cltk/X11) y con python -u (para registrar logs en tiempo real sin almacenamiento en búfer):
+
+`ash
+# Lanzar la corrida completa en segundo plano:
+DISPLAY= nohup python -u launcher/experiment_runner.py --suite all --cores 18 > corrida_completa.log 2>&1 &
+
+# Inspección del avance en tiempo real:
+tail -f corrida_completa.log
+`
+
+> **Tolerancia a Fallos y Reanudación:** El orquestador implementa comprobación diaria de archivos ya generados. Si el proceso se detiene o el servidor se reinicia, relanzar el comando continuará exactamente desde el día pendiente sin reprocesar días previos. Para forzar la reescritura total, use --force.``
 
 ---
 
 ## 8. Referencias Bibliográficas Científicas Verificadas
 
 1. **Amador, J. A., Alfaro, E. J., Lizano, O. G., & Magaña, V. O. (2006).** *Atmospheric forcing of the eastern tropical Pacific: A review.* Progress in Oceanography, 69(2–4), 101–142. DOI: [10.1016/j.pocean.2006.03.007](https://doi.org/10.1016/j.pocean.2006.03.007)
-2. **Barnes, S. L. (1964).** *A technique for maximizing details in numerical weather map analysis.* Journal of Applied Meteorology, 3(4), 396–409. DOI: [10.1175/1520-0450(1964)003<0396:ATFMDI>2.0.CO;2](https://doi.org/10.1175/1520-0450(1964)003<0396:ATFMDI>2.0.CO;2)
+2. **Barnes, S. L. (1964).** *A technique for maximizing details in numerical weather map analysis.* Journal of Applied Meteorology, 3(4), 396–409. DOI: [10.1175/1520-0450(1964)003&lt;0396:ATFMDI&gt;2.0.CO;2](https://doi.org/10.1175/1520-0450(1964)003%3C0396:ATFMDI%3E2.0.CO;2)
 3. **Coles, S. (2001).** *An Introduction to Statistical Modeling of Extreme Values.* Springer-Verlag, London. DOI: [10.1007/978-1-4471-3675-0](https://doi.org/10.1007/978-1-4471-3675-0)
-4. **Cressman, G. P. (1959).** *An operational objective analysis system.* Monthly Weather Review, 87(10), 367–374. DOI: [10.1175/1520-0493(1959)087<0367:AOOAS>2.0.CO;2](https://doi.org/10.1175/1520-0493(1959)087<0367:AOOAS>2.0.CO;2)
+4. **Cressman, G. P. (1959).** *An operational objective analysis system.* Monthly Weather Review, 87(10), 367–374. DOI: [10.1175/1520-0493(1959)087&lt;0367:AOOAS&gt;2.0.CO;2](https://doi.org/10.1175/1520-0493(1959)087%3C0367:AOOAS%3E2.0.CO;2)
 5. **Daly, C., Halbleib, M., Smith, J. I., Gibson, W. P., Doggett, M. K., Taylor, G. H., Curtis, J., & Pasteris, P. P. (2008).** *Physiographically sensitive mapping of temperature and precipitation across the conterminous United States.* International Journal of Climatology, 28(15), 2031–2064. DOI: [10.1002/joc.1688](https://doi.org/10.1002/joc.1688)
 6. **Dinku, T., Thomson, M. C., Cousin, R., del Corral, J., Ceccato, P., Hansen, J., & Connor, S. J. (2018).** *Enhancing National Climate Services (ENACTS) for development in Africa.* Climate and Development, 10(7), 664–672. DOI: [10.1080/17565529.2017.1405784](https://doi.org/10.1080/17565529.2017.1405784)
 7. **Funk, C., Peterson, P., Landsfeld, M., Pedreros, D., Verdin, J., Shukla, S., Husak, G., Rowland, J., Harrison, L., Hoell, A., & Michaelsen, J. (2015).** *The climate hazards group infrared precipitation with stations—a new environmental record for monitoring extremes.* Scientific Data, 2(1), 150066. DOI: [10.1038/sdata.2015.66](https://doi.org/10.1038/sdata.2015.66)
@@ -274,7 +289,7 @@ python launcher/experiment_runner.py --config config/experiments_rainfall/EXP_R0
 12. **Hidalgo, H. G., Alfaro, E. J., & Quesada-Montano, B. (2017).** *Observed (1970–1999) climate variability in Central America using a high-resolution meteorological dataset with implication to climate change studies.* Climatic Change, 141(1), 13–28. DOI: [10.1007/s10584-016-1786-y](https://doi.org/10.1007/s10584-016-1786-y)
 13. **Kedem, B., Chiu, L. S., & North, G. R. (1990).** *Estimation of mean rain rate: Application to satellite observations.* Journal of Geophysical Research: Atmospheres, 95(D2), 1965–1972. DOI: [10.1029/JD095iD02p01965](https://doi.org/10.1029/JD095iD02p01965)
 14. **Maldonado, T., Rutgersson, A., Amador, J. A., Alfaro, E. J., & Claremar, B. (2016).** *Variability of the Caribbean low-level jet during boreal winter: large-scale forcings.* International Journal of Climatology, 36(4), 1978–1999. DOI: [10.1002/joc.4472](https://doi.org/10.1002/joc.4472)
-15. **Schultz, D. M., Bracken, W. E., & Bosart, L. F. (1998).** *Planetary- and synoptic-scale signatures associated with Central American cold surges.* Monthly Weather Review, 126(1), 5–27. DOI: [10.1175/1520-0493(1998)126<0005:PASSSA>2.0.CO;2](https://doi.org/10.1175/1520-0493(1998)126<0005:PASSSA>2.0.CO;2)
+15. **Schultz, D. M., Bracken, W. E., & Bosart, L. F. (1998).** *Planetary- and synoptic-scale signatures associated with Central American cold surges.* Monthly Weather Review, 126(1), 5–27. DOI: [10.1175/1520-0493(1998)126&lt;0005:PASSSA&gt;2.0.CO;2](https://doi.org/10.1175/1520-0493(1998)126%3C0005:PASSSA%3E2.0.CO;2)
 16. **Shepard, D. (1968).** *A two-dimensional interpolation function for irregularly-spaced data.* Proceedings of the 1968 23rd ACM National Conference, 517–524. DOI: [10.1145/800186.810616](https://doi.org/10.1145/800186.810616)
 17. **Themeßl, M. J., Gobiet, A., & Leuprecht, A. (2011).** *Empirical-statistical downscaling and error correction of daily precipitation from regional climate models.* International Journal of Climatology, 31(10), 1530–1544. DOI: [10.1002/joc.2168](https://doi.org/10.1002/joc.2168)
 18. **Willmott, C. J., Rowe, C. M., & Philpot, W. D. (1985).** *Small-scale climate maps: A sensitivity analysis of some common assumptions associated with grid-point interpolation and contouring.* The American Cartographer, 12(1), 5–16. DOI: [10.1559/152304085783914686](https://doi.org/10.1559/152304085783914686)
