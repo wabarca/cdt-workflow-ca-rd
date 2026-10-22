@@ -450,11 +450,9 @@ Configuración de hardware: **Intel Xeon Silver 4210R (10C/20T @ 2.40 GHz), 18 n
 > 
 > **Formato de Tiempos en Consola:** El lanzador (`launcher/experiment_runner.py`) formatea automáticamente el tiempo transcurrido en horas y minutos legibles (`format_duration()`, p. ej. `4h 16m 40s`), preservando el valor numérico en segundos dentro del `manifest.json`.
 
-
-
 ---
 
-## 9. Guía de Ejecución en Segundo Plano y Producción Desatendida (nohup / Servidores Linux / WSL)
+## 9. Guía de Ejecución en Segundo Plano y Producción Desatendida (`nohup` / Servidores Linux / WSL)
 
 En entornos de cómputo científico, servidores remotos headless y sesiones WSL2, la ejecución de los 26 experimentos para el periodo 1991–2020 toma entre 60 y 63 horas continuas. Para evitar que el proceso se interrumpa por desconexión de red (cierre de sesión SSH) o por bloqueos de librerías gráficas, deben tenerse en cuenta las siguientes consideraciones críticas:
 
@@ -462,15 +460,13 @@ En entornos de cómputo científico, servidores remotos headless y sesiones WSL2
 
 | Síntoma / Error | Causa Raíz | Resolución Definitiva |
 | :--- | :--- | :--- |
-| connect localhost port 6000: Connection refused | La variable de entorno DISPLAY está configurada (p. ej. :0 o localhost:10.0), induciendo a 	cltk (en el núcleo de R/CDT) a buscar un servidor X11 inexistente en el puerto TCP 6000. | Anteponer DISPLAY= o usar nv -u DISPLAY para limpiar la variable en la sesión del proceso. |
-| Archivo .log o 
-ohup.out permanece en 0 bytes o no actualiza | Python conmuta a modo de búfer por bloques (4–8 KB) cuando sys.stdout no está conectado a una terminal interactiva (redirección con >). | Ejecutar Python con la bandera -u (python -u) o fijar PYTHONUNBUFFERED=1. |
-| Interrupción abrupta por reinicio de máquina o timeout | Procesos que dependen de la terminal abierta mueren con la señal SIGHUP. | Envolver el comando con 
-ohup y enviar al segundo plano con &. |
+| `connect localhost port 6000: Connection refused` | La variable de entorno `DISPLAY` está configurada (p. ej. `:0` o `localhost:10.0`), induciendo a `tcltk` (en el núcleo de R/CDT) a buscar un servidor X11 inexistente en el puerto TCP 6000. | Anteponer `DISPLAY=` o usar `env -u DISPLAY` para limpiar la variable en la sesión del proceso. |
+| Archivo `.log` o `nohup.out` permanece en 0 bytes o no actualiza | Python conmuta a modo de búfer por bloques (4–8 KB) cuando `sys.stdout` no está conectado a una terminal interactiva (redirección con `>`). | Ejecutar Python con la bandera `-u` (`python -u`) o fijar `PYTHONUNBUFFERED=1`. |
+| Interrupción abrupta por reinicio de máquina o timeout | Procesos que dependen de la terminal abierta mueren con la señal `SIGHUP`. | Envolver el comando con `nohup` y enviar al segundo plano con `&`. |
 
 ### B. Comando Estándar de Producción
 
-`ash
+```bash
 # Ejecución de toda la matriz de 26 experimentos en segundo plano:
 DISPLAY= nohup python -u launcher/experiment_runner.py --suite all --cores 18 > corrida_completa.log 2>&1 &
 
@@ -480,11 +476,11 @@ tail -f corrida_completa.log
 # Monitoreo de recursos y procesos activos:
 ps aux | grep experiment_runner
 htop
-`
+```
 
 ### C. Sistema de Checkpoints y Reanudación Tolerante a Fallos
 
-El módulo launcher/experiment_runner.py está diseñado con resiliencia de grado de producción:
+El módulo `launcher/experiment_runner.py` está diseñado con resiliencia de grado de producción:
 1. **Verificación Diaria de Existencia:** Antes de despachar cada día a CDT, el lanzador comprueba si el archivo NetCDF 2D diario objetivo ya fue generado e inspecciona su integridad.
-2. **Reanudación Transparente:** Si la corrida se interrumpe en el año 2005 (día ~5,400), al volver a ejecutar exactamente el mismo comando launcher/experiment_runner.py --suite all, el sistema omitirá de inmediato los días ya resueltos y retomará el cálculo a partir del día pendiente.
-3. **Bandera de Forzado (--force):** Para ignorar archivos previos y reescribir la totalidad de los datos desde el día 1 de 1991, agregue el argumento --force.
+2. **Reanudación Transparente:** Si la corrida se interrumpe en el año 2005 (día ~5,400), al volver a ejecutar exactamente el mismo comando `launcher/experiment_runner.py --suite all`, el sistema omitirá de inmediato los días ya resueltos y retomará el cálculo a partir del día pendiente.
+3. **Bandera de Forzado (`--force`):** Para ignorar archivos previos y reescribir la totalidad de los datos desde el día 1 de 1991, agregue el argumento `--force`.

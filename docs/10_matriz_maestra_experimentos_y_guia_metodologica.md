@@ -254,22 +254,21 @@ python launcher/experiment_runner.py --suite all      --cores 18   # 26 Exp. (~6
 
 # Ejecutar un experimento individual parametrizado
 python launcher/experiment_runner.py --config config/experiments_rainfall/EXP_R03_SBA_OKR_BernoulliGamma.yaml --cores 18
-`
+```
 
-### Ejecución Desatendida en Segundo Plano (
-ohup en Linux / WSL / Servidores):
+### Ejecución Desatendida en Segundo Plano (`nohup` en Linux / WSL / Servidores):
 
-Para corridas prolongadas (~60 h), lance el proceso desacoplado de la terminal, limpiando DISPLAY (para evitar el error connect localhost port 6000: Connection refused de 	cltk/X11) y con python -u (para registrar logs en tiempo real sin almacenamiento en búfer):
+Para corridas prolongadas (~60 h), lance el proceso desacoplado de la terminal, limpiando `DISPLAY` (para evitar el error `connect localhost port 6000: Connection refused` de `tcltk`/X11) y con `python -u` (para registrar logs en tiempo real sin almacenamiento en búfer):
 
-`ash
+```bash
 # Lanzar la corrida completa en segundo plano:
 DISPLAY= nohup python -u launcher/experiment_runner.py --suite all --cores 18 > corrida_completa.log 2>&1 &
 
 # Inspección del avance en tiempo real:
 tail -f corrida_completa.log
-`
+```
 
-> **Tolerancia a Fallos y Reanudación:** El orquestador implementa comprobación diaria de archivos ya generados. Si el proceso se detiene o el servidor se reinicia, relanzar el comando continuará exactamente desde el día pendiente sin reprocesar días previos. Para forzar la reescritura total, use --force.``
+> **Tolerancia a Fallos y Reanudación:** El orquestador implementa comprobación diaria de archivos ya generados. Si el proceso se detiene o el servidor se reinicia, relanzar el comando continuará exactamente desde el día pendiente sin reprocesar días previos. Para forzar la reescritura total, use `--force`.
 
 ---
 
@@ -294,4 +293,3 @@ tail -f corrida_completa.log
 17. **Themeßl, M. J., Gobiet, A., & Leuprecht, A. (2011).** *Empirical-statistical downscaling and error correction of daily precipitation from regional climate models.* International Journal of Climatology, 31(10), 1530–1544. DOI: [10.1002/joc.2168](https://doi.org/10.1002/joc.2168)
 18. **Willmott, C. J., Rowe, C. M., & Philpot, W. D. (1985).** *Small-scale climate maps: A sensitivity analysis of some common assumptions associated with grid-point interpolation and contouring.* The American Cartographer, 12(1), 5–16. DOI: [10.1559/152304085783914686](https://doi.org/10.1559/152304085783914686)
 19. **WMO / CF Metadata Conventions Committee (2020).** *NetCDF Climate and Forecast (CF) Metadata Conventions Version 1.8.* World Meteorological Organization. URL: [https://cfconventions.org/](https://cfconventions.org/)
-

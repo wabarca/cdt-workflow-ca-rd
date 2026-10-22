@@ -167,30 +167,27 @@ python launcher/experiment_runner.py --suite tmin       # 8 Experimentos
 python launcher/experiment_runner.py --config config/experiments_rainfall/EXP_R01_SBA_IDW_Baseline.yaml
 ```
 
-
 ---
 
-## 7. Ejecución Desatendida en Segundo Plano (nohup en Servidores Linux / WSL)
+## 7. Ejecución Desatendida en Segundo Plano (`nohup` en Servidores Linux / WSL)
 
-Cuando se ejecutan suites completas o lotes de larga duración (p. ej. los 26 experimentos para el periodo 1991–2020, con una duración aproximada de ~60 horas), es imperativo desacoplar la ejecución de la sesión interactiva del usuario utilizando 
-ohup.
+Cuando se ejecutan suites completas o lotes de larga duración (p. ej. los 26 experimentos para el periodo 1991–2020, con una duración aproximada de ~60 horas), es imperativo desacoplar la ejecución de la sesión interactiva del usuario utilizando `nohup`.
 
 ### A. Diagnóstico de Errores Frecuentes en Entornos Headless
 
-1. **Error connect localhost port 6000: Connection refused:**
-   - **Causa:** En servidores Linux o instancias WSL donde existe una variable de entorno DISPLAY predefinida (ej. DISPLAY=:0 o localhost:10.0), las librerías cliente X11 vinculadas a Tcl/Tk (usadas por el núcleo de R/CDT) intentan conectarse a un servidor gráfico X11 en el puerto TCP 6000. Al tratarse de una sesión sin entorno gráfico (*headless*), la conexión es rechazada.
-   - **Solución:** Anular la variable de entorno DISPLAY al momento de lanzar el proceso anteponiendo DISPLAY= o nv -u DISPLAY.
+1. **Error `connect localhost port 6000: Connection refused`:**
+   - **Causa:** En servidores Linux o instancias WSL donde existe una variable de entorno `DISPLAY` predefinida (ej. `DISPLAY=:0` o `localhost:10.0`), las librerías cliente X11 vinculadas a `Tcl/Tk` (usadas por el núcleo de R/CDT) intentan conectarse a un servidor gráfico X11 en el puerto TCP 6000. Al tratarse de una sesión sin entorno gráfico (*headless*), la conexión es rechazada.
+   - **Solución:** Anular la variable de entorno `DISPLAY` al momento de lanzar el proceso anteponiendo `DISPLAY=` o `env -u DISPLAY`.
 
-2. **Archivos de registro (
-ohup.out o .log) vacíos durante la ejecución:**
-   - **Causa:** Por defecto, cuando Python detecta que sys.stdout no es una terminal interactiva (modo isatty() == False, como ocurre al redirigir con >), activa un búfer por bloques (típicamente de 4 a 8 KB). Los mensajes de progreso no se vuelcan al archivo en disco hasta que el búfer se llena o el script termina.
-   - **Solución:** Usar la bandera de Python -u (*unbuffered binary stdout/stderr*) o establecer la variable de entorno PYTHONUNBUFFERED=1.
+2. **Archivos de registro (`nohup.out` o `.log`) vacíos durante la ejecución:**
+   - **Causa:** Por defecto, cuando Python detecta que `sys.stdout` no es una terminal interactiva (modo `isatty() == False`, como ocurre al redirigir con `>`), activa un búfer por bloques (típicamente de 4 a 8 KB). Los mensajes de progreso no se vuelcan al archivo en disco hasta que el búfer se llena o el script termina.
+   - **Solución:** Usar la bandera de Python `-u` (*unbuffered binary stdout/stderr*) o establecer la variable de entorno `PYTHONUNBUFFERED=1`.
 
 ### B. Comando de Producción Recomendado
 
 Para lanzar la corrida completa de forma desatendida y monitorear el progreso en tiempo real:
 
-`ash
+```bash
 # Lanzar la ejecución desacoplada en segundo plano
 DISPLAY= nohup python -u launcher/experiment_runner.py --suite all --cores 18 > corrida_completa.log 2>&1 &
 
@@ -199,15 +196,15 @@ tail -f corrida_completa.log
 
 # Verificar el estado del proceso en ejecución
 ps aux | grep experiment_runner
-`
+```
 
 ### C. Tolerancia a Fallos y Reanudación Automática
 
 El orquestador en Python cuenta con un mecanismo de inspección de estado previo (*checkpointing* a nivel diario):
-- Antes de invocar a CDT para un día determinado, el lanzador verifica si el archivo NetCDF 2D correspondiente (*_mrg_YYYYMMDD.nc) ya existe y es válido.
+- Antes de invocar a CDT para un día determinado, el lanzador verifica si el archivo NetCDF 2D correspondiente (`*_mrg_YYYYMMDD.nc`) ya existe y es válido.
 - Si una ejecución se cancela o se corta por reinicio del servidor, basta con relanzar el mismo comando. El sistema saltará automáticamente los días ya procesados y continuará a partir del día interrumpido.
-- Si se desea reprocesar deliberadamente toda la serie sobrescribiendo los archivos existentes, se debe añadir la bandera --force:
+- Si se desea reprocesar deliberadamente toda la serie sobrescribiendo los archivos existentes, se debe añadir la bandera `--force`:
 
-`ash
+```bash
 DISPLAY= nohup python -u launcher/experiment_runner.py --suite all --cores 18 --force > corrida_completa.log 2>&1 &
-`
+```
