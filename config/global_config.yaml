@@ -35,7 +35,7 @@ paths:
   # Si se especifican estas rutas, el lanzador los dividirá automáticamente en paralelo:
   raw_3d_netcdf_rainfall: "data/raw_netcdf/chirps-AC.nc"     # Ej: "data/raw_netcdf/chirps_daily_1991_2020.nc"
   raw_3d_netcdf_tmax: "data/raw_netcdf/CHIRTS-ERA5.daily_Tmax.1991-2020.nc"         # Ej: "data/raw_netcdf/chirts_tmax_daily_1991_2020.nc"
-  raw_3d_netcdf_tmin: "data/raw_netcdf/CHIRTS-ERA5.daily_Tmin.1991-2024.nc"         # Ej: "data/raw_netcdf/chirts_tmin_daily_1991_2020.nc"
+  raw_3d_netcdf_tmin: "data/raw_netcdf/CHIRTS-ERA5.daily_Tmin.1991-2020.nc"         # Ej: "data/raw_netcdf/chirts_tmin_daily_1991_2020.nc"
 
   # --- Opción B: Directorios con Grillas Diarias 2D en Formato CDT (0.05° ~5.5 km) ---
   satellite_rainfall_dir: "data/chirps_daily"                # Directorio con archivos NetCDF diarios de CHIRPS v2.0
@@ -63,7 +63,7 @@ paths:
   holdout_temperature_file: "data/stations/validation_holdout_stations_temperature.csv"# Estaciones omitidas para Temperatura (Tmax/Tmin)
 
   # --- Covariables Físicas y Cartografía Espacial (Suministradas por el Usuario) ---
-  dem_file: "data/topography/gebco_2026_n21.0_s6.0_w-94.0_e-67.0.nc"                       # DEM SRTM regional (elevación en msnm)
+  dem_file: "data/topography/gebco_2026.nc"                       # DEM SRTM regional (elevación en msnm)
   shapefile_path: "data/gis/Buffer_15km_todo_AC.shp"       # Máscara de recorte vectorial (con buffer 10 km)
 
   # --- Directorios de Salida y Auditoría ---
@@ -83,7 +83,7 @@ regions:
     stations_tmin_file: "data/stations/tmin_stations_ca.csv"
     holdout_rainfall_file: "data/stations/validation_holdout_stations_rainfall_ca.csv"
     holdout_temperature_file: "data/stations/validation_holdout_stations_temperature_ca.csv"
-    dem_file: "data/topography/gebco_2026_n21.0_s6.0_w-94.0_e-67.0.nc"
+    dem_file: "data/topography/gebco_2026.nc"
     shapefile_path: "data/gis/Buffer_15km_todo_AC.shp"
     output_root: "output/experiments_ca"
     log_root: "logs/experiments_ca"
