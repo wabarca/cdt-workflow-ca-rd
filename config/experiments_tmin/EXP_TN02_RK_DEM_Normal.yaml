@@ -1,44 +1,38 @@
 # ==============================================================================
-# EXPERIMENTO TN02: GRADIENTE ADIABÁTICO NOCTURNO (RK SOLO DEM + QM NORMAL)
-# Dominio: Centroamérica y República Dominicana (1991–2020)
-# Variable: Temperatura Mínima Diaria (CHIRTS Tmin + Estaciones)
+# EXPERIMENTO EXP-TN02: Gradiente Térmico Nocturno Ambiental (RK + DEM + Normal)
 # ==============================================================================
+# Justificación Física y Climatológica Regional:
+# Modela la tasa vertical nocturna estándar en zonas abiertas sin inversión térmica marcada.
+# ==============================================================================
+
 include: "config/global_config.yaml"
 
-experiment_id: "EXP_TN02"
-name: "Gradiente Nocturno Libre Tmin (RK Solo DEM + QM Normal)"
-description: >
-  Modela el enfriamiento altimétrico nocturno libre (Lapse Rate dT/dz ~ -6.5 °C/km)
-  en cumbres montañosas (>3,000 m, Pico Duarte, Tajumulco, Chirripó) con QM Normal.
-
+experiment_id: "EXP_TN02_RK_DEM_Normal"
 variable_type: "tmin"
 var_id: "temp"
+description: "Gradiente Térmico Nocturno Ambiental: RK con elevación DEM y QM Normal"
 
 downscaling:
-  method: "bilinear"
-  interp_method: "blin"
+  method: "blin"
 
 bias_correction:
   method: "qmdist"
-  distr: "norm"
-  interp_method: "idw"
-  params:
-    idw_power: 2.0
+  distribution: "norm"
+  interpolation:
+    method: "idw"
+    maxdist: 3.5
     nmin: 4
     nmax: 12
-    maxdist: 3.5
 
 merging:
   method: "RK"
-  covariables:
-    - "dem"
-  passes:
-    - radius: 1.0
-      interp_method: "okr"
-      vgm_model: "Sph"
-    - radius: 0.75
-      interp_method: "okr"
-      vgm_model: "Sph"
-    - radius: 0.50
-      interp_method: "okr"
-      vgm_model: "Exp"
+  nrun: 3
+  passes: [1.0, 0.75, 0.50]
+  covariables: ["dem"]
+  interpolation:
+    method: "okr"
+    maxdist: 3.5
+    nmin: 4
+    nmax: 12
+    use_block: true
+    variogram_models: ["Sph", "Exp", "Gau", "Pen"]

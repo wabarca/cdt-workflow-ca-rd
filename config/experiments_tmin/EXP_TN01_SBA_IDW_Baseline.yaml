@@ -1,37 +1,35 @@
 # ==============================================================================
-# EXPERIMENTO TN01: LÍNEA BASE DETERMINISTA (CONTROL NULO TMIN)
-# Dominio: Centroamérica y República Dominicana (1991–2020)
-# Variable: Temperatura Mínima Diaria (CHIRTS Tmin + Estaciones)
+# EXPERIMENTO EXP-TN01: Control Nulo Nocturno (SBA + IDW)
 # ==============================================================================
+# Menú CDT: Merging Data > Temperatures > Compute Coef / Downscale / Bias / Apply / Merging
+# Justificación Física y Climatológica Regional:
+# Mide el sesgo nocturno base al ignorar el enfriamiento radiativo y el drenaje de aire frío.
+# ==============================================================================
+
 include: "config/global_config.yaml"
 
-experiment_id: "EXP_TN01"
-name: "Línea Base Tmin (Control Nulo Bilineal + IDW)"
-description: >
-  Control nulo determinista para temperatura mínima nocturna. Desescalado geométrico
-  bilineal sin covariables topográficas, sesgo multiplicativo e interpolación
-  SBA mediante IDW monocapa (1 pasada a 1.0°).
-
+experiment_id: "EXP_TN01_SBA_IDW_Baseline"
 variable_type: "tmin"
 var_id: "temp"
+description: "Control Nulo Nocturno: SBA monocapa IDW sin enfriamiento radiativo ni DEM"
 
 downscaling:
-  method: "bilinear"
-  interp_method: "blin"
+  method: "blin"
 
 bias_correction:
   method: "mbvar"
-  interp_method: "idw"
-  params:
-    idw_power: 2.0
+  interpolation:
+    method: "idw"
+    maxdist: 3.5
     nmin: 4
     nmax: 12
-    maxdist: 3.5
 
 merging:
   method: "SBA"
-  interp_method: "idw"
-  passes:
-    - radius: 1.0
-      interp_method: "idw"
-      maxdist: 3.5
+  nrun: 1
+  passes: [1.0]
+  interpolation:
+    method: "idw"
+    maxdist: 3.5
+    nmin: 4
+    nmax: 12

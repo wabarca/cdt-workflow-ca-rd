@@ -1,0 +1,37 @@
+# ==============================================================================
+# EXPERIMENTO EXP-R08: Relieve Escarpado y Cañones (Shepard Modificado)
+# ==============================================================================
+# Justificación Física y Climatológica Regional:
+# Los polinomios locales de Taylor de Shepard evitan sobreoscilaciones numéricas en
+# transiciones topográficas abruptas (zonas de cañones y fallas tectónicas).
+# ==============================================================================
+
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_R08_Shepard_Complex_Relief"
+variable_type: "rainfall"
+description: "Relieve Escarpado y Cañones: Interpolación de Shepard Modificada"
+
+bias_correction:
+  method: "mbvar"
+  interpolation:
+    method: "shepard"
+    maxdist: 1.5
+    nmin: 4
+    nmax: 12
+
+rnor_mask:
+  use: true
+  wet_threshold: 1.0
+  smoothing: true
+  method: "logit"
+
+merging:
+  method: "SBA"
+  nrun: 3
+  passes: [1.0, 0.75, 0.50]
+  interpolation:
+    method: "shepard"
+    maxdist: 1.5
+    nmin: 4
+    nmax: 12

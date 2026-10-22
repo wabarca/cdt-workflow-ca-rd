@@ -107,6 +107,56 @@ class TestCDTBridge(unittest.TestCase):
         self.assertTrue(bridge.rscript_path.exists())
         self.assertIn("Rscript", str(bridge.rscript_path))
 
+    def test_downscaling_methods_exist(self):
+        bridge = CDTBridge()
+        self.assertTrue(hasattr(bridge, "compute_downscaling_coefficients_temp"))
+        self.assertTrue(hasattr(bridge, "downscale_temperature"))
+
+
+class TestCheckpointAndResume(unittest.TestCase):
+    """Test daily file coverage checking, resume date identification, and directory consolidation."""
+
+    def test_check_daily_files_coverage_complete(self):
+        from launcher.experiment_runner import check_daily_files_coverage, consolidate_daily_files
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td)
+            for d in ("19910101", "19910102", "19910103"):
+                f = p / f"rr_adj_{d}.nc"
+                f.write_bytes(b"x" * 2000)
+            is_comp, res_dt, count, tot = check_daily_files_coverage(p, "rr_adj_", "19910101", "19910103")
+            self.assertTrue(is_comp)
+            self.assertIsNone(res_dt)
+            self.assertEqual(count, 3)
+            self.assertEqual(tot, 3)
+
+    def test_check_daily_files_coverage_interrupted(self):
+        from launcher.experiment_runner import check_daily_files_coverage
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td)
+            (p / "rr_mrg_19910101.nc").write_bytes(b"x" * 2000)
+            corrupt = p / "rr_mrg_19910102.nc"
+            corrupt.write_bytes(b"")
+            is_comp, res_dt, count, tot = check_daily_files_coverage(p, "rr_mrg_", "19910101", "19910103")
+            self.assertFalse(is_comp)
+            self.assertEqual(res_dt, "19910102")
+            self.assertEqual(count, 1)
+            self.assertFalse(corrupt.exists())
+
+    def test_consolidate_daily_files(self):
+        from launcher.experiment_runner import consolidate_daily_files
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            sub1 = base / "DATA"
+            sub2 = base / "MERGED_RAIN_19910102_19910103" / "DATA"
+            sub1.mkdir(parents=True)
+            sub2.mkdir(parents=True)
+            (sub1 / "rr_mrg_19910101.nc").write_bytes(b"x" * 2000)
+            (sub2 / "rr_mrg_19910102.nc").write_bytes(b"x" * 2000)
+            primary = consolidate_daily_files(base, "rr_mrg_")
+            self.assertEqual(primary, sub1)
+            self.assertTrue((sub1 / "rr_mrg_19910101.nc").exists())
+            self.assertTrue((sub1 / "rr_mrg_19910102.nc").exists())
+
 
 class TestBenchmarkReporter(unittest.TestCase):
     """Test benchmark leaderboard ranking calculations."""

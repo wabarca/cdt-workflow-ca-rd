@@ -1,0 +1,40 @@
+# ==============================================================================
+# EXPERIMENTO EXP-TX08: Máxima Complejidad Diurna (RK + DEM + Slope + Aspect + Skew-Normal)
+# ==============================================================================
+# Justificación Física y Climatológica Regional:
+# Acoplamiento determinístico completo de topografía, insolación solar y residuales asimétricos.
+# ==============================================================================
+
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_TX08_RK_FullTopography_Aspect"
+variable_type: "tmax"
+var_id: "temp"
+description: "Máxima Complejidad Diurna: RK con acoplamiento topográfico total y Skew-Normal"
+
+downscaling:
+  method: "blin"
+
+bias_correction:
+  method: "qmdist"
+  distribution: "snorm"
+  interpolation:
+    method: "okr"
+    maxdist: 3.5
+    nmin: 4
+    nmax: 12
+    use_block: true
+    variogram_models: ["Sph", "Exp", "Gau", "Pen"]
+
+merging:
+  method: "RK"
+  nrun: 3
+  passes: [1.0, 0.75, 0.50]
+  covariables: ["dem", "slope", "aspect", "lat", "lon"]
+  interpolation:
+    method: "okr"
+    maxdist: 3.5
+    nmin: 4
+    nmax: 12
+    use_block: true
+    variogram_models: ["Sph", "Exp", "Gau", "Pen"]

@@ -1,49 +1,37 @@
 # ==============================================================================
-# EXPERIMENTO TX04: TOPOCLIMATOLOGÍA Y RADIACIÓN SOLAR (NN-3D + ASPECTO)
-# Dominio: Centroamérica y República Dominicana (1991–2020)
-# Variable: Temperatura Máxima Diaria (CHIRTS Tmax + Estaciones)
+# EXPERIMENTO EXP-TX04: Insolación Diurna según Orientación (RK + DEM + Aspect + NN-3D)
 # ==============================================================================
+# Justificación Física y Climatológica Regional:
+# Laderas orientadas al este reciben calentamiento matutino; laderas al oeste acumulan el vespertino.
+# ==============================================================================
+
 include: "config/global_config.yaml"
 
-experiment_id: "EXP_TX04"
-name: "Topoclimatología y Radiación Tmax (NN-3D + RK Aspecto/Insolación)"
-description: >
-  Modela la insolación diferencial entre laderas este (calentamiento matutino)
-  y oeste (máximo vespertino) mediante orientación topográfica (aspect) y evita
-  la contaminación térmica entre valles y cumbres con ponderación altimétrica NN-3D.
-
+experiment_id: "EXP_TX04_RK_FullTopography_NN3D"
 variable_type: "tmax"
 var_id: "temp"
+description: "Insolación Diurna según Orientación: RK con DEM, Pendiente, Aspect y ajuste NN-3D"
 
 downscaling:
-  method: "bicubic"
-  interp_method: "bicub"
+  method: "blin"
 
 bias_correction:
   method: "mbvar"
-  interp_method: "nn3d"
-  params:
-    weight_horizontal: 1.0
-    weight_vertical: 0.008
+  interpolation:
+    method: "shepard"
+    maxdist: 3.5
     nmin: 4
     nmax: 12
-    maxdist: 3.5
 
 merging:
   method: "RK"
-  covariables:
-    - "dem"
-    - "slope"
-    - "aspect"
-    - "lat"
-    - "lon"
-  passes:
-    - radius: 1.0
-      interp_method: "okr"
-      vgm_model: "Sph"
-    - radius: 0.75
-      interp_method: "okr"
-      vgm_model: "Sph"
-    - radius: 0.50
-      interp_method: "okr"
-      vgm_model: "Exp"
+  nrun: 3
+  passes: [1.0, 0.75, 0.50]
+  covariables: ["dem", "slope", "aspect"]
+  interpolation:
+    method: "okr"
+    maxdist: 3.5
+    nmin: 4
+    nmax: 12
+    use_block: true
+    variogram_models: ["Sph", "Exp", "Gau", "Pen"]

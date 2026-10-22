@@ -1,0 +1,37 @@
+# ==============================================================================
+# EXPERIMENTO EXP-R07: Celdas Convectivas Aisladas (Cressman CSc)
+# ==============================================================================
+# Justificación Física y Climatológica Regional:
+# Radios de influencia estrictamente finitos en última pasada (0.25° ~27 km) para
+# ajustar núcleos de tormenta convectivos muy localizados en la costa del Pacífico.
+# ==============================================================================
+
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_R07_Cressman_Spherical_Benchmark"
+variable_type: "rainfall"
+description: "Celdas Convectivas Aisladas: Análisis Objetivo de Cressman con 4 pasadas"
+
+bias_correction:
+  method: "mbvar"
+  interpolation:
+    method: "idw"
+    maxdist: 1.5
+    nmin: 4
+    nmax: 12
+
+rnor_mask:
+  use: true
+  wet_threshold: 1.0
+  smoothing: true
+  method: "logit"
+
+merging:
+  method: "SBA"
+  nrun: 4
+  passes: [1.0, 0.75, 0.50, 0.25]
+  interpolation:
+    method: "cressman"
+    maxdist: 1.5
+    nmin: 4
+    nmax: 12

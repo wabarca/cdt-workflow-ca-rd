@@ -1,0 +1,38 @@
+# ==============================================================================
+# EXPERIMENTO EXP-TN08: Máxima Complejidad Nocturna (RK + DEM + Slope + Aspect + Skew-Normal)
+# ==============================================================================
+# Justificación Física y Climatológica Regional:
+# Acoplamiento total de drenaje catabático gravitacional en laderas inclinadas y pozas frías.
+# ==============================================================================
+
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_TN08_RK_FullTopography_Aspect"
+variable_type: "tmin"
+var_id: "temp"
+description: "Máxima Complejidad Nocturna: Drenaje catabático con DEM, Slope, Aspect, Coords y NN-3D"
+
+downscaling:
+  method: "blin"
+
+bias_correction:
+  method: "qmdist"
+  distribution: "snorm"
+  interpolation:
+    method: "shepard"
+    maxdist: 3.5
+    nmin: 4
+    nmax: 12
+
+merging:
+  method: "RK"
+  nrun: 3
+  passes: [1.0, 0.75, 0.50]
+  covariables: ["dem", "slope", "aspect", "lat", "lon"]
+  interpolation:
+    method: "okr"
+    maxdist: 3.5
+    nmin: 4
+    nmax: 12
+    use_block: true
+    variogram_models: ["Sph", "Exp", "Gau", "Pen"]

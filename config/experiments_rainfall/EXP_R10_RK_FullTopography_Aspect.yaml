@@ -1,0 +1,43 @@
+# ==============================================================================
+# EXPERIMENTO EXP-R10: Máxima Complejidad Física Acoplada (RK + Slope + Aspect)
+# ==============================================================================
+# Justificación Física y Climatológica Regional:
+# Incorpora la orientación de ladera (aspect) para capturar la intercepción directa
+# de humedad transportada por el Chorro de Bajo Nivel del Caribe (CLLJ) del noreste.
+# ==============================================================================
+
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_R10_RK_FullTopography_Aspect"
+variable_type: "rainfall"
+description: "Máxima Complejidad Física Acoplada: RK con DEM, Pendiente, Aspect, Lat y Lon"
+
+bias_correction:
+  method: "qmdist"
+  distribution: "bernweibull"
+  interpolation:
+    method: "okr"
+    use_block: true
+    maxdist: 2.0
+    nmin: 4
+    nmax: 12
+    variogram_models: ["Sph", "Exp", "Gau"]
+
+rnor_mask:
+  use: true
+  wet_threshold: 1.0
+  smoothing: true
+  method: "logit"
+
+merging:
+  method: "RK"
+  nrun: 3
+  passes: [1.0, 0.75, 0.50]
+  covariables: ["dem", "slope", "aspect", "lat", "lon"]
+  interpolation:
+    method: "okr"
+    maxdist: 2.0
+    nmin: 4
+    nmax: 12
+    use_block: true
+    variogram_models: ["Sph", "Exp", "Gau"]

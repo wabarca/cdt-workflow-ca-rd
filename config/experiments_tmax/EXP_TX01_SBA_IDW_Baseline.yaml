@@ -1,37 +1,35 @@
 # ==============================================================================
-# EXPERIMENTO TX01: LÍNEA BASE DETERMINISTA (CONTROL NULO TMAX)
-# Dominio: Centroamérica y República Dominicana (1991–2020)
-# Variable: Temperatura Máxima Diaria (CHIRTS Tmax + Estaciones)
+# EXPERIMENTO EXP-TX01: Control Nulo Térmico Diurno (SBA + IDW)
 # ==============================================================================
+# Menú CDT: Merging Data > Temperatures > Compute Coef / Downscale / Bias / Apply / Merging
+# Justificación Física y Climatológica Regional:
+# Cuantifica el error sistemático al ignorar el relieve y la insolación solar diurna.
+# ==============================================================================
+
 include: "config/global_config.yaml"
 
-experiment_id: "EXP_TX01"
-name: "Línea Base Tmax (Control Nulo Bilineal + IDW)"
-description: >
-  Control nulo determinista para temperatura máxima diurna. Desescalado geométrico
-  bilineal sin covariables topográficas, sesgo multiplicativo móvil e interpolación
-  SBA mediante IDW monocapa (1 pasada a 1.0°).
-
+experiment_id: "EXP_TX01_SBA_IDW_Baseline"
 variable_type: "tmax"
 var_id: "temp"
+description: "Control Nulo Térmico Diurno: SBA monocapa IDW sin covariables topográficas"
 
 downscaling:
-  method: "bilinear"
-  interp_method: "blin"
+  method: "blin"
 
 bias_correction:
   method: "mbvar"
-  interp_method: "idw"
-  params:
-    idw_power: 2.0
+  interpolation:
+    method: "idw"
+    maxdist: 3.5
     nmin: 4
     nmax: 12
-    maxdist: 3.5
 
 merging:
   method: "SBA"
-  interp_method: "idw"
-  passes:
-    - radius: 1.0
-      interp_method: "idw"
-      maxdist: 3.5
+  nrun: 1
+  passes: [1.0]
+  interpolation:
+    method: "idw"
+    maxdist: 3.5
+    nmin: 4
+    nmax: 12

@@ -1,0 +1,37 @@
+# ==============================================================================
+# EXPERIMENTO EXP-R09: Geometría Esférica Trans-Caribe (Spheremap Gran Círculo)
+# ==============================================================================
+# Justificación Física y Climatológica Regional:
+# Corrige la distorsión métrica longitudinal en distancias zonales amplias a lo largo
+# del arco de las Antillas Mayores y el mar Caribe.
+# ==============================================================================
+
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_R09_Spheremap_Trans_Caribe"
+variable_type: "rainfall"
+description: "Geometría Esférica Trans-Caribe: Interpolación Spheremap de Gran Círculo"
+
+bias_correction:
+  method: "mbvar"
+  interpolation:
+    method: "sphere"
+    maxdist: 2.0
+    nmin: 4
+    nmax: 12
+
+rnor_mask:
+  use: true
+  wet_threshold: 1.0
+  smoothing: true
+  method: "logit"
+
+merging:
+  method: "SBA"
+  nrun: 3
+  passes: [1.0, 0.75, 0.50]
+  interpolation:
+    method: "sphere"
+    maxdist: 2.0
+    nmin: 4
+    nmax: 12

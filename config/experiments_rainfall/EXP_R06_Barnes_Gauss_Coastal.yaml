@@ -1,0 +1,37 @@
+# ==============================================================================
+# EXPERIMENTO EXP-R06: Gradientes Costeros e Insulares Suaves (Barnes BSc)
+# ==============================================================================
+# Justificación Física y Climatológica Regional:
+# La función de peso gaussiano continuo de Barnes evita singularidades numéricas y
+# ojos de buey (bulls-eyes) en islas y franjas litorales.
+# ==============================================================================
+
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_R06_Barnes_Gauss_Coastal"
+variable_type: "rainfall"
+description: "Gradientes Costeros e Insulares Suaves: Análisis Objetivo de Barnes con NN-3D"
+
+bias_correction:
+  method: "mbvar"
+  interpolation:
+    method: "shepard"
+    maxdist: 1.5
+    nmin: 4
+    nmax: 12
+
+rnor_mask:
+  use: true
+  wet_threshold: 1.0
+  smoothing: true
+  method: "logit"
+
+merging:
+  method: "SBA"
+  nrun: 3
+  passes: [1.0, 0.75, 0.50]
+  interpolation:
+    method: "barnes"
+    maxdist: 1.5
+    nmin: 4
+    nmax: 12

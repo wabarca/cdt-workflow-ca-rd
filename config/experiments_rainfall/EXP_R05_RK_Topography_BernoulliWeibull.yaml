@@ -1,0 +1,43 @@
+# ==============================================================================
+# EXPERIMENTO EXP-R05: Forzamiento Orográfico Vertical (Regression Kriging + DEM + Slope)
+# ==============================================================================
+# Justificación Física y Climatológica Regional:
+# Acopla el relieve en regresión determinística; modela ascenso forzado por vientos Alisios
+# en barlovento y sombras de lluvia en sotavento.
+# ==============================================================================
+
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_R05_RK_Topography_BernoulliWeibull"
+variable_type: "rainfall"
+description: "Forzamiento Orográfico Vertical: Regression Kriging con DEM, Pendiente, Lat y Lon"
+
+bias_correction:
+  method: "qmdist"
+  distribution: "bernweibull"
+  interpolation:
+    method: "okr"
+    use_block: true
+    maxdist: 2.0
+    nmin: 4
+    nmax: 12
+    variogram_models: ["Sph", "Exp", "Gau"]
+
+rnor_mask:
+  use: true
+  wet_threshold: 1.0
+  smoothing: true
+  method: "logit"
+
+merging:
+  method: "RK"
+  nrun: 3
+  passes: [1.0, 0.75, 0.50]
+  covariables: ["dem", "slope", "lat", "lon"]
+  interpolation:
+    method: "okr"
+    maxdist: 2.0
+    nmin: 4
+    nmax: 12
+    use_block: true
+    variogram_models: ["Sph", "Exp", "Gau"]

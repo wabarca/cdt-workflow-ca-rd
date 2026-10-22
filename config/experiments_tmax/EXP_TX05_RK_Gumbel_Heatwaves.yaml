@@ -1,47 +1,40 @@
 # ==============================================================================
-# EXPERIMENTO TX05: OLAS DE CALOR Y EXTREMOS TÉRMICOS DIURNOS (GUMBEL)
-# Dominio: Centroamérica y República Dominicana (1991–2020)
-# Variable: Temperatura Máxima Diaria (CHIRTS Tmax + Estaciones)
+# EXPERIMENTO EXP-TX05: Olas de Calor en Depresiones Áridas (RK + Gumbel Máximos)
 # ==============================================================================
+# Justificación Física y Climatológica Regional:
+# Ajusta picos térmicos extremos (>38 °C a 40 °C) en Hoya de Enriquillo, Valle de Azua y Golfo de Fonseca.
+# ==============================================================================
+
 include: "config/global_config.yaml"
 
-experiment_id: "EXP_TX05"
-name: "Olas de Calor y Extremos Tmax (Gumbel P95/P99 + RK Depresiones)"
-description: >
-  Ajusta valores extremos de temperatura máxima diurna en depresiones áridas
-  y valles encajonados (Valle de Azua, Hoya de Enriquillo a -40 msnm, Golfo de Fonseca >38 °C)
-  utilizando la distribución de valores extremos de Gumbel.
-
+experiment_id: "EXP_TX05_RK_Gumbel_Heatwaves"
 variable_type: "tmax"
 var_id: "temp"
+description: "Olas de Calor en Depresiones Áridas: RK con QM Gumbel para extremos superiores"
 
 downscaling:
-  method: "bilinear"
-  interp_method: "blin"
+  method: "blin"
 
 bias_correction:
   method: "qmdist"
-  distr: "gumbel"
-  interp_method: "okr"
-  params:
-    vgm_model: "Sph"
+  distribution: "gumbel"
+  interpolation:
+    method: "okr"
+    maxdist: 3.5
     nmin: 4
     nmax: 12
-    maxdist: 3.5
+    use_block: true
+    variogram_models: ["Sph", "Exp", "Gau", "Pen"]
 
 merging:
   method: "RK"
-  covariables:
-    - "dem"
-    - "lat"
-    - "lon"
-  passes:
-    - radius: 1.0
-      interp_method: "okr"
-      vgm_model: "Sph"
-    - radius: 0.75
-      interp_method: "okr"
-      vgm_model: "Sph"
-    - radius: 0.50
-      interp_method: "okr"
-      vgm_model: "Exp"
+  nrun: 3
+  passes: [1.0, 0.75, 0.50]
+  covariables: ["dem", "lat", "lon"]
+  interpolation:
+    method: "okr"
+    maxdist: 3.5
+    nmin: 4
+    nmax: 12
+    use_block: true
+    variogram_models: ["Sph", "Exp", "Gau", "Pen"]

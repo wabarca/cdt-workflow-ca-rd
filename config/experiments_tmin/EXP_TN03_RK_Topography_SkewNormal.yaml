@@ -1,53 +1,40 @@
 # ==============================================================================
-# EXPERIMENTO TN03: CAÍDAS BRUSCAS POR FRENTES FRÍOS / NORTES (SKEW-NORMAL)
-# Dominio: Centroamérica y República Dominicana (1991–2020)
-# Variable: Temperatura Mínima Diaria (CHIRTS Tmin + Estaciones)
+# EXPERIMENTO EXP-TN03: Invasiones de Frentes Fríos Invernales (RK + Skew-Normal)
 # ==============================================================================
+# Justificación Física y Climatológica Regional:
+# Captura las caídas abruptas y asimétricas de temperatura en la vertiente Atlántica (Nortes).
+# ==============================================================================
+
 include: "config/global_config.yaml"
 
-experiment_id: "EXP_TN03"
-name: "Frentes Fríos y Nortes Invernales Tmin (Skew-Normal + RK Laderas Norte)"
-description: >
-  Modela caídas térmicas abruptas y asimétricas provocadas por irrupciones de aire polar
-  modificado (Nortes) durante el invierno boreal en laderas expuestas al norte
-  (Petén, Caribe guatemalteco/hondureño, vertiente Atlántica dominicana).
-
+experiment_id: "EXP_TN03_RK_Topography_SkewNormal"
 variable_type: "tmin"
 var_id: "temp"
+description: "Invasiones de Frentes Fríos Invernales: RK con DEM, Pendiente, Coordenadas y Skew-Normal"
 
 downscaling:
   method: "idw"
-  interp_method: "idw"
-  params:
-    idw_power: 2.0
-    nmin: 4
-    nmax: 12
-    maxdist: 2.5
 
 bias_correction:
   method: "qmdist"
-  distr: "snorm"
-  interp_method: "okr"
-  params:
-    vgm_model: "Sph"
+  distribution: "snorm"
+  interpolation:
+    method: "okr"
+    maxdist: 3.5
     nmin: 4
     nmax: 12
-    maxdist: 3.5
+    use_block: true
+    variogram_models: ["Sph", "Exp", "Gau", "Pen"]
 
 merging:
   method: "RK"
-  covariables:
-    - "dem"
-    - "slope"
-    - "lat"
-    - "lon"
-  passes:
-    - radius: 1.0
-      interp_method: "okr"
-      vgm_model: "Sph"
-    - radius: 0.75
-      interp_method: "okr"
-      vgm_model: "Sph"
-    - radius: 0.50
-      interp_method: "okr"
-      vgm_model: "Exp"
+  nrun: 3
+  passes: [1.0, 0.75, 0.50]
+  covariables: ["dem", "slope", "lat", "lon"]
+  interpolation:
+    method: "okr"
+    maxdist: 3.5
+    nmin: 4
+    nmax: 12
+    use_block: true
+    variogram_models: ["Sph", "Exp", "Gau", "Pen"]

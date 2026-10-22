@@ -83,7 +83,7 @@ class CDTBridge:
                 "  } else 8.0\n"
                 "}, error = function(e) 6.0)\n"
                 "# Limite seguro de memoria: maximo 1 nucleo por cada 0.8 GB libre, con tope de 8\n"
-                "max_safe_cores <- max(2, min(8, floor(avail_mem_gb / 0.8)))\n"
+                "max_safe_cores <- max(2, floor(avail_mem_gb / 1.0))\n"
                 "n_cores <- max(1, min(parallel::detectCores() - 1, max_safe_cores))\n"
                 "cat(sprintf('[Parallel] Asignados %d nucleos (Memoria libre detectada: %.2f GB)\\n', n_cores, avail_mem_gb))\n"
             )
@@ -130,6 +130,57 @@ class CDTBridge:
             "    read.table(file.stnfl, sep = ',', na.strings = '-99', stringsAsFactors = FALSE, header = FALSE)\n"
             "  }, envir = cdt_env)\n"
             "  lockBinding('getStnOpenData', cdt_env)\n"
+            "}, error = function(e) NULL)\n\n"
+            # Hook defensivo Headless para getCDTdataAndDisplayMsg (evita dialogo GUI Tk)
+            "tryCatch({\n"
+            "  unlockBinding('getCDTdataAndDisplayMsg', cdt_env)\n"
+            "  assign('getCDTdataAndDisplayMsg', function(donne, tstep, filename) {\n"
+            "    if (is.null(donne)) return(NULL)\n"
+            "    CDT:::splitCDTData(donne, tstep)\n"
+            "  }, envir = cdt_env)\n"
+            "  lockBinding('getCDTdataAndDisplayMsg', cdt_env)\n"
+            "}, error = function(e) NULL)\n\n"
+            # Hook defensivo Headless para asegurar lectura automatica de DEM en getIndex.AllOpenFiles
+            "tryCatch({\n"
+            "  unlockBinding('getIndex.AllOpenFiles', cdt_env)\n"
+            "  assign('getIndex.AllOpenFiles', function(nomfile) {\n"
+            "    if (inherits(nomfile, 'tclVar')) nomfile <- tclvalue(nomfile)\n"
+            "    if (!is.character(nomfile) || length(nomfile) == 0 || nomfile == '') return(NULL)\n"
+            "    if (!exists('.cdtData', envir = asNamespace('CDT'))) return(NULL)\n"
+            "    .cd <- get('.cdtData', envir = asNamespace('CDT'))\n"
+            "    if (is.null(.cd$OpenFiles$Data)) .cd$OpenFiles$Data <- list()\n"
+            "    all.open.file <- do.call(c, lapply(.cd$OpenFiles$Data, '[[', 1))\n"
+            "    jfile <- which(all.open.file == nomfile)\n"
+            "    if (length(jfile) > 0) return(jfile[1])\n"
+            "    if (file.exists(nomfile)) {\n"
+            "      nc <- ncdf4::nc_open(nomfile)\n"
+            "      vars <- names(nc$var)\n"
+            "      vname <- vars[1]\n"
+            "      for (v in c('elevation', 'dem', 'z', 'temp', 'tmax', 'tmin', 'precip')) {\n"
+            "        if (v %in% vars) { vname <- v; break }\n"
+            "      }\n"
+            "      dimnames <- tolower(sapply(nc$var[[vname]]$dim, function(d) d$name))\n"
+            "      ilon <- which(dimnames %in% c('lon', 'longitude', 'x'))[1]\n"
+            "      ilat <- which(dimnames %in% c('lat', 'latitude', 'y'))[1]\n"
+            "      if (is.na(ilon) || length(ilon) == 0) ilon <- 1\n"
+            "      if (is.na(ilat) || length(ilat) == 0) ilat <- 2\n"
+            "      lon <- nc$var[[vname]]$dim[[ilon]]$vals\n"
+            "      lat <- nc$var[[vname]]$dim[[ilat]]$vals\n"
+            "      z <- ncdf4::ncvar_get(nc, vname)\n"
+            "      ncdf4::nc_close(nc)\n"
+            "      xo <- order(lon)\n"
+            "      yo <- order(lat)\n"
+            "      lon <- lon[xo]\n"
+            "      lat <- lat[yo]\n"
+            "      if (is.matrix(z)) z <- z[xo, yo, drop = FALSE]\n"
+            "      dem_data <- list(x = lon, y = lat, lon = lon, lat = lat, z = z)\n"
+            "      idx <- length(.cd$OpenFiles$Data) + 1\n"
+            "      .cd$OpenFiles$Data[[idx]] <- list(nomfile, dem_data)\n"
+            "      return(idx)\n"
+            "    }\n"
+            "    return(NULL)\n"
+            "  }, envir = cdt_env)\n"
+            "  lockBinding('getIndex.AllOpenFiles', cdt_env)\n"
             "}, error = function(e) NULL)\n\n"
             "# Hook defensivo Headless para extraer metadatos de NetCDF sample sin GUI OpenFiles\n"
             "tryCatch({\n"
@@ -215,6 +266,107 @@ class CDTBridge:
         """Generate R code snippet to configure biascoeff.options()."""
         args_str = ", ".join(f"{k} = {_to_r_val(v)}" for k, v in options.items())
         return f"biascoeff.options({args_str})\n"
+
+    # =========================================================================
+    # STEP 0A: COMPUTE DOWNSCALING COEFFICIENTS (TEMPERATURE)
+    # =========================================================================
+
+    def compute_downscaling_coefficients_temp(
+        self,
+        time_step: str,
+        station_file: Union[str, Path],
+        dem_file: Union[str, Path],
+        output_dir: Union[str, Path],
+        base_period_all_years: bool = True,
+        start_year: int = 1991,
+        end_year: int = 2020,
+        min_year: int = 10,
+        log_dir: Optional[Path] = None,
+    ) -> Tuple[int, str, str, float]:
+        """Compute lapse rate downscaling coefficients station-DEM (Step 1 in Temperature CDT)."""
+        Path(output_dir).mkdir(parents=True, exist_ok=True)
+        stn_str = str(station_file).replace("\\", "/")
+        dem_str = str(dem_file).replace("\\", "/")
+        out_str = str(output_dir).replace("\\", "/")
+
+        r_cmd = (
+            ".cdt_env <- asNamespace('CDT')\n"
+            "CDT:::cdtLocalConfigData()\n"
+            ".cd <- get('.cdtData', envir = .cdt_env)\n"
+            f".cd$GalParams$period <- {_to_r_val(time_step)}\n"
+            f".cd$GalParams$IO.files$STN.file <- {_to_r_val(stn_str)}\n"
+            f".cd$GalParams$IO.files$DEM.file <- {_to_r_val(dem_str)}\n"
+            f".cd$GalParams$IO.files$dir2save <- {_to_r_val(out_str)}\n"
+            f".cd$GalParams$base.period <- list(all.years = {_to_r_val(base_period_all_years)}, start.year = {start_year}, end.year = {end_year}, min.year = {min_year})\n"
+            ".cd$GalParams$message <- list('6' = 'Computing Downscaling Coefficients...', '7' = 'Error reading DEM', '8' = 'Calculating GLM lapse rate...', '9' = 'Not enough years', '10' = 'Downscaling coefficients computed successfully')\n"
+            "res <- CDT:::Temp_execCoefDown()\n"
+            "if (is.null(res) || res != 0) stop('Temp_execCoefDown fallo: retorno NULL o codigo no-cero')\n"
+        )
+        return self._execute_r_code(r_cmd, log_dir=log_dir, job_name="compute_down_coeffs_temp")
+
+    # =========================================================================
+    # STEP 0B: DOWNSCALE TEMPERATURE REANALYSIS/GRIDS (TEMPERATURE)
+    # =========================================================================
+
+    def downscale_temperature(
+        self,
+        time_step: str,
+        start_date: str,
+        end_date: str,
+        netcdf_dir: Union[str, Path],
+        netcdf_format: str,
+        down_coef_file: Union[str, Path],
+        dem_file: Union[str, Path],
+        output_dir: Union[str, Path],
+        var_id: str = "temp",
+        interp_method: str = "blin",
+        nmin: int = 4,
+        nmax: int = 12,
+        maxdist: float = 3.5,
+        use_block: bool = False,
+        vgm_model: str = "Sph",
+        grid_from: str = "data",
+        output_format: str = "tmax_down_%s%s%s.nc",
+        log_dir: Optional[Path] = None,
+    ) -> Tuple[int, str, str, float]:
+        """Downscale reanalysis/satellite grids to DEM resolution (Step 2 in Temperature CDT)."""
+        Path(output_dir).mkdir(parents=True, exist_ok=True)
+        sd_str = str(start_date)
+        ed_str = str(end_date)
+        s_yr = int(sd_str[:4])
+        s_mo = int(sd_str[4:6]) if len(sd_str) >= 6 else 1
+        s_dy = int(sd_str[6:8]) if len(sd_str) >= 8 else 1
+        e_yr = int(ed_str[:4])
+        e_mo = int(ed_str[4:6]) if len(ed_str) >= 6 else 12
+        e_dy = int(ed_str[6:8]) if len(ed_str) >= 8 else 31
+
+        sample_path = ""
+        if netcdf_dir and Path(netcdf_dir).exists():
+            cand_files = list(Path(netcdf_dir).glob("*.nc"))
+            if cand_files:
+                sample_path = str(cand_files[0]).replace("\\", "/")
+
+        coef_str = str(down_coef_file).replace("\\", "/")
+        dem_str = str(dem_file).replace("\\", "/")
+        out_str = str(output_dir).replace("\\", "/")
+
+        r_cmd = (
+            ".cdt_env <- asNamespace('CDT')\n"
+            "CDT:::cdtLocalConfigData()\n"
+            ".cd <- get('.cdtData', envir = .cdt_env)\n"
+            f".cd$GalParams$period <- {_to_r_val(time_step)}\n"
+            f".cd$GalParams$date.range <- list(start.year = {s_yr}, start.mon = {s_mo}, start.day = {s_dy}, end.year = {e_yr}, end.mon = {e_mo}, end.day = {e_dy})\n"
+            f".cd$GalParams$DownCoef.file <- {_to_r_val(coef_str)}\n"
+            f".cd$GalParams$DEM.file <- {_to_r_val(dem_str)}\n"
+            f".cd$GalParams$REANAL <- list(dir = {_to_r_val(netcdf_dir)}, format = {_to_r_val(netcdf_format)}, sample = {_to_r_val(sample_path)}, varid = {_to_r_val(var_id)}, ilon = 1, ilat = 2)\n"
+            f".cd$GalParams$grid <- list(from = {_to_r_val(grid_from)}, ncfile = {_to_r_val(dem_str)})\n"
+            f".cd$GalParams$interp <- list(method = {_to_r_val(interp_method)}, nmin = {nmin}, nmax = {nmax}, maxdist = {maxdist}, use.block = {_to_r_val(use_block)}, vgm.model = {_to_r_val(vgm_model)}, minstn = 5)\n"
+            f".cd$GalParams$output <- list(dir = {_to_r_val(out_str)}, format = {_to_r_val(output_format)})\n"
+            ".cd$GalParams$message <- list('8' = 'Downscaling Reanalysis Data...', '9' = 'Downscaling coefficients file not found', '10' = 'Error reading downscaling coefficients', '11' = 'Error reading DEM', '12' = 'Error reading grid NetCDF', '13' = 'Error date range Reanalysis', '14' = 'Downscaling daily temperature grids...', '15' = 'Downscaling completed successfully')\n"
+            "res <- CDT:::Temp_execDownscaling()\n"
+            "if (is.null(res) || res != 0) stop('Temp_execDownscaling fallo: retorno NULL o codigo no-cero')\n"
+        )
+        return self._execute_r_code(r_cmd, log_dir=log_dir, job_name=f"downscale_temp_{start_date}_{end_date}")
 
     # =========================================================================
     # STEP 1: COMPUTE BIAS COEFFICIENTS
