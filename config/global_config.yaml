@@ -117,7 +117,7 @@ validation:
 system:
   # 'auto' detecta dinámicamente los núcleos y la memoria libre (máximo 8 núcleos).
   # Para estabilidad garantizada en Windows con clusters doSNOW / Rscript, fijado en 6.
-  nb_cores: 6                    # 6 núcleos dedicados para máximo throughput sin riesgo OOM
+  nb_cores: auto                    # 6 núcleos dedicados para máximo throughput sin riesgo OOM
   dopar: true                    # Habilitar procesamiento en paralelo de fechas mediante doSNOW / foreach
   memory_gc_interval: 500        # Ejecutar recolección de basura (gc()) en R cada 500 días procesados
   rscript_path: null             # Ruta personalizada a Rscript.exe (null = autodetección en PATH o R 4.4.3)
