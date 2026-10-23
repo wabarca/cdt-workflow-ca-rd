@@ -792,6 +792,7 @@ class ExperimentRunner:
             effective_sat_format = "rr_adj_%s%s%s.nc"
 
         # Step 3: Merging Data
+        consolidate_daily_files(out_dir, "rr_mrg_")
         mrg_complete, resume_mrg_date, mrg_count, mrg_total = check_daily_files_coverage(
             out_dir, "rr_mrg_", start_date, end_date
         )
@@ -1011,6 +1012,7 @@ class ExperimentRunner:
             effective_adj_format = f"{var_prefix}_adj_%s%s%s.nc"
 
         # Step 5: Merging Data
+        consolidate_daily_files(out_dir, f"{var_prefix}_mrg_")
         mrg_complete, resume_mrg_date, mrg_count, mrg_total = check_daily_files_coverage(
             out_dir, f"{var_prefix}_mrg_", start_date, end_date
         )

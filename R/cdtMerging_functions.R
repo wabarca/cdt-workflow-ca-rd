@@ -135,7 +135,12 @@ cdtMerging <- function(stnData, ncInfo, xy.grid, params, variable,
 
     # Cache & Smart Skip: Indexar archivos NetCDF ya calculados en outdir o carpetas previas
     parent_dir <- dirname(outdir)
-    existing_files <- list.files(c(outdir, parent_dir), pattern = "\\.nc$", recursive = TRUE, full.names = TRUE)
+    fmt_prefix <- strsplit(basename(params$output$format), "%")[[1]][1]
+    file_pattern <- paste0("^", fmt_prefix, ".*\\.nc$")
+
+    search_dirs <- unique(c(outdir, parent_dir))
+    search_dirs <- search_dirs[dir.exists(search_dirs)]
+    existing_files <- list.files(search_dirs, pattern = file_pattern, recursive = TRUE, full.names = TRUE)
     lookup_existing <- character(0)
     if(length(existing_files) > 0){
         finfo <- file.info(existing_files)
@@ -146,11 +151,55 @@ cdtMerging <- function(stnData, ncInfo, xy.grid, params, variable,
         }
     }
 
-    parsL <- doparallel.cond(length(ncInfo$ncfiles) > 20)
-    ret <- cdt.foreach(seq_along(ncInfo$ncfiles), parsL, GUI,
+    all_indices <- seq_along(ncInfo$ncfiles)
+    todo_idx <- integer(0)
+    skipped_count <- 0
+    copied_count <- 0
+
+    for(jj in all_indices){
+        year <- substr(ncInfo$dates[jj], 1, 4)
+        month <- substr(ncInfo$dates[jj], 5, 6)
+        if(params$period == 'daily'){
+            ncfile <- sprintf(params$output$format, year, month, substr(ncInfo$dates[jj], 7, 8))
+        }else if(params$period %in% c('pentad', 'dekadal')){
+            ncfile <- sprintf(params$output$format, year, month, substr(ncInfo$dates[jj], 7, 7))
+        }else ncfile <- sprintf(params$output$format, year, month)
+
+        target.nc <- file.path(outdir, ncfile)
+        if(file.exists(target.nc) && file.info(target.nc)$size > 1000){
+            skipped_count <- skipped_count + 1
+            next
+        }
+        if(ncfile %in% names(lookup_existing)){
+            prev_file <- lookup_existing[[ncfile]]
+            if(file.exists(prev_file) && file.info(prev_file)$size > 1000){
+                if(normalizePath(prev_file, winslash = "/", mustWork = FALSE) != normalizePath(target.nc, winslash = "/", mustWork = FALSE)){
+                    file.copy(prev_file, target.nc, overwrite = TRUE)
+                    copied_count <- copied_count + 1
+                }
+                skipped_count <- skipped_count + 1
+                next
+            }
+        }
+        todo_idx <- c(todo_idx, jj)
+    }
+
+    if(skipped_count > 0){
+        cat(sprintf("  --> [CDT-Skip] %d archivos previamente calculados detectados (copiados/reutilizados: %d).\n", skipped_count, copied_count))
+    }
+
+    if(length(todo_idx) == 0){
+        cat(sprintf("  --> [CDT-Skip] 100%% de los archivos (%d/%d) ya existen y son validos. Omitiendo etapa de fusion.\n", length(all_indices), length(all_indices)))
+        return(0)
+    }
+
+    cat(sprintf("  --> [CDT-Skip] Calculando unicamente %d dias faltantes (de un total de %d dias)...\n", length(todo_idx), length(all_indices)))
+
+    parsL <- doparallel.cond(length(todo_idx) > 20)
+    ret <- cdt.foreach(todo_idx, parsL, GUI,
                        progress = TRUE, FUN = function(jj)
     {
-        # Verificacion instantanea de existencia previa (Smart Skip)
+        # Verificacion defensiva dentro de cada worker
         year <- substr(ncInfo$dates[jj], 1, 4)
         month <- substr(ncInfo$dates[jj], 5, 6)
         if(params$period == 'daily'){

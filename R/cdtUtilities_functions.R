@@ -236,6 +236,37 @@ cdt.doparallel <- function(condition, dopar = TRUE, detect.cores = TRUE, nb.core
 
     if(okpar & condition){
         klust <- parallel::makeCluster(nb.cores)
+        # Propagar parches locales R/ a los workers
+        tryCatch({
+            patches <- c('cdtUtilities_functions.R', 'cdtMerging_functions.R',
+                         'cdtBias_functions.R', 'cdtTemp_DownscalingReanal_Procs.R')
+            abs_patches <- character(0)
+            if(exists('repo_root', envir = .GlobalEnv)){
+                abs_patches <- file.path(get('repo_root', envir = .GlobalEnv), 'R', patches)
+            } else if(dir.exists('R')){
+                abs_patches <- file.path(getwd(), 'R', patches)
+            }
+            abs_patches <- abs_patches[file.exists(abs_patches)]
+            if(length(abs_patches) > 0){
+                parallel::clusterCall(klust, function(p_files) {
+                    suppressPackageStartupMessages(library(CDT))
+                    cdt_env <- asNamespace('CDT')
+                    for(pf in p_files){
+                        tryCatch({
+                            tmp_env <- new.env(parent = cdt_env)
+                            sys.source(pf, envir = tmp_env)
+                            for(fn in ls(envir = tmp_env)){
+                                tryCatch({
+                                    if(bindingIsLocked(fn, cdt_env)) unlockBinding(fn, cdt_env)
+                                    assign(fn, get(fn, envir = tmp_env), envir = cdt_env)
+                                    lockBinding(fn, cdt_env)
+                                }, error = function(e) NULL)
+                            }
+                        }, error = function(e) NULL)
+                    }
+                }, abs_patches)
+            }
+        }, error = function(e) NULL)
         # doParallel::registerDoParallel(klust)
         doSNOW::registerDoSNOW(klust)
         `%dofun%` <- foreach::`%dopar%`

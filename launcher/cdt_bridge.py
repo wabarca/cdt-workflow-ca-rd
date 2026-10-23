@@ -88,6 +88,9 @@ class CDTBridge:
                 "cat(sprintf('[Parallel] Asignados %d nucleos (Memoria libre detectada: %.2f GB)\\n', n_cores, avail_mem_gb))\n"
             )
         
+        repo_root = Path(__file__).resolve().parent.parent
+        r_repo_root = str(repo_root).replace("\\", "/")
+
         full_r_script = (
             "suppressPackageStartupMessages({\n"
             "  library(CDT)\n"
@@ -98,6 +101,30 @@ class CDTBridge:
             "# Configuracion automatica de paralelismo de alto rendimiento en CDT\n"
             f"{core_setup}"
             "cdt_env <- asNamespace('CDT')\n"
+            f"repo_root <- \"{r_repo_root}\"\n"
+            "# Inyeccion dinamica de parches locales R/ en el namespace de CDT\n"
+            "tryCatch({\n"
+            "  r_patch_files <- c(\n"
+            "    file.path(repo_root, 'R', 'cdtUtilities_functions.R'),\n"
+            "    file.path(repo_root, 'R', 'cdtMerging_functions.R'),\n"
+            "    file.path(repo_root, 'R', 'cdtBias_functions.R'),\n"
+            "    file.path(repo_root, 'R', 'cdtTemp_DownscalingReanal_Procs.R')\n"
+            "  )\n"
+            "  for (r_f in r_patch_files) {\n"
+            "    if (file.exists(r_f)) {\n"
+            "      tmp_env <- new.env(parent = cdt_env)\n"
+            "      sys.source(r_f, envir = tmp_env)\n"
+            "      for (fn in ls(envir = tmp_env)) {\n"
+            "        tryCatch({\n"
+            "          if (bindingIsLocked(fn, cdt_env)) unlockBinding(fn, cdt_env)\n"
+            "          assign(fn, get(fn, envir = tmp_env), envir = cdt_env)\n"
+            "          lockBinding(fn, cdt_env)\n"
+            "        }, error = function(e) NULL)\n"
+            "      }\n"
+            "    }\n"
+            "  }\n"
+            "  cat('[CDT-Bridge] Parches locales de R/ cargados exitosamente en namespace CDT.\\n')\n"
+            "}, error = function(e) cat(paste('[CDT-Bridge] Error cargando parches:', e$message, '\\n')))\n\n"
             "if (exists('.cdtData', envir = cdt_env)) {\n"
             "  cdt_data <- get('.cdtData', envir = cdt_env)\n"
             "  cdt_data$Config$parallel <- list(dopar = TRUE, detect.cores = FALSE, nb.cores = n_cores)\n"
