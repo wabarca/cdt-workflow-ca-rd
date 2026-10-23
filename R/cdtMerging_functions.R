@@ -133,10 +133,46 @@ cdtMerging <- function(stnData, ncInfo, xy.grid, params, variable,
 
     mrgOpts <- merging.options()
 
+    # Cache & Smart Skip: Indexar archivos NetCDF ya calculados en outdir o carpetas previas
+    parent_dir <- dirname(outdir)
+    existing_files <- list.files(c(outdir, parent_dir), pattern = "\\.nc$", recursive = TRUE, full.names = TRUE)
+    lookup_existing <- character(0)
+    if(length(existing_files) > 0){
+        finfo <- file.info(existing_files)
+        valid_idx <- which(finfo$size > 1000)
+        if(length(valid_idx) > 0){
+            lookup_existing <- existing_files[valid_idx]
+            names(lookup_existing) <- basename(existing_files[valid_idx])
+        }
+    }
+
     parsL <- doparallel.cond(length(ncInfo$ncfiles) > 20)
     ret <- cdt.foreach(seq_along(ncInfo$ncfiles), parsL, GUI,
                        progress = TRUE, FUN = function(jj)
     {
+        # Verificacion instantanea de existencia previa (Smart Skip)
+        year <- substr(ncInfo$dates[jj], 1, 4)
+        month <- substr(ncInfo$dates[jj], 5, 6)
+        if(params$period == 'daily'){
+            ncfile <- sprintf(params$output$format, year, month, substr(ncInfo$dates[jj], 7, 8))
+        }else if(params$period %in% c('pentad', 'dekadal')){
+            ncfile <- sprintf(params$output$format, year, month, substr(ncInfo$dates[jj], 7, 7))
+        }else ncfile <- sprintf(params$output$format, year, month)
+
+        target.nc <- file.path(outdir, ncfile)
+        if(file.exists(target.nc) && file.info(target.nc)$size > 1000){
+            return(0)
+        }
+        if(ncfile %in% names(lookup_existing)){
+            prev_file <- lookup_existing[[ncfile]]
+            if(file.exists(prev_file) && file.info(prev_file)$size > 1000){
+                if(normalizePath(prev_file, winslash = "/", mustWork = FALSE) != normalizePath(target.nc, winslash = "/", mustWork = FALSE)){
+                    file.copy(prev_file, target.nc, overwrite = TRUE)
+                }
+                return(0)
+            }
+        }
+
         if(ncInfo$exist[jj]){
             nc <- ncdf4::nc_open(ncInfo$ncfiles[jj])
             nc.val <- ncdf4::ncvar_get(nc, varid = ncinfo$varid)

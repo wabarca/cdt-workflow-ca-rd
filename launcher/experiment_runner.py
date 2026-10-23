@@ -88,14 +88,19 @@ def check_daily_files_coverage(
 def consolidate_daily_files(target_dir: Path, file_prefix: str) -> Path:
     """Consolidate daily netcdfs across subdirectories into a single primary directory."""
     cand_dirs = [
-        d for d in [target_dir] + list(target_dir.glob("**/DATA")) + list(target_dir.glob("*_*"))
+        d for d in [target_dir] + list(target_dir.glob("**/DATA")) + list(target_dir.glob("*_*")) + list(target_dir.glob("MERGED_*"))
         if d.is_dir() and list(d.glob(f"{file_prefix}*.nc"))
     ]
     if not cand_dirs:
         return target_dir
-    cand_dirs.sort(key=lambda d: len(list(d.glob(f"{file_prefix}*.nc"))), reverse=True)
-    primary_dir = cand_dirs[0]
-    for d in cand_dirs[1:]:
+    # Remove duplicates preserving order
+    unique_dirs = []
+    for cd in cand_dirs:
+        if cd not in unique_dirs:
+            unique_dirs.append(cd)
+    unique_dirs.sort(key=lambda d: len(list(d.glob(f"{file_prefix}*.nc"))), reverse=True)
+    primary_dir = unique_dirs[0]
+    for d in unique_dirs[1:]:
         if d == primary_dir:
             continue
         for f in d.glob(f"{file_prefix}*.nc"):
@@ -105,6 +110,11 @@ def consolidate_daily_files(target_dir: Path, file_prefix: str) -> Path:
                     shutil.move(str(f), str(dest))
             except Exception:
                 pass
+        try:
+            if not list(d.glob("*.nc")):
+                shutil.rmtree(str(d), ignore_errors=True)
+        except Exception:
+            pass
     return primary_dir
 
 
@@ -789,15 +799,14 @@ class ExperimentRunner:
             print(f"  --> [Paso 3/3] [Cache] Fusion espacial ya completada previamente ({mrg_count}/{mrg_total}).")
             return 0, "Cached", "", total_time
 
-        step3_start = resume_mrg_date or start_date
         if resume_mrg_date and resume_mrg_date != start_date:
-            print(f"  --> [Paso 3/3] [Resume] Reanudando fusion espacial desde {step3_start} ({mrg_count} dias procesados)...")
+            print(f"  --> [Paso 3/3] [Resume] Reanudando fusion espacial ({mrg_count} de {mrg_total} dias ya procesados)...")
         else:
             print(f"  --> [Paso 3/3] Ejecutando fusion espacial final (Merging)...")
 
         rc3, out3, err3, t3 = self.bridge.merge_rainfall(
             time_step=exp.get("time_step", "daily"),
-            start_date=step3_start,
+            start_date=start_date,
             end_date=end_date,
             station_file=paths.get("stations_file", ""),
             netcdf_dir=effective_sat_dir,
@@ -1009,9 +1018,8 @@ class ExperimentRunner:
             print(f"  --> [Paso 5/5] [Cache] Fusion espacial ya completada previamente ({mrg_count}/{mrg_total}).")
             return 0, "Cached", "", total_time
 
-        step5_start = resume_mrg_date or start_date
         if resume_mrg_date and resume_mrg_date != start_date:
-            print(f"  --> [Paso 5/5] [Resume] Reanudando fusion espacial desde {step5_start} ({mrg_count} dias procesados)...")
+            print(f"  --> [Paso 5/5] [Resume] Reanudando fusion espacial ({mrg_count} de {mrg_total} dias ya procesados)...")
         else:
             print(f"  --> [Paso 5/5] Ejecutando fusion espacial final (Merging)...")
 
@@ -1030,7 +1038,7 @@ class ExperimentRunner:
 
         rc3, out3, err3, t3 = self.bridge.merge_temperature(
             time_step=exp.get("time_step", "daily"),
-            start_date=step5_start,
+            start_date=start_date,
             end_date=end_date,
             station_file=paths.get("stations_file", ""),
             netcdf_dir=effective_adj_dir,
