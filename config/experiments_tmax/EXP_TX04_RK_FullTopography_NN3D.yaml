@@ -18,7 +18,7 @@ downscaling:
 bias_correction:
   method: "mbvar"
   interpolation:
-    method: "shepard"
+    method: "nn3d"
     maxdist: 3.5
     nmin: 4
     nmax: 12

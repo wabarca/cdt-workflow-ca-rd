@@ -15,7 +15,7 @@ description: "Geometría Esférica Trans-Caribe: Interpolación Spheremap de Gra
 bias_correction:
   method: "mbvar"
   interpolation:
-    method: "sphere"
+    method: "idw"
     maxdist: 2.0
     nmin: 4
     nmax: 12

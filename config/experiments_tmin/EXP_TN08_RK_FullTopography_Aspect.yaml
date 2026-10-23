@@ -19,7 +19,7 @@ bias_correction:
   method: "qmdist"
   distribution: "snorm"
   interpolation:
-    method: "shepard"
+    method: "nn3d"
     maxdist: 3.5
     nmin: 4
     nmax: 12

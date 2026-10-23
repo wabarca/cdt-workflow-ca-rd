@@ -419,10 +419,20 @@ class CDTBridge:
         if im_raw == "block_okr":
             cdt_interp_m = "okr"
             use_block = True
-        elif im_raw in ("nn3d", "nn"):
+        elif im_raw in ("nn3d", "nn", "nearest3d"):
             cdt_interp_m = "nn3d"
-        else:
+        elif im_raw in ("idw", "okr", "nns"):
             cdt_interp_m = im_raw
+        else:
+            # En CDT, el calculo de coeficientes de sesgo (Paso 1) unicamente soporta:
+            # 'idw', 'okr', 'nns' y 'nn3d'. Metodos como 'shepard', 'barnes', 'cressman'
+            # y 'sphere' son exclusivos del Paso 3 (Merging). Si se especifican para sesgo,
+            # mapeamos de forma segura y defensiva a 'idw' para evitar que 'interp.grid' falle.
+            cdt_interp_m = "idw"
+
+        # Si se solicita NN-3D pero no existe archivo DEM, hacer fallback a IDW
+        if cdt_interp_m == "nn3d" and not dem_str:
+            cdt_interp_m = "idw" 
 
         distr_raw = str(distr_name).lower()
         if var_clim == "rain":

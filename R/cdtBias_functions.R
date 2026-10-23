@@ -617,7 +617,7 @@ biasInterpolation <- function(interp.method, locbs, interp.grid,
             if(length(locbs$bs) > minstn){
                 exp.var <- gstat::variogram(bs~1, locations = locbs, cressie = TRUE)
                 vgm <- try(gstat::fit.variogram(exp.var, gstat::vgm(vgm.model)), silent = TRUE)
-                if(!inherits(vgm, "try-error")) vgm <- NULL
+                if(inherits(vgm, "try-error")) vgm <- NULL
                 # vgm <- try(automap::autofitVariogram(bs~1, input_data = locbs, model = vgm.model, cressie = TRUE), silent = TRUE)
                 # vgm <- if(!inherits(vgm, "try-error")) vgm$var_model else NULL
             }
@@ -719,6 +719,13 @@ InterpolateBiasCoefficients <- function(bias.pars, xy.grid, variable,
             interp.grid <- as.data.frame(interp.grid)
             locations.bs <- scale(locations.bs)
             locations.bs <- as.data.frame(locations.bs)
+        }
+
+        if(!exists("interp.grid", inherits = FALSE) || is.null(interp.grid)){
+            interp.grid <- defSpatialPixels(xy.grid)
+            locations.bs <- as.data.frame(bias.pars$data[c('lon', 'lat')])
+            sp::coordinates(locations.bs) <- ~lon+lat
+            interp.method <- "idw"
         }
 
         #############

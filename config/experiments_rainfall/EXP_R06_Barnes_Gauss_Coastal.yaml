@@ -15,7 +15,7 @@ description: "Gradientes Costeros e Insulares Suaves: Análisis Objetivo de Barn
 bias_correction:
   method: "mbvar"
   interpolation:
-    method: "shepard"
+    method: "nn3d"
     maxdist: 1.5
     nmin: 4
     nmax: 12

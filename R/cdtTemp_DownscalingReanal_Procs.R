@@ -252,7 +252,7 @@ Temp_ReanalysisDownscaling <- function(){
                 if(length(locations.reanl0$res) > minstn){
                     exp_var <- gstat::variogram(res~1, locations = locations.reanl0, cressie = TRUE)
                     vgm <- try(gstat::fit.variogram(exp_var, gstat::vgm(vgm.model)), silent = TRUE)
-                    if(!inherits(vgm, "try-error")) vgm <- NULL
+                    if(inherits(vgm, "try-error")) vgm <- NULL
                 }
             }
 

@@ -362,8 +362,7 @@ merging.functions <- function(locations.stn, newgrid, params,
                         "Interpolation using IDW", "\n"), file = log.file, append = TRUE)
                     interp.method <- "idw"
                     vgm <- NULL
-                }
-                if(vgm$range[2] < 0){
+                }else if(!is.null(vgm) && length(vgm$range) >= 2 && !is.na(vgm$range[2]) && vgm$range[2] < 0){
                     cat(paste(nc.date, ":", paste("Variogram range is negative pass#", pass), "|",
                         "Interpolation using IDW", "\n"), file = log.file, append = TRUE)
                     interp.method <- "idw"

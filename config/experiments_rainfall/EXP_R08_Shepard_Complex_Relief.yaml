@@ -15,7 +15,7 @@ description: "Relieve Escarpado y Cañones: Interpolación de Shepard Modificada
 bias_correction:
   method: "mbvar"
   interpolation:
-    method: "shepard"
+    method: "idw"
     maxdist: 1.5
     nmin: 4
     nmax: 12
