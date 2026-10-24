@@ -725,7 +725,7 @@ class ExperimentRunner:
             if not b_interp and "interp_method" in bias_cfg:
                 b_interp = {"method": bias_cfg["interp_method"]}
 
-            cand_rds = list(bias_coeffs_dir.rglob("input_parameters.rds"))
+            cand_rds = [f for f in bias_coeffs_dir.rglob("*.rds") if f.is_file()]
             if cand_rds and cand_rds[0].stat().st_size > 500:
                 print(f"  --> [Paso 1/3] [Cache] Coeficientes de sesgo ya calculados previamente.")
                 actual_bias_dir = cand_rds[0].parent
@@ -758,7 +758,7 @@ class ExperimentRunner:
                 if rc1 != 0:
                     return rc1, out1, err1, total_time
 
-                cand_rds = list(bias_coeffs_dir.rglob("input_parameters.rds"))
+                cand_rds = [f for f in bias_coeffs_dir.rglob("*.rds") if f.is_file()]
                 actual_bias_dir = cand_rds[0].parent if cand_rds else bias_coeffs_dir
 
             # Step 2: Apply bias correction
@@ -954,7 +954,7 @@ class ExperimentRunner:
             if not b_interp and "interp_method" in bias_cfg:
                 b_interp = {"method": bias_cfg["interp_method"]}
 
-            cand_rds = list(bias_coeffs_dir.rglob("input_parameters.rds"))
+            cand_rds = [f for f in bias_coeffs_dir.rglob("*.rds") if f.is_file()]
             if cand_rds and cand_rds[0].stat().st_size > 500:
                 print(f"  --> [Paso 3/5] [Cache] Coeficientes de sesgo ya calculados previamente.")
                 actual_bias_dir = cand_rds[0].parent
@@ -987,7 +987,7 @@ class ExperimentRunner:
                 if rc1 != 0:
                     return rc1, out1, err1, total_time
 
-                cand_rds = list(bias_coeffs_dir.rglob("input_parameters.rds"))
+                cand_rds = [f for f in bias_coeffs_dir.rglob("*.rds") if f.is_file()]
                 actual_bias_dir = cand_rds[0].parent if cand_rds else bias_coeffs_dir
 
             # Step 4: Apply Bias Correction

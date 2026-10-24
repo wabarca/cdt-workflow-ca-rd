@@ -108,6 +108,8 @@ class CDTBridge:
             "    file.path(repo_root, 'R', 'cdtUtilities_functions.R'),\n"
             "    file.path(repo_root, 'R', 'cdtMerging_functions.R'),\n"
             "    file.path(repo_root, 'R', 'cdtBias_functions.R'),\n"
+            "    file.path(repo_root, 'R', 'cdtBias_Coefficient_ClimData_Procs.R'),\n"
+            "    file.path(repo_root, 'R', 'cdtTemp_DownscalingCoef_Procs.R'),\n"
             "    file.path(repo_root, 'R', 'cdtTemp_DownscalingReanal_Procs.R')\n"
             "  )\n"
             "  for (r_f in r_patch_files) {\n"

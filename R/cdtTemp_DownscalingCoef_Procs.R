@@ -1,7 +1,7 @@
 
 Temp_execCoefDown <- function(){
     outdir <- file.path(.cdtData$GalParams$IO.files$dir2save, paste0('CoefDownTemp', '_',
-                        tools::file_path_sans_ext(.cdtData$GalParams$IO.files$STN.file)))
+                        basename(tools::file_path_sans_ext(.cdtData$GalParams$IO.files$STN.file))))
     dir.create(outdir, showWarnings = FALSE, recursive = TRUE)
 
     Insert.Messages.Out(.cdtData$GalParams[['message']][['6']], TRUE, "i")

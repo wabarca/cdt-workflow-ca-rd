@@ -2,7 +2,7 @@
 computeBiasCoeffClimData <- function(){
     message <- .cdtData$GalParams[['message']]
     outdir <- file.path(.cdtData$GalParams$output$dir, paste0('BIAS_Data_',
-                        tools::file_path_sans_ext(.cdtData$GalParams$STN.file)))
+                        basename(tools::file_path_sans_ext(.cdtData$GalParams$STN.file))))
     dir.create(outdir, showWarnings = FALSE, recursive = TRUE)
 
     Insert.Messages.Out(message[['7']], TRUE, "i")
