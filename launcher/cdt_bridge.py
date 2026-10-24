@@ -457,6 +457,8 @@ class CDTBridge:
             # mapeamos de forma segura y defensiva a 'idw' para evitar que 'interp.grid' falle.
             cdt_interp_m = "idw"
 
+        dem_str = str(dem_file).replace("\\", "/") if dem_file and Path(dem_file).exists() else ""
+
         # Si se solicita NN-3D pero no existe archivo DEM, hacer fallback a IDW
         if cdt_interp_m == "nn3d" and not dem_str:
             cdt_interp_m = "idw" 

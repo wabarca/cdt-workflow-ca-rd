@@ -610,12 +610,16 @@ class ExperimentRunner:
             assembled_nc_path = None
             if ret_code == 0 and post_proc.get("assemble_3d_netcdf", True):
                 try:
-                    cand_dirs = [d for d in [out_dir] + list(out_dir.glob("**/DATA")) + list(out_dir.glob("MERGED_*")) if d.is_dir() and list(d.glob("*.nc"))]
-                    # Select the directory with the maximum number of daily netcdf files
-                    cand_dirs.sort(key=lambda d: len(list(d.glob("*.nc"))), reverse=True)
+                    eff_prefix = "rr_mrg_" if var_type in ("rainfall", "rain", "precip") else f"{var_type}_mrg_"
+                    cand_dirs = [
+                        d for d in [out_dir] + list(out_dir.glob("**/DATA")) + list(out_dir.glob("MERGED_*"))
+                        if d.is_dir() and list(d.glob(f"{eff_prefix}*.nc"))
+                    ]
+                    # Select the directory with the maximum number of merged daily netcdf files
+                    cand_dirs.sort(key=lambda d: len(list(d.glob(f"{eff_prefix}*.nc"))), reverse=True)
                     daily_nc_dir = cand_dirs[0] if cand_dirs else out_dir
                     
-                    if list(daily_nc_dir.glob("*.nc")):
+                    if list(daily_nc_dir.glob(f"{eff_prefix}*.nc")):
                         out_nc_name = post_proc.get("output_filename", f"{var_type}_daily_1991_2020_{exp_id}.nc")
                         assembled_nc_path = out_dir / out_nc_name
                         print(f"  --> Ensamblando archivos NetCDF diarios en producto 3D CF-1.8...")
@@ -834,6 +838,15 @@ class ExperimentRunner:
         )
         total_time += t3
         consolidate_daily_files(out_dir, "rr_mrg_")
+
+        # Verificacion estricta de completitud post-fusion (100% de dias requeridos)
+        mrg_complete, _, mrg_count, mrg_total = check_daily_files_coverage(
+            out_dir, "rr_mrg_", start_date, end_date
+        )
+        if not mrg_complete:
+            err_msg = f"Fusion espacial incompleta: se generaron {mrg_count} de {mrg_total} archivos diarios requeridos."
+            return 1, out3, (err3 + "\n" + err_msg).strip(), total_time
+
         return rc3, out3, err3, total_time
 
     def _run_temperature_experiment(
@@ -1063,6 +1076,15 @@ class ExperimentRunner:
         )
         total_time += t3
         consolidate_daily_files(out_dir, f"{var_prefix}_mrg_")
+
+        # Verificacion estricta de completitud post-fusion (100% de dias requeridos)
+        mrg_complete, _, mrg_count, mrg_total = check_daily_files_coverage(
+            out_dir, f"{var_prefix}_mrg_", start_date, end_date
+        )
+        if not mrg_complete:
+            err_msg = f"Fusion espacial incompleta: se generaron {mrg_count} de {mrg_total} archivos diarios requeridos."
+            return 1, out3, (err3 + "\n" + err_msg).strip(), total_time
+
         return rc3, out3, err3, total_time
 
     def _print_execution_summary(self) -> None:
