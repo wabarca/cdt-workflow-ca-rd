@@ -558,7 +558,7 @@ class CDTBridge:
                 sample_path = str(cand_files[0]).replace("\\", "/")
 
         p_bias_dir = Path(bias_dir)
-        cand_rds = list(p_bias_dir.rglob("input_parameters.rds"))
+        cand_rds = [f for f in p_bias_dir.rglob("*.rds") if f.is_file()]
         eff_bias_dir = str(cand_rds[0].parent).replace("\\", "/") if cand_rds else str(bias_dir).replace("\\", "/")
 
         sd_str = str(start_date)
@@ -620,7 +620,7 @@ class CDTBridge:
                 sample_path = str(cand_files[0]).replace("\\", "/")
 
         p_bias_dir = Path(bias_dir)
-        cand_rds = list(p_bias_dir.rglob("input_parameters.rds"))
+        cand_rds = [f for f in p_bias_dir.rglob("*.rds") if f.is_file()]
         eff_bias_dir = str(cand_rds[0].parent).replace("\\", "/") if cand_rds else str(bias_dir).replace("\\", "/")
 
         sd_str = str(start_date)
