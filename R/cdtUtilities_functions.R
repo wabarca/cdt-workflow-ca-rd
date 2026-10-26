@@ -238,7 +238,7 @@ cdt.doparallel <- function(condition, dopar = TRUE, detect.cores = TRUE, nb.core
         klust <- parallel::makeCluster(nb.cores)
         # Propagar parches locales R/ a los workers
         tryCatch({
-            patches <- c('cdtUtilities_functions.R', 'cdtMerging_functions.R',
+            patches <- c('cdtLanguageParse_functions.R', 'cdtStatsProba_functions.R', 'cdtUtilities_functions.R', 'cdtMerging_functions.R',
                          'cdtBias_functions.R', 'cdtBias_Coefficient_ClimData_Procs.R',
                          'cdtTemp_DownscalingCoef_Procs.R', 'cdtTemp_DownscalingReanal_Procs.R')
             abs_patches <- character(0)

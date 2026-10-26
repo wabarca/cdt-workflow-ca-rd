@@ -1417,8 +1417,7 @@ applyBiasCorrection <- function(bias, ncInfo, outdir, params, variable, GUI = TR
 
     ################ 
 
-    # parsL <- doparallel.cond(length(ncInfo$ncfiles) > 10)
-    parsL <- doparallel.cond(FALSE)
+    parsL <- doparallel.cond(length(ncInfo$ncfiles) > 10)
 
     ret <- cdt.foreach(seq_along(ncInfo$ncfiles), parsL, GUI,
                        progress = TRUE, FUN = function(jj)
@@ -1461,19 +1460,54 @@ applyBiasCorrection <- function(bias, ncInfo, outdir, params, variable, GUI = TR
             fun.grd <- bias$grd[[ijt[jj]]]
             xadj <- xval
 
+            knots.stn <- lapply(fun.stn, function(f){
+                if(is.null(f)) return(NULL)
+                if(inherits(f, "ecdf")) stats::knots(f) else NULL
+            })
+            has_knots <- !all(sapply(knots.stn, is.null))
+
             for(j in seq(ncol(bias$id))){
-                fobs <- fun.stn[bias$id[, j]]
-                fgrd <- fun.grd[bias$id[, j]]
+                stn_idx <- bias$id[, j]
+                fobs <- fun.stn[stn_idx]
+                fgrd <- fun.grd[stn_idx]
                 inull <- sapply(fobs, is.null) | sapply(fgrd, is.null)
                 if(all(inull)) next
                 fobs <- fobs[!inull]
                 fgrd <- fgrd[!inull]
                 wg <- bias$Wk[!inull, j]
                 ix <- c(arrayInd(j, mat.dim))
-                xv <- sapply(seq_along(fobs), function(i){
-                    foo <- function(t) stats::quantile(fobs[[i]], t)
-                    foo(fgrd[[i]](xval[ix[1], ix[2]]))
-                })
+                val_ij <- xval[ix[1], ix[2]]
+                if(is.na(val_ij)) next
+
+                if(has_knots){
+                    fobs_k <- knots.stn[stn_idx][!inull]
+                    xv <- numeric(length(fobs_k))
+                    for(i in seq_along(fobs_k)){
+                        prob_val <- fgrd[[i]](val_ij)
+                        k <- fobs_k[[i]]
+                        if(is.null(k)){
+                            xv[i] <- stats::quantile(fobs[[i]], prob_val)
+                        } else {
+                            nk <- length(k)
+                            if(nk <= 1 || prob_val <= 0){
+                                xv[i] <- k[1]
+                            } else if(prob_val >= 1){
+                                xv[i] <- k[nk]
+                            } else {
+                                idx_q <- 1 + (nk - 1) * prob_val
+                                idx_fl <- floor(idx_q)
+                                idx_fl <- max(1, min(nk - 1, idx_fl))
+                                w_q <- idx_q - idx_fl
+                                xv[i] <- k[idx_fl] * (1 - w_q) + k[idx_fl + 1] * w_q
+                            }
+                        }
+                    }
+                } else {
+                    xv <- sapply(seq_along(fobs), function(i){
+                        foo <- function(t) stats::quantile(fobs[[i]], t)
+                        foo(fgrd[[i]](val_ij))
+                    })
+                }
                 xadj[ix[1], ix[2]] <- sum(wg * xv) / sum(wg)
             }
         }
