@@ -459,10 +459,13 @@ class ExperimentRunner:
                         self.results_summary.append({
                             "id": exp_id,
                             "variable": var_type,
+                            "description": exp_desc,
                             "status": "SUCCESS (CACHED)",
                             "time_sec": prev_m.get("execution_time_sec", 0.0),
                             "time_formatted": prev_m.get("execution_time_formatted", "cached"),
+                            "output_dir": str(out_dir),
                             "assembled_nc": str(assembled_nc_path),
+                            "kge": prev_m.get("validation", {}).get("summary_results", {}).get("mean_kge", "N/A"),
                         })
                         continue
                 except Exception:
@@ -1092,9 +1095,10 @@ class ExperimentRunner:
         print("               RESUMEN DE EJECUCIÓN DE EXPERIMENTOS CDT")
         print("=" * 80)
         for res in self.results_summary:
-            status_tag = f"[{res['status']}]"
-            t_str = res.get("time_formatted", f"{res['time_sec']:.2f}s")
-            print(f"  {status_tag:10} | {res['id']:32} | Tiempo: {t_str:>11} | {res['description']}")
+            status_tag = f"[{res.get('status', 'DONE')}]"
+            t_str = res.get("time_formatted", f"{res.get('time_sec', 0.0):.2f}s")
+            desc = res.get("description", "")
+            print(f"  {status_tag:18} | {res['id']:32} | Tiempo: {t_str:>11} | {desc}")
         if len(self.results_summary) > 1:
             total_sec = sum(res.get("time_sec", 0.0) for res in self.results_summary)
             print("-" * 80)
