@@ -1,0 +1,41 @@
+# ==============================================================================
+# EXPERIMENTO EXP-R12: Shepard Confinado Orográfico / Anti-Cruce Transcordillera (FASE 2)
+# ==============================================================================
+# Justificación Física y Climatológica Regional (Fase 2):
+# En Centroamérica, un radio de 1.5° (~165 km) cruza la cordillera central y contamina
+# las estaciones secas del Pacífico con la humedad caribeña. Reducir maxdist a 0.9°
+# (~100 km) aísla adecuadamente los regímenes climáticos contrapuestos de cada vertiente.
+# ==============================================================================
+
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_R12_Shepard_Local_Orn"
+variable_type: "rainfall"
+description: "Fase 2: Shepard Confinado Local (0.9°) para Aislamiento Transcordillera"
+
+biascoeff_options:
+  mulBiasFunction: "median"
+
+bias_correction:
+  method: "mbvar"
+  interpolation:
+    method: "idw"
+    maxdist: 0.9
+    nmin: 3
+    nmax: 8
+
+rnor_mask:
+  use: true
+  wet_threshold: 1.0
+  smoothing: true
+  method: "logit"
+
+merging:
+  method: "SBA"
+  nrun: 3
+  passes: [1.0, 0.67, 0.33]
+  interpolation:
+    method: "shepard"
+    maxdist: 0.9
+    nmin: 3
+    nmax: 8

@@ -1,0 +1,38 @@
+# ==============================================================================
+# EXPERIMENTO EXP-R13: Quantile Mapping No Paramétrico (eCDF Empírico) (FASE 2)
+# ==============================================================================
+# Justificación Física y Climatológica Regional (Fase 2):
+# El Quantile Mapping paramétrico (Gamma/Weibull) colapsó en la Fase 1 debido a la
+# rigidez de las curvas teóricas. El método qmecdf ajusta cuantil por cuantil
+# empírico real, preservando las colas pesadas de ciclones sin suposiciones de forma.
+# ==============================================================================
+
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_R13_QM_Empirical_ECDF"
+variable_type: "rainfall"
+description: "Fase 2: Quantile Mapping Empírico No-Paramétrico (qmecdf) con SBA Shepard"
+
+bias_correction:
+  method: "qmecdf"
+  interpolation:
+    method: "idw"
+    maxdist: 1.5
+    nmin: 4
+    nmax: 12
+
+rnor_mask:
+  use: true
+  wet_threshold: 1.0
+  smoothing: true
+  method: "logit"
+
+merging:
+  method: "SBA"
+  nrun: 3
+  passes: [1.0, 0.75, 0.50]
+  interpolation:
+    method: "shepard"
+    maxdist: 1.5
+    nmin: 4
+    nmax: 12

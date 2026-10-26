@@ -1,0 +1,47 @@
+# ==============================================================================
+# EXPERIMENTO EXP-R14: Geometría Esférica Spheremap con Mediana y Malla Gruesa (FASE 2)
+# ==============================================================================
+# Justificación Física y Climatológica Regional (Fase 2):
+# EXP_R09 (Spheremap) fue el 2do mejor de la Fase 1 (KGE 0.358). Este experimento
+# acopla la proyección de gran círculo esférico con el estimador de mediana y
+# la malla de contención gruesa marítima para superar a Shepard.
+# ==============================================================================
+
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_R14_Spheremap_Median"
+variable_type: "rainfall"
+description: "Fase 2: Spheremap de Gran Círculo con Mediana Robusta y Malla Gruesa"
+
+biascoeff_options:
+  mulBiasFunction: "median"
+  addCoarseGrid: true
+  resCoarseGrid: 1.0
+
+merging_options:
+  addCoarseGrid: true
+  resCoarseGrid: 1.0
+
+bias_correction:
+  method: "mbvar"
+  interpolation:
+    method: "idw"
+    maxdist: 1.5
+    nmin: 4
+    nmax: 12
+
+rnor_mask:
+  use: true
+  wet_threshold: 1.0
+  smoothing: true
+  method: "logit"
+
+merging:
+  method: "SBA"
+  nrun: 3
+  passes: [1.0, 0.75, 0.50]
+  interpolation:
+    method: "sphere"
+    maxdist: 1.5
+    nmin: 4
+    nmax: 12

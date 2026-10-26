@@ -754,7 +754,12 @@ class ExperimentRunner:
                     var_id=paths.get("var_id", "precip"),
                     start_year=int(str(start_date)[:4]),
                     end_year=int(str(end_date)[:4]),
-                    global_bias_opts=exp.get("global_options"),
+                    global_bias_opts=(
+                        exp.get("biascoeff_options")
+                        or exp.get("bias_options")
+                        or exp.get("global_bias_options")
+                        or exp.get("global_options")
+                    ),
                     log_dir=log_dir,
                 )
                 total_time += t1
@@ -836,7 +841,11 @@ class ExperimentRunner:
             shapefile_path=paths.get("shapefile_path"),
             dem_file=paths.get("dem_file"),
             auxvar=merging.get("auxiliary_variables") or merging.get("covariables"),
-            global_mrg_opts=exp.get("global_options"),
+            global_mrg_opts=(
+                exp.get("merging_options")
+                or exp.get("global_merging_options")
+                or exp.get("global_options")
+            ),
             log_dir=log_dir,
         )
         total_time += t3
@@ -983,7 +992,12 @@ class ExperimentRunner:
                     var_id=eff_var_id,
                     start_year=int(str(start_date)[:4]),
                     end_year=int(str(end_date)[:4]),
-                    global_bias_opts=exp.get("global_options"),
+                    global_bias_opts=(
+                        exp.get("biascoeff_options")
+                        or exp.get("bias_options")
+                        or exp.get("global_bias_options")
+                        or exp.get("global_options")
+                    ),
                     log_dir=log_dir,
                 )
                 total_time += t1
@@ -1074,7 +1088,11 @@ class ExperimentRunner:
             vgm_models=interp.get("variogram_models", ["Sph", "Exp", "Gau", "Pen"]),
             dem_file=dem_file,
             auxvar=merging.get("auxiliary_variables") or merging.get("covariables"),
-            global_mrg_opts=exp.get("global_options"),
+            global_mrg_opts=(
+                exp.get("merging_options")
+                or exp.get("global_merging_options")
+                or exp.get("global_options")
+            ),
             log_dir=log_dir,
         )
         total_time += t3

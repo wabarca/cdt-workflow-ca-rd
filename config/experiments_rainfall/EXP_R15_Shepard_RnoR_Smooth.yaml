@@ -1,0 +1,44 @@
+# ==============================================================================
+# EXPERIMENTO EXP-R15: Shepard con Transición Continua de Lluvia/No-Lluvia (FASE 2)
+# ==============================================================================
+# Justificación Física y Climatológica Regional (Fase 2):
+# El umbral por defecto de RnoR aplica un corte binario rígido (0.5). La opción
+# RnoRCutOff = 2 proporciona una transición lineal continua entre 0.1 y 1.0,
+# reduciendo el error en zonas semiáridas y valles intramontanos.
+# ==============================================================================
+
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_R15_Shepard_RnoR_Smooth"
+variable_type: "rainfall"
+description: "Fase 2: Shepard Modificado con Máscara RnoR Continua Suave (CutOff 2)"
+
+biascoeff_options:
+  mulBiasFunction: "median"
+
+merging_options:
+  RnoRCutOff: 2
+
+bias_correction:
+  method: "mbvar"
+  interpolation:
+    method: "idw"
+    maxdist: 1.2
+    nmin: 4
+    nmax: 10
+
+rnor_mask:
+  use: true
+  wet_threshold: 1.0
+  smoothing: true
+  method: "logit"
+
+merging:
+  method: "SBA"
+  nrun: 3
+  passes: [1.0, 0.75, 0.50]
+  interpolation:
+    method: "shepard"
+    maxdist: 1.2
+    nmin: 4
+    nmax: 10

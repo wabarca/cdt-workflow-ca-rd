@@ -701,6 +701,8 @@ class CDTBridge:
             use_block = True
         elif im in ("nn3d", "nn"):
             cdt_interp_m = "shepard"
+        elif im in ("spheremap", "sphere"):
+            cdt_interp_m = "sphere"
         else:
             cdt_interp_m = im
 
@@ -823,6 +825,8 @@ class CDTBridge:
             use_block = True
         elif im in ("nn3d", "nn"):
             cdt_interp_m = "shepard"
+        elif im in ("spheremap", "sphere"):
+            cdt_interp_m = "sphere"
         else:
             cdt_interp_m = im
 

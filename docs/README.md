@@ -44,13 +44,16 @@ Esta carpeta contiene la documentación técnica, matemática y metodológica pa
 11. [**11. Guía de Despliegue en Contenedores: Docker, Docker Compose y Apptainer / Singularity**](file:///d:/Workspace/CDT-8.0/docs/11_guia_despliegue_contenedores_docker_apptainer.md)
     - Procedimientos de ejecución en contenedores inmutables: `Dockerfile`, `docker-compose.yml`, DevContainers y `Apptainer.def` para supercómputo HPC / SLURM.
 
+12. [**12. Diagnóstico Científico Fase 1 y Diseño Metodológico Fase 2 (Precipitación)**](file:///d:/Workspace/CDT-8.0/docs/12_diagnostico_fase1_y_diseno_fase2_precipitacion.md)
+    - Diagnóstico de los 10 experimentos de la Fase 1, análisis del ranking liderado por Modified Shepard (EXP_R08), colapso de QM teórico y diseño de los 5 experimentos de refinamiento (EXP_R11 a EXP_R15) usando mediana robusta, malla gruesa, eCDF empírico y aislamiento orográfico transcordillera.
+
 ---
 
 ## Estructura de Configuraciones y Suites Experimentales
 
 - **Configuración Maestra Global:** [`config/global_config.yaml`](file:///d:/Workspace/CDT-8.0/config/global_config.yaml)
 - **Estaciones de Validación Independiente:** [`data/stations/validation_holdout_stations.csv`](file:///d:/Workspace/CDT-8.0/data/stations/validation_holdout_stations.csv)
-- **Suite de Precipitación (10 Experimentos):** [`config/experiments_rainfall/`](file:///d:/Workspace/CDT-8.0/config/experiments_rainfall)
+- **Suite de Precipitación (Fase 1: EXP_R01 a R10 | Fase 2: EXP_R11 a R15):** [`config/experiments_rainfall/`](file:///d:/Workspace/CDT-8.0/config/experiments_rainfall)
 - **Suite de Temperatura Máxima (8 Experimentos):** [`config/experiments_tmax/`](file:///d:/Workspace/CDT-8.0/config/experiments_tmax)
 - **Suite de Temperatura Mínima (8 Experimentos):** [`config/experiments_tmin/`](file:///d:/Workspace/CDT-8.0/config/experiments_tmin)
 

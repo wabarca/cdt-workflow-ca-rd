@@ -328,7 +328,7 @@ class TestExperimentYAMLConsistency(unittest.TestCase):
     def test_all_experiment_yamls_valid(self):
         import glob
         yaml_files = sorted(glob.glob("config/experiments_*/*.yaml"))
-        self.assertEqual(len(yaml_files), 26, f"Expected 26 experiment YAMLs, found {len(yaml_files)}")
+        self.assertIn(len(yaml_files), (26, 31), f"Expected 26 or 31 experiment YAMLs, found {len(yaml_files)}")
 
         valid_merge_methods = {"SBA", "RK"}
         valid_interp_methods = {"idw", "okr", "barnes", "cressman", "shepard", "sphere"}

@@ -1,0 +1,47 @@
+# ==============================================================================
+# EXPERIMENTO EXP-R11: Shepard Robusto con Mediana y Malla Gruesa de Control (FASE 2)
+# ==============================================================================
+# Justificación Física y Climatológica Regional (Fase 2):
+# El estimador de mediana (mulBiasFunction = 'median') neutraliza eventos convectivos
+# extremos atípicos que inflan el sesgo multiplicativo. La malla gruesa (addCoarseGrid)
+# atenúa los residuos hacia cero en áreas oceánicas y costeras sin estaciones.
+# ==============================================================================
+
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_R11_Shepard_Median_Coarse"
+variable_type: "rainfall"
+description: "Fase 2: Shepard Modificado con Mediana Robusta y Malla Gruesa Costera"
+
+biascoeff_options:
+  mulBiasFunction: "median"
+  addCoarseGrid: true
+  resCoarseGrid: 1.0
+
+merging_options:
+  addCoarseGrid: true
+  resCoarseGrid: 1.0
+
+bias_correction:
+  method: "mbvar"
+  interpolation:
+    method: "idw"
+    maxdist: 1.5
+    nmin: 4
+    nmax: 12
+
+rnor_mask:
+  use: true
+  wet_threshold: 1.0
+  smoothing: true
+  method: "logit"
+
+merging:
+  method: "SBA"
+  nrun: 3
+  passes: [1.0, 0.75, 0.50]
+  interpolation:
+    method: "shepard"
+    maxdist: 1.5
+    nmin: 4
+    nmax: 12
