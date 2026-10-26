@@ -256,11 +256,24 @@ startgumbel_lmom <- function(x){
 ## norm, lnorm, snorm, gamma, exp, weibull, gumbel
 ## berngamma, bernexp, bernlnorm, bernweibull
 
-get_distr_parameters <- function(dat, distr, min_length, thres = NA){
+get_distr_parameters <- function(dat, distr, min_length = 1, thres = NA, ...){
     ## dat: matrix of data
     ## distr: list(name = "norm", pars = c('mean', 'sd'))
     ## min_length: minimum length of data
     ## thres: threshold for mixture distr 
+
+    extra <- list(...)
+    if(missing(min_length) || is.null(min_length)){
+        if("min.length" %in% names(extra)) min_length <- extra[["min.length"]]
+        else if(!is.null(distr[["min.length"]])) min_length <- distr[["min.length"]]
+        else min_length <- 1
+    }
+    if(missing(thres) || is.null(thres) || (length(thres) == 1 && is.na(thres))){
+        if("probThres" %in% names(extra)) thres <- extra[["probThres"]]
+        else if(!is.null(distr[["probThres"]])) thres <- distr[["probThres"]]
+        else if(!is.null(distr[["thres"]])) thres <- distr[["thres"]]
+        else thres <- NA
+    }
 
     coef <- lapply(seq_along(distr$pars), function(i) rep(NA, ncol(dat)))
     names(coef) <- distr$pars
