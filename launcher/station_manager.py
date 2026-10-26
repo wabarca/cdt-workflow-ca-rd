@@ -197,10 +197,13 @@ def split_cdt_station_file(
 
     if not train_ids:
         raise ValueError("All stations were matched as holdout! No stations remaining for training.")
-    if not val_ids and holdout_ids:
-        print(f"      [!] Advertencia: Ninguna estación del archivo holdout ({len(holdout_ids)} estaciones) coincidió con los IDs del archivo principal ({len(all_ids)} estaciones).")
-        print(f"          Muestra IDs archivo de estaciones : {all_ids[:5]}")
-        print(f"          Muestra IDs archivo holdout       : {holdout_ids[:5]}")
+    if not val_ids:
+        if holdout_ids:
+            print(f"      [!] Advertencia: Ninguna estación del archivo holdout ({len(holdout_ids)} estaciones) coincidió con los IDs del archivo principal ({len(all_ids)} estaciones).")
+            print(f"          Muestra IDs archivo de estaciones : {all_ids[:5]}")
+            print(f"          Muestra IDs archivo holdout       : {holdout_ids[:5]}")
+        else:
+            print(f"      [!] Advertencia: El archivo de validación holdout '{holdout_file}' está vacío o no contiene identificadores de estación válidos.")
 
     delim = meta["delimiter"]
 

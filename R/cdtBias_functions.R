@@ -212,8 +212,13 @@ ComputeBiasCoefficients <- function(stnData, ncInfo, params,
                                     variable, outdir, GUI = TRUE)
 {
     xml.dlg <- file.path(.cdtDir$dirLocal, "languages", "cdtBias_functions1.xml")
-    lang.msg <- cdtLanguageParse(xml.dlg, .cdtData$Config$lang.iso)
-    lang.msg <- lang.msg[['message']]
+    lang.msg <- tryCatch({
+        cdtLanguageParse(xml.dlg, .cdtData$Config$lang.iso)[['message']]
+    }, error = function(e) NULL)
+    if(is.null(lang.msg)){
+        lang.msg <- as.list(rep("", 50))
+        names(lang.msg) <- as.character(1:50)
+    }
 
     Insert.Messages.Out(lang.msg[['1']], TRUE, "i", GUI)
 
@@ -663,8 +668,13 @@ InterpolateBiasCoefficients <- function(bias.pars, xy.grid, variable,
                                         outdir, demData, GUI = TRUE)
 {
     xml.dlg <- file.path(.cdtDir$dirLocal, "languages", "cdtBias_functions2.xml")
-    lang.msg <- cdtLanguageParse(xml.dlg, .cdtData$Config$lang.iso)
-    lang.msg <- lang.msg[['message']]
+    lang.msg <- tryCatch({
+        cdtLanguageParse(xml.dlg, .cdtData$Config$lang.iso)[['message']]
+    }, error = function(e) NULL)
+    if(is.null(lang.msg)){
+        lang.msg <- as.list(rep("", 50))
+        names(lang.msg) <- as.character(1:50)
+    }
 
     Insert.Messages.Out(lang.msg[['1']], TRUE, "i", GUI)
 
@@ -1187,8 +1197,13 @@ InterpolateBiasCoefficients <- function(bias.pars, xy.grid, variable,
 
 readBiasFiles <- function(params, variable, GUI = TRUE){
     xml.dlg <- file.path(.cdtDir$dirLocal, "languages", "cdtBias_functions3.xml")
-    lang.msg <- cdtLanguageParse(xml.dlg, .cdtData$Config$lang.iso)
-    lang.msg <- lang.msg[['message']]
+    lang.msg <- tryCatch({
+        cdtLanguageParse(xml.dlg, .cdtData$Config$lang.iso)[['message']]
+    }, error = function(e) NULL)
+    if(is.null(lang.msg)){
+        lang.msg <- as.list(rep("", 50))
+        names(lang.msg) <- as.character(1:50)
+    }
 
     Insert.Messages.Out(lang.msg[['1']], TRUE, "i", GUI)
 
@@ -1318,8 +1333,13 @@ readBiasFiles <- function(params, variable, GUI = TRUE){
 
 applyBiasCorrection <- function(bias, ncInfo, outdir, params, variable, GUI = TRUE){
     xml.dlg <- file.path(.cdtDir$dirLocal, "languages", "cdtBias_functions4.xml")
-    lang.msg <- cdtLanguageParse(xml.dlg, .cdtData$Config$lang.iso)
-    lang.msg <- lang.msg[['message']]
+    lang.msg <- tryCatch({
+        cdtLanguageParse(xml.dlg, .cdtData$Config$lang.iso)[['message']]
+    }, error = function(e) NULL)
+    if(is.null(lang.msg)){
+        lang.msg <- as.list(rep("", 50))
+        names(lang.msg) <- as.character(1:50)
+    }
 
     Insert.Messages.Out(lang.msg[['1']], TRUE, "i", GUI)
 

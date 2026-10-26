@@ -23,7 +23,24 @@ get.lang.value1 <- function(obj.list, obj.txt, lang){
 }
 
 cdtLanguageParse <- function(xml.path, lang = "en"){
-    xml.doc <- XML::xmlParse(xml.path)
+    if(!is.character(xml.path) || length(xml.path) == 0 || is.na(xml.path) || !file.exists(xml.path)){
+        if(exists('.cdtDir', envir = asNamespace('CDT'))){
+            .cDir <- get('.cdtDir', envir = asNamespace('CDT'))
+            if(!is.null(.cDir$Root)){
+                cand_root <- file.path(.cDir$Root, 'languages', basename(xml.path))
+                if(file.exists(cand_root)) return(cdtLanguageParse(cand_root, lang))
+            }
+        }
+        dummy_msg <- as.list(rep("", 50))
+        names(dummy_msg) <- as.character(1:50)
+        return(list(message = dummy_msg, title = "", help = list(status = list(), tooltip = list())))
+    }
+    xml.doc <- tryCatch(XML::xmlParse(xml.path), error = function(e) NULL)
+    if(is.null(xml.doc)){
+        dummy_msg <- as.list(rep("", 50))
+        names(dummy_msg) <- as.character(1:50)
+        return(list(message = dummy_msg, title = "", help = list(status = list(), tooltip = list())))
+    }
     xml.lang <- XML::xmlRoot(xml.doc)
     obj.lang <- NULL
     obj.lang$type <- XML::xmlName(xml.lang)
