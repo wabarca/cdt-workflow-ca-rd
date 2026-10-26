@@ -252,18 +252,20 @@ cdt.doparallel <- function(condition, dopar = TRUE, detect.cores = TRUE, nb.core
                 parallel::clusterCall(klust, function(p_files) {
                     suppressPackageStartupMessages(library(CDT))
                     cdt_env <- asNamespace('CDT')
+                    patch_env <- new.env(parent = cdt_env)
                     for(pf in p_files){
                         tryCatch({
-                            tmp_env <- new.env(parent = cdt_env)
-                            sys.source(pf, envir = tmp_env)
-                            for(fn in ls(envir = tmp_env)){
-                                tryCatch({
-                                    if(bindingIsLocked(fn, cdt_env)) unlockBinding(fn, cdt_env)
-                                    assign(fn, get(fn, envir = tmp_env), envir = cdt_env)
-                                    lockBinding(fn, cdt_env)
-                                }, error = function(e) NULL)
-                            }
+                            sys.source(pf, envir = patch_env)
                         }, error = function(e) NULL)
+                    }
+                    for(fn in ls(envir = patch_env)){
+                        if(exists(fn, envir = cdt_env, inherits = FALSE)){
+                            tryCatch({
+                                if(bindingIsLocked(fn, cdt_env)) unlockBinding(fn, cdt_env)
+                                assign(fn, get(fn, envir = patch_env), envir = cdt_env)
+                                lockBinding(fn, cdt_env)
+                            }, error = function(e) NULL)
+                        }
                     }
                 }, abs_patches)
             }
