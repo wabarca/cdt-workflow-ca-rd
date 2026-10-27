@@ -214,40 +214,82 @@ Configurados en [`config/experiments_tmin/`](file:///d:/Workspace/CDT-8.0/config
 
 ---
 
-## 6. Esquema de Validación Cruzada Independiente y Fórmulas de Evaluación
+## 6. Esquema de Validación Cruzada Independiente (Holdout por CSV) y Métricas Cuantitativas
+
+### 6.1 Mecanismo de Evaluación de CDT y Partición Ciega (Holdout Validation)
+
+El software **Climate Data Tools (CDT)** provee funcionalidades para validación cruzada y evaluación estadística de campos interpolados contra datos de estación. En nuestro marco metodológico automatizado, para garantizar una evaluación **estrictamente independiente, ciega e insesgada** (evitando el sobreajuste o *overfitting* de evaluar un modelo con las mismas estaciones que fueron asimiladas para calibrar sus parámetros), el orquestador (`launcher/station_manager.py`) desacopla el conjunto observacional en dos subconjuntos disjuntos antes de iniciar cualquier procesamiento:
 
 ```
-[ Estaciones Totales 1991–2020 ]
-             │
-             ├──► Partición automática vía validation_holdout_stations.csv (station_manager.py)
-             │    ├── 80–90% Entrenamiento ──► Pipeline CDT (Downscale + Bias + Merging)
-             │    └── 10–20% Validación   ──► Evaluación Independiente
-             │
-             └──► Métricas Calculadas en launcher/station_manager.py:
-                  • Continuas: KGE, RMSE, MAE, R², PBIAS.
-                  • Categóricas (Lluvia $\ge 1.0\text{ mm}$): POD, FAR, ETS, HSS.
+[ Red Total de Estaciones de Superficie (1991–2020) ]
+                       │
+       ┌───────────────┴───────────────────────────────┐
+       ▼                                               ▼
+[ Subconjunto de Entrenamiento (~80–90%) ]   [ Subconjunto de Validación Ciega (~10–20%) ]
+       │                                               │
+       ▼                                               │ (Completamente invisible para CDT;
+[ Flujo de Procesamiento en CDT ]                     │  no se usa en sesgo ni en interpolación)
+  • Paso 1: Cálculo de Coeficientes de Sesgo            │
+  • Paso 2: Corrección Distribucional sobre CHIRPS      │
+  • Paso 3 / Paso 5: Fusión Geoestadística (SBA/RK)    │
+       │                                               │
+       ▼                                               │
+[ Grillas Diarias Fusionadas NetCDF 1991–2020 ]         │
+       │                                               │
+       ▼                                               │
+[ Ensamblado NetCDF 3D Multitemporal CF-1.8 ]          │
+       │                                               │
+       └───────────────────────┬───────────────────────┘
+                               ▼
+            [ Extracción Puntual en Coordenadas (lon, lat) ]
+                               │
+                               ▼
+        [ Evaluación Cuantitativa de Pares Sincronizados (S_t, O_t) ]
+          • Métricas Continuas: KGE, r, RMSE, MAE, PBIAS
+          • Métricas Categóricas (Lluvia ≥ 1.0 mm/d): POD, FAR, FBI, ETS, HSS
 ```
 
-### Fórmulas Matemáticas de Evaluación:
+1. **Partición Automática por CSV (`holdout_stations_file`):** El usuario define un archivo CSV con los códigos de las estaciones destinadas exclusivamente al test ciego (en este benchmark, 29 estaciones distribuidas de forma representativa a lo largo del gradiente fisiográfico de Centroamérica y República Dominicana).
+2. **Aislamiento en CDT:** CDT procesa la serie temporal histórica (10,958 días) asimilando únicamente las estaciones de entrenamiento. Las 29 estaciones de validación permanecen totalmente ausentes de las matrices de calibración y variogramas.
+3. **Extracción Post-NetCDF y Sincronización:** Una vez consolidados los campos grillados diarios en el archivo 3D multitemporal conforme al estándar CF-1.8, el evaluador extrae mediante interpolación bilineal/celda más cercana el valor modelado $S_t$ en la coordenada geográfica exacta $(\lambda, \phi)$ de cada estación retenida y lo empareja día a día contra la observación de superficie $O_t$.
 
-1. **Eficiencia Kling-Gupta (KGE):**
-   $$\text{KGE} = 1 - \sqrt{(r - 1)^2 + (\beta - 1)^2 + (\gamma - 1)^2}$$
-   donde $r$ es la correlación de Pearson, $\beta = \frac{\mu_s}{\mu_o}$ (sesgo de la media) y $\gamma = \frac{\sigma_s / \mu_s}{\sigma_o / \mu_o}$ (coeficiente de variación relativo).
+---
 
-2. **Error Cuadrático Medio (RMSE):**
-   $$\text{RMSE} = \sqrt{\frac{1}{N}\sum_{i=1}^N (S_i - O_i)^2}$$
+### 6.2 Métricas Continuas (Magnitud, Dispersión y Distribución del Error)
 
-3. **Error Absoluto Medio (MAE):**
-   $$\text{MAE} = \frac{1}{N}\sum_{i=1}^N |S_i - O_i|$$
+Las métricas continuas evalúan cuantitativamente la capacidad del producto grillado para reproducir la magnitud, la varianza y la sincronía temporal de las series observadas:
 
-4. **Sesgo Porcentual (PBIAS):**
-   $$\text{PBIAS} = \frac{\sum (S_i - O_i)}{\sum O_i} \times 100\%$$
+| Métrica | Ecuación Matemática | Qué Cuantifica y Rango Óptimo | Interpretación Física y Climatológica Regional |
+| :---: | :--- | :--- | :--- |
+| **KGE**<br>*(Kling-Gupta Efficiency)*<br>(Gupta et al., 2009) | $$\text{KGE} = 1 - \sqrt{(r - 1)^2 + (\beta - 1)^2 + (\gamma - 1)^2}$$<br>donde:<br>• $\beta = \frac{\mu_S}{\mu_O}$ (sesgo medio relativo)<br>• $\gamma = \frac{\text{CV}_S}{\text{CV}_O} = \frac{\sigma_S / \mu_S}{\sigma_O / \mu_O}$ (variabilidad relativa) | Descompone de forma integrada y ortogonal el desempeño en 3 componentes esenciales: dinámica temporal ($r$), sesgo volumétrico ($\beta$) y dispersión relativa ($\gamma$).<br>**Rango:** $(-\infty, 1]$.<br>**Valor Óptimo:** $1.0$.<br>*(Un $\text{KGE} > 0.3$ a escala diaria demuestra habilidad predictiva real respecto a la climatología media).* | **Métrica rectora multiobjetivo:** Evita las distorsiones del coeficiente de Nash-Sutcliffe (NSE) o del RMSE puro, que premian modelos que subestiman la variabilidad natural o que sobreponderan eventos aislados. Garantiza que la reconstrucción climática respete tanto los extremos convectivos como el régimen de estiaje. |
+| **$r$**<br>*(Correlación de Pearson)* | $$r = \frac{\sum_{i=1}^N (S_i - \bar{S})(O_i - \bar{O})}{\sqrt{\sum_{i=1}^N (S_i - \bar{S})^2 \sum_{i=1}^N (O_i - \bar{O})^2}}$$ | Cuantifica la covariación lineal y la sincronía temporal de fases de la señal climática entre modelo y estaciones.<br>**Rango:** $[-1, 1]$.<br>**Valor Óptimo:** $1.0$. | **Sincronía sinóptica:** Evalúa la destreza del producto satelital para captar el paso de perturbaciones sinópticas (ondas del este, ciclones tropicales, giros centroamericanos y frentes fríos *Nortes*) y la estacionalidad bimodal de la lluvia, independientemente de sesgos sistemáticos en magnitud. |
+| **RMSE**<br>*(Root Mean Square Error)* | $$\text{RMSE} = \sqrt{\frac{1}{N}\sum_{i=1}^N (S_i - O_i)^2}$$ | Mide la magnitud media cuadrática del error residual, expresada en las unidades físicas de la variable ($\text{mm/día}$ o $^\circ\text{C}$).<br>**Rango:** $[0, \infty)$.<br>**Valor Óptimo:** $0.0$. | **Sensibilidad a eventos extremos:** Al elevar los residuales al cuadrado, penaliza desproporcionadamente las discrepancias grandes. Resulta clave para identificar fallos graves en tormentas convectivas severas ($>100\text{ mm/día}$) u olas de calor diurnas ($>38\ ^\circ\text{C}$). |
+| **MAE**<br>*(Mean Absolute Error)* | $$\text{MAE} = \frac{1}{N}\sum_{i=1}^N |S_i - O_i|$$ | Mide la magnitud lineal promedio de los residuales absolutos en las mismas unidades físicas ($\text{mm/día}$ o $^\circ\text{C}$).<br>**Rango:** $[0, \infty)$.<br>**Valor Óptimo:** $0.0$. | **Magnitud típica esperada del error:** Representa la discrepancia promedio esperada en un día común. Es una métrica robusta que no se ve sobredimensionada por eventos atípicos (*outliers*), reflejando el error de base en condiciones operativas estándar. |
+| **PBIAS**<br>*(Percent Bias)* | $$\text{PBIAS} = \frac{\sum_{i=1}^N (S_i - O_i)}{\sum_{i=1}^N O_i} \times 100\%$$ | Cuantifica la desviación porcentual neta acumulada entre el volumen estimado por el producto grillado y el volumen observado.<br>**Rango:** $(-\infty, \infty)\%$.<br>**Valor Óptimo:** $0.0\%$. | **Conservación de masa y balance hídrico:** Determina si el producto tiende a la sobreestimación sistemática ($\text{PBIAS} > 0$) o subestimación ($\text{PBIAS} < 0$). Es crucial en estudios hidrológicos de balance hídrico para no falsear el rendimiento hídrico anual de las cuencas. |
 
-5. **Métricas Categóricas de Lluvia ($\ge 1.0\text{ mm/d}$):**
-   - **Probabilidad de Detección (POD):** $\text{POD} = \frac{H}{H + M}$
-   - **Razón de Falsas Alarmas (FAR):** $\text{FAR} = \frac{FA}{H + FA}$
-   - **Equitable Threat Score (ETS):** $\text{ETS} = \frac{H - H_r}{H + M + FA - H_r}$ donde $H_r = \frac{(H+M)(H+FA)}{N}$
-   - **Heidke Skill Score (HSS):** $\text{HSS} = \frac{2(H \cdot CN - FA \cdot M)}{(H+M)(M+CN) + (H+FA)(FA+CN)}$
+---
+
+### 6.3 Métricas Categóricas y Detección de Lluvia ($\ge 1.0\text{ mm/día}$)
+
+Para precipitación, la ocurrencia o no de lluvia es una variable discreta fundamental. Se evalúa mediante una **tabla de contingencia $2 \times 2$** aplicando el umbral estándar de lluvia medible ($wet \ge 1.0\text{ mm/día}$):
+
+```
+┌─────────────────────────────────┬─────────────────────────────────┬─────────────────────────────────┐
+│                                 │ Observación: LLUVIA (O ≥ 1.0 mm)│ Observación: SECO (O < 1.0 mm)  │
+├─────────────────────────────────┼─────────────────────────────────┼─────────────────────────────────┤
+│ Satélite: LLUVIA (S ≥ 1.0 mm)   │ Acierto / Hit (a)               │ Falsa Alarma / False Alarm (b)  │
+│ Satélite: SECO (S < 1.0 mm)     │ Fallo / Miss (c)                │ Negativo Correcto (d)           │
+└─────────────────────────────────┴─────────────────────────────────┴─────────────────────────────────┘
+                                Total de Días Evaluados: n = a + b + c + d
+```
+
+| Métrica | Ecuación Matemática | Qué Cuantifica y Rango Óptimo | Interpretación Física y Climatológica Regional |
+| :---: | :--- | :--- | :--- |
+| **POD**<br>*(Probability of Detection / Hit Rate)* | $$\text{POD} = \frac{a}{a + c}$$ | Fracción de días lluviosos observados que fueron detectados exitosamente por el producto grillado.<br>**Rango:** $[0, 1]$.<br>**Valor Óptimo:** $1.0$. | **Capacidad de detección:** Mide la sensibilidad del producto para registrar la precipitación real sin perder días húmedos relevantes para la agricultura de secano o la recarga de acuíferos. |
+| **FAR**<br>*(False Alarm Ratio)* | $$\text{FAR} = \frac{b}{a + b}$$ | Proporción de días en los que el satélite reportó lluvia pero en realidad se registró día seco en superficie.<br>**Rango:** $[0, 1]$.<br>**Valor Óptimo:** $0.0$. | **Control de lloviznas espurias (*Drizzle Effect*):** Cuantifica directamente el impacto de la reflectividad infrarroja de cirros fríos no precipitantes. Es la métrica clave para verificar la eficacia de la máscara RnoR durante la Canícula. |
+| **FBI**<br>*(Frequency Bias Index)* | $$\text{FBI} = \frac{a + b}{a + c}$$ | Razón directa entre el número total de días lluviosos simulados por el satélite frente a los observados.<br>**Rango:** $[0, \infty)$.<br>**Valor Óptimo:** $1.0$. | **Sesgo de frecuencia de eventos:** $\text{FBI} > 1$ denota una sobreestimación crónica en la frecuencia de eventos (llueve con más frecuencia de la real en el modelo); $\text{FBI} < 1$ indica déficit sistemático en la cantidad de días con lluvia. |
+| **ETS**<br>*(Equitable Threat Score / Gilbert Skill Score)* | $$\text{ETS} = \frac{a - a_r}{a + b + c - a_r}$$<br>donde:<br>$$a_r = \frac{(a+b)(a+c)}{n}$$ | Capacidad de acierto categórico penalizando tanto falsas alarmas ($b$) como omisiones ($c$), descontando los aciertos que ocurrirían por puro azar climatológico ($a_r$).<br>**Rango:** $[-1/3, 1]$.<br>**Valor Óptimo:** $1.0$.<br>*(Valores $> 0$ certifican habilidad genuina).* | **Destreza equitativa sobre el azar:** Métrica meteorológica estándar que no es vulnerable al sesgo de frecuencia. Excluye aciertos fortuitos debidos a la alta frecuencia de lluvia en climas tropicales húmedos, aislando el valor real agregado por la fusión. |
+| **HSS**<br>*(Heidke Skill Score)* | $$\text{HSS} = \frac{2(ad - bc)}{(a+c)(c+d) + (a+b)(b+d)}$$ | Exactitud de clasificación binaria integral (lluvia / no-lluvia) considerando todos los cuadrantes ($a, b, c, d$), en relación a una predicción aleatoria no correlacionada.<br>**Rango:** $(-\infty, 1]$.<br>**Valor Óptimo:** $1.0$. | **Habilidad categórica global:** Evalúa de forma simultánea el acierto en días secos (rachas sin lluvia en el Corredor Seco y valles de sombra orográfica) y en días húmedos. Premia a los modelos que delimitan nítidamente el inicio y término de la Canícula. |
 
 ---
 

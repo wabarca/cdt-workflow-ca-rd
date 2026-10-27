@@ -284,6 +284,33 @@ def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos
         alignment=1,
     )
 
+    # Estilos para tablas de validación cuantitativa
+    th_val = ParagraphStyle(
+        "TableHeaderVal",
+        fontName="Helvetica-Bold",
+        fontSize=6.4,
+        leading=8.0,
+        textColor=colors.white,
+        alignment=1,
+    )
+
+    td_val = ParagraphStyle(
+        "TableCellVal",
+        fontName="Helvetica",
+        fontSize=5.8,
+        leading=7.2,
+        textColor=DARK_TEXT,
+    )
+
+    td_val_bold = ParagraphStyle(
+        "TableCellValBold",
+        fontName="Helvetica-Bold",
+        fontSize=5.8,
+        leading=7.2,
+        textColor=PRIMARY,
+        alignment=1,
+    )
+
     story = []
 
     # =========================================================================
@@ -954,47 +981,134 @@ def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos
     story.append(PageBreak())
 
     # =========================================================================
-    # PÁGINA 7: VALIDACIÓN, CF-1.8 Y REFERENCIAS BIBLIOGRÁFICAS
+    # PÁGINA 9: VALIDACIÓN CRUZADA INDEPENDIENTE Y MÉTRICAS CUANTITATIVAS
     # =========================================================================
     story.append(Paragraph("8. Validación Cruzada Independiente (Holdout por CSV) y Métricas Cuantitativas", h1_style))
     story.append(Paragraph(
-        "• <b>Partición Automática por CSV (<code>holdout_stations_file</code>):</b> El usuario suministra un listado CSV con los códigos de estación a omitir. "
-        "El módulo <code>launcher/station_manager.py</code> separa automáticamente el archivo CDT en subconjuntos de <i>Entrenamiento</i> (usado en la fusión) "
-        "y <i>Validación Independiente</i> (datos ciegos de control no vistos por CDT).<br/>"
-        "• <b>Extracción Post-NetCDF 3D y Métricas:</b> Al finalizar el ensamblado 3D CF-1.8, se extraen las series en las coordenadas exactas de las estaciones omitidas y se evalúan cuantitativamente:",
+        "<b>Mecanismo de Evaluación de CDT y Partición Ciega (Holdout Validation):</b><br/>"
+        "Climate Data Tools (CDT) cuenta con módulos de validación espacial y cruzada para evaluar la exactitud de los campos interpolados frente a observaciones de superficie. "
+        "Para garantizar una evaluación <b>estrictamente independiente, ciega y no sesgada</b> (evitando el sobreajuste o <i>overfitting</i> de calibrar y validar con las mismas estaciones), "
+        "el orquestador automatizado (<code>launcher/station_manager.py</code>) desacopla el catálogo de estaciones en dos grupos disjuntos antes de iniciar la corrida de CDT:<br/>"
+        "• <b>Subconjunto de Entrenamiento / Calibración (~80–90%):</b> Único subconjunto asimilado por CDT en el Paso 1 (coeficientes de sesgo distribucional) y Paso 3 / Paso 5 (fusión espacial de residuales y modelos de regresión con covariables).<br/>"
+        "• <b>Subconjunto de Validación Ciega / Holdout (~10–20%, 29 estaciones de prueba):</b> Omitido por completo del flujo de cómputo; CDT no tiene acceso alguno a sus datos durante el desescalado ni la interpolación.<br/>"
+        "• <b>Mecanismo de Extracción y Emparejamiento:</b> Tras finalizar la reconstrucción y el ensamblado NetCDF 3D (1991–2020), se extraen automáticamente las series del píxel coincidente con las coordenadas (&lambda;, &phi;) de cada estación retenida, generando pares temporales sincronizados (<i>S<sub>k,t</sub>, O<sub>k,t</sub></i>) evaluados con las siguientes métricas cuantitativas:",
         body_style
     ))
+    story.append(Spacer(1, 1))
+
+    story.append(Paragraph("8.1. Métricas Continuas (Magnitud, Dispersión y Distribución del Error)", h2_style))
+    th_val_c = [
+        Paragraph("Métrica", th_val),
+        Paragraph("Ecuación Matemática", th_val),
+        Paragraph("Qué Cuantifica y Rango Óptimo", th_val),
+        Paragraph("Interpretación Física y Climatológica Regional", th_val),
+    ]
+    rows_val_c = [
+        [
+            Paragraph("<b>KGE</b><br/><i>Kling-Gupta Efficiency</i><br/>(Gupta et al., 2009)", td_val_bold),
+            Paragraph("<b>KGE</b> = 1 &minus; &radic;[(<i>r</i> &minus; 1)<sup>2</sup> + (&beta; &minus; 1)<sup>2</sup> + (&gamma; &minus; 1)<sup>2</sup>]<br/>&bull; &beta; = &mu;<sub>S</sub> / &mu;<sub>O</sub> &nbsp;(sesgo medio)<br/>&bull; &gamma; = (&sigma;<sub>S</sub>/&mu;<sub>S</sub>) / (&sigma;<sub>O</sub>/&mu;<sub>O</sub>) &nbsp;(variabilidad)", td_val),
+            Paragraph("Descompone el error en 3 ejes ortogonales: dinámica temporal (<i>r</i>), sesgo de volumen (&beta;) y dispersión relativa (&gamma;).<br/><b>Rango:</b> (&minus;&infin;, 1]. <b>Óptimo: 1.0</b>.<br/><i>KGE &gt; 0.3 indica habilidad predictiva real sobre la media.</i>", td_val),
+            Paragraph("<b>Métrica rectora multiobjetivo:</b> Equilibra dinámica sinóptica, conservación de masa y dispersión. Evita que modelos que alisan la varianza obtengan puntajes artificialmente altos.", td_val),
+        ],
+        [
+            Paragraph("<b>r</b><br/><i>Correlación de Pearson</i>", td_val_bold),
+            Paragraph("<i>r</i> = &Sigma;[(<i>S<sub>i</sub></i>&minus;<i>S̄</i>)(<i>O<sub>i</sub></i>&minus;<i>Ō</i>)] / [&radic;&Sigma;(<i>S<sub>i</sub></i>&minus;<i>S̄</i>)<sup>2</sup> &radic;&Sigma;(<i>O<sub>i</sub></i>&minus;<i>Ō</i>)<sup>2</sup>]", td_val),
+            Paragraph("Covarianza lineal y sincronía temporal de fases de la señal.<br/><b>Rango:</b> [&minus;1, 1]. <b>Óptimo: 1.0</b>.", td_val),
+            Paragraph("<b>Sincronía de eventos:</b> Mide la fidelidad para captar la llegada y ciclo estacional de ondas tropicales, frentes fríos (<i>Nortes</i>) y giros ciclónicos, independiente del sesgo de escala.", td_val),
+        ],
+        [
+            Paragraph("<b>RMSE</b><br/><i>Root Mean Square Error</i>", td_val_bold),
+            Paragraph("<b>RMSE</b> = &radic;[&Sigma;(<i>S<sub>i</sub></i> &minus; <i>O<sub>i</sub></i>)<sup>2</sup> / <i>N</i>]", td_val),
+            Paragraph("Magnitud cuadrática media del error en unidades físicas (mm o &deg;C).<br/><b>Rango:</b> [0, &infin;). <b>Óptimo: 0.0</b>.", td_val),
+            Paragraph("<b>Sensibilidad a extremos:</b> Penaliza desproporcionadamente errores grandes; detecta fallas severas en núcleos convectivos intensos (&gt;100 mm) u olas de calor (&gt;38 &deg;C).", td_val),
+        ],
+        [
+            Paragraph("<b>MAE</b><br/><i>Mean Absolute Error</i>", td_val_bold),
+            Paragraph("<b>MAE</b> = &Sigma;|<i>S<sub>i</sub></i> &minus; <i>O<sub>i</sub></i>| / <i>N</i>", td_val),
+            Paragraph("Magnitud lineal promedio del error absoluto en unidades físicas (mm o &deg;C).<br/><b>Rango:</b> [0, &infin;). <b>Óptimo: 0.0</b>.", td_val),
+            Paragraph("<b>Magnitud típica diaria:</b> Discrepancia esperada en un día cualquiera; ofrece una lectura no sesgada por valores atípicos (<i>outliers</i>) aislados.", td_val),
+        ],
+        [
+            Paragraph("<b>PBIAS</b><br/><i>Percent Bias</i>", td_val_bold),
+            Paragraph("<b>PBIAS</b> = [&Sigma;(<i>S<sub>i</sub></i> &minus; <i>O<sub>i</sub></i>) / &Sigma;<i>O<sub>i</sub></i>] &times; 100%", td_val),
+            Paragraph("Desviación porcentual neta acumulada de volumen.<br/><b>Rango:</b> (&minus;&infin;, &infin;)%. <b>Óptimo: 0.0%</b>.", td_val),
+            Paragraph("<b>Conservación de balance:</b> Cuantifica el déficit (&minus;) o superávit (+) acumulado total; esencial en balances hídricos para no falsear la disponibilidad de agua en cuencas.", td_val),
+        ],
+    ]
+    t_val_c = Table([th_val_c] + rows_val_c, colWidths=[0.95 * inch, 1.90 * inch, 2.30 * inch, 2.35 * inch])
+    t_val_c.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), SECONDARY),
+        ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("GRID", (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_BG]),
+        ("TOPPADDING", (0, 0), (-1, -1), 1.3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 1.3),
+        ("LEFTPADDING", (0, 0), (-1, -1), 3.0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 3.0),
+    ]))
+    story.append(t_val_c)
     story.append(Spacer(1, 2))
 
-    # RECUADRO DE FÓRMULAS MATEMÁTICAS TIPOGRÁFICAMENTE RENDERIZADAS
-    formula_html = (
-        "<b>Eficiencia Kling-Gupta:</b> &nbsp; <b>KGE</b> = 1 &minus; &radic;[(<i>r</i> &minus; 1)<sup>2</sup> + (&beta; &minus; 1)<sup>2</sup> + (&gamma; &minus; 1)<sup>2</sup>] &nbsp;&nbsp;|&nbsp;&nbsp; "
-        "<b>Sesgo relativo:</b> &beta; = &mu;<sub>S</sub> / &mu;<sub>O</sub> &nbsp;&nbsp;|&nbsp;&nbsp; "
-        "<b>Variabilidad:</b> &gamma; = (&sigma;<sub>S</sub> / &mu;<sub>S</sub>) / (&sigma;<sub>O</sub> / &mu;<sub>O</sub>)<br/>"
-        "<b>Métricas Continuas:</b> &nbsp; "
-        "<b>RMSE</b> = &radic;[&Sigma;(<i>S</i> &minus; <i>O</i>)<sup>2</sup> / <i>N</i>] &nbsp;|&nbsp; "
-        "<b>MAE</b> = &Sigma;|<i>S</i> &minus; <i>O</i>| / <i>N</i> &nbsp;|&nbsp; "
-        "<b>PBIAS</b> = [&Sigma;(<i>S</i> &minus; <i>O</i>) / &Sigma;<i>O</i>] &times; 100%<br/>"
-        "<b>Métricas Categóricas (Lluvia &ge; 1.0 mm/día):</b> &nbsp; "
-        "<b>POD</b> = <i>a</i> / (<i>a</i> + <i>c</i>) &nbsp;|&nbsp; "
-        "<b>FAR</b> = <i>b</i> / (<i>a</i> + <i>b</i>) &nbsp;|&nbsp; "
-        "<b>FBI</b> = (<i>a</i> + <i>b</i>) / (<i>a</i> + <i>c</i>) &nbsp;|&nbsp; "
-        "<b>ETS</b> = (<i>a</i> &minus; <i>a<sub>r</sub></i>) / (<i>a</i> + <i>b</i> + <i>c</i> &minus; <i>a<sub>r</sub></i>), &nbsp;<i>a<sub>r</sub></i> = (<i>a</i>+<i>b</i>)(<i>a</i>+<i>c</i>)/<i>n</i> &nbsp;|&nbsp; "
-        "<b>HSS</b> = 2(<i>ad</i> &minus; <i>bc</i>) / [(<i>a</i>+<i>c</i>)(<i>c</i>+<i>d</i>) + (<i>a</i>+<i>b</i>)(<i>b</i>+<i>d</i>)]"
-    )
-    t_form = Table([[Paragraph(formula_html, formula_style)]], colWidths=[7.50 * inch])
-    t_form.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), BOX_BG_TEAL),
-        ("BOX", (0, 0), (-1, -1), 1.0, BOX_BORDER_TEAL),
-        ("TOPPADDING", (0, 0), (-1, -1), 3.0),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 3.0),
-        ("LEFTPADDING", (0, 0), (-1, -1), 6.0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 6.0),
+    story.append(Paragraph("8.2. Métricas Categóricas y Detección de Lluvia (&ge; 1.0 mm/día)", h2_style))
+    story.append(Paragraph(
+        "<font size=6.5 color='#475569'><i>Tabla de contingencia 2&times;2: <b>a</b> = Aciertos (S&ge;1, O&ge;1), <b>b</b> = Falsas Alarmas (S&ge;1, O&lt;1), <b>c</b> = Fallos (S&lt;1, O&ge;1), <b>d</b> = Negativos Correctos (S&lt;1, O&lt;1), <b>n</b> = total días evaluados.</i></font>",
+        body_style
+    ))
+    th_val_k = [
+        Paragraph("Métrica", th_val),
+        Paragraph("Ecuación Matemática", th_val),
+        Paragraph("Qué Cuantifica y Rango Óptimo", th_val),
+        Paragraph("Interpretación Física y Climatológica Regional", th_val),
+    ]
+    rows_val_k = [
+        [
+            Paragraph("<b>POD</b><br/><i>Probability of Detection</i>", td_val_bold),
+            Paragraph("<b>POD</b> = <i>a</i> / (<i>a</i> + <i>c</i>)", td_val),
+            Paragraph("Fracción de días lluviosos observados que fueron detectados por el modelo.<br/><b>Rango:</b> [0, 1]. <b>Óptimo: 1.0</b>.", td_val),
+            Paragraph("<b>Sensibilidad de lluvia:</b> Mide la eficacia del satélite fusionado para captar precipitación real sin perder eventos agronómicamente significativos.", td_val),
+        ],
+        [
+            Paragraph("<b>FAR</b><br/><i>False Alarm Ratio</i>", td_val_bold),
+            Paragraph("<b>FAR</b> = <i>b</i> / (<i>a</i> + <i>b</i>)", td_val),
+            Paragraph("Fracción de lluvia simulada que resultó ser día seco en superficie.<br/><b>Rango:</b> [0, 1]. <b>Óptimo: 0.0</b>.", td_val),
+            Paragraph("<b>Control de lloviznas espurias:</b> Cuantifica la persistencia del efecto <i>drizzle</i> y falsa lluvia por cirros fríos; clave para validar la máscara RnoR en la Canícula.", td_val),
+        ],
+        [
+            Paragraph("<b>FBI</b><br/><i>Frequency Bias Index</i>", td_val_bold),
+            Paragraph("<b>FBI</b> = (<i>a</i> + <i>b</i>) / (<i>a</i> + <i>c</i>)", td_val),
+            Paragraph("Razón entre días lluviosos simulados vs. observados.<br/><b>Rango:</b> [0, &infin;). <b>Óptimo: 1.0</b>.", td_val),
+            Paragraph("<b>Sesgo de frecuencia:</b> FBI &gt; 1 denota tendencia crónica a simular días de lluvia en exceso; FBI &lt; 1 indica subestimación en la ocurrencia de eventos.", td_val),
+        ],
+        [
+            Paragraph("<b>ETS</b><br/><i>Equitable Threat Score</i><br/>(Gilbert Skill Score)", td_val_bold),
+            Paragraph("<b>ETS</b> = (<i>a</i> &minus; <i>a<sub>r</sub></i>) / (<i>a</i> + <i>b</i> + <i>c</i> &minus; <i>a<sub>r</sub></i>)<br/>&bull; <i>a<sub>r</sub></i> = (<i>a</i>+<i>b</i>)(<i>a</i>+<i>c</i>) / <i>n</i>", td_val),
+            Paragraph("Detección equitativa penalizando falsas alarmas y fallos, descontando aciertos fortuitos.<br/><b>Rango:</b> [&minus;1/3, 1]. <b>Óptimo: 1.0</b>.", td_val),
+            Paragraph("<b>Destreza sobre el azar:</b> Excluye los aciertos que ocurrirían por mera probabilidad climatológica; ETS &gt; 0 certifica habilidad predictiva real de la fusión.", td_val),
+        ],
+        [
+            Paragraph("<b>HSS</b><br/><i>Heidke Skill Score</i>", td_val_bold),
+            Paragraph("<b>HSS</b> = 2(<i>ad</i> &minus; <i>bc</i>) / [(<i>a</i>+<i>c</i>)(<i>c</i>+<i>d</i>) + (<i>a</i>+<i>b</i>)(<i>b</i>+<i>d</i>)]", td_val),
+            Paragraph("Exactitud de clasificación binaria (lluvia / no-lluvia) relativa al azar.<br/><b>Rango:</b> (&minus;&infin;, 1]. <b>Óptimo: 1.0</b>.", td_val),
+            Paragraph("<b>Habilidad categórica global:</b> Evalúa conjuntamente el acierto en días secos (rachas sin lluvia en Corredor Seco) y días húmedos, validando la Canícula.", td_val),
+        ],
+    ]
+    t_val_k = Table([th_val_k] + rows_val_k, colWidths=[0.95 * inch, 1.90 * inch, 2.30 * inch, 2.35 * inch])
+    t_val_k.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), SECONDARY),
+        ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("GRID", (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_BG]),
+        ("TOPPADDING", (0, 0), (-1, -1), 1.3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 1.3),
+        ("LEFTPADDING", (0, 0), (-1, -1), 3.0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 3.0),
     ]))
-    story.append(t_form)
-    story.append(Spacer(1, 3))
+    story.append(t_val_k)
+    story.append(Spacer(1, 2))
 
-    story.append(Paragraph("8.1. Ensamblado Multitemporal y Cumplimiento Estricto del Estándar CF-1.8", h2_style))
+    story.append(Paragraph("8.3. Ensamblado Multitemporal y Cumplimiento Estricto del Estándar CF-1.8", h2_style))
     story.append(Paragraph(
         "El módulo <code>launcher/netcdf_assembler.py</code> consolida los 10,958 archivos diarios 2D en un único archivo NetCDF 3D (time, lat, lon):<br/>"
         "• <b>Ejes estándar:</b> <code>time</code> (días gregorianos estándar desde 1991-01-01, eje 'T'), <code>latitude</code> (degrees_north, eje 'Y'), <code>longitude</code> (degrees_east, eje 'X').<br/>"
