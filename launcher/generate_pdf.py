@@ -1054,7 +1054,7 @@ def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos
          "<b>Aporte:</b> Descomposición teórica del Kling-Gupta Efficiency (KGE) evaluando correlación, sesgo y dispersión."),
         
         ("Hastenrath, S. (1967).",
-         "<i>Rainfall distribution and regime in Central America.</i> Arch. Meteorol. Geophys. Bioklimatol. Ser. B, 15(3), 201–241. DOI: <a href='https://doi.org/10.1007/BF02243854'>10.1007/BF02243854</a>",
+         "<i>Rainfall distribution and regime in Central America.</i> Arch. Meteorol. Geophys. Bioklimatol. Ser. B, 15(3), 201–241. DOI: <a href='https://doi.org/10.1007/BF02243853'>10.1007/BF02243853</a>",
          "<b>Aporte:</b> Estudio observacional pionero que documenta y cartografía la distribución de la lluvia, el contraste orográfico Pacífico-Caribe y la estructura estacional de la Canícula (<i>Veranillo</i>)."),
         
         ("Hastenrath, S. (1991).",
