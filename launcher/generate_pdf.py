@@ -3,9 +3,10 @@
 Generates a publication-grade scientific technical document in PORTRAIT format (8.5 x 11 inches),
 with standard readable font sizes, harmonious spacing, elegant card containers, numbered pages (Página X de Y),
 professional running headers/footers, complete step-by-step CDT architecture tables (Rainfall: 3 steps;
-Temperature: 5 steps), comprehensive matrices for all 26 experiments (10 Rainfall, 8 Tmax, 8 Tmin) with
-detailed per-step parameter breakdowns and physical rationales, typographically rendered mathematical equations,
-calibrated hardware benchmarks, and 19 annotated scientific references.
+Temperature: 5 steps), comprehensive matrices for all 31 experiments (15 Rainfall: Fase 1 & Fase 2, 8 Tmax, 8 Tmin)
+with detailed per-step parameter breakdowns and physical rationales, full validation leaderboard ranking (29 blind holdout stations),
+typographically rendered mathematical equations, calibrated hardware benchmarks (Ubuntu 24.04.5 LTS, i9-10850K, 32GB RAM, 400GB NVMe),
+and 19 annotated scientific references.
 """
 
 from __future__ import annotations
@@ -247,6 +248,42 @@ def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos
         alignment=1,
     )
 
+    th_lb = ParagraphStyle(
+        "TableHeaderLb",
+        fontName="Helvetica-Bold",
+        fontSize=6.2,
+        leading=7.8,
+        textColor=colors.white,
+        alignment=1,
+    )
+
+    td_lb = ParagraphStyle(
+        "TableCellLb",
+        fontName="Helvetica",
+        fontSize=6.0,
+        leading=7.4,
+        textColor=DARK_TEXT,
+        alignment=1,
+    )
+
+    td_lb_bold = ParagraphStyle(
+        "TableCellLbBold",
+        fontName="Helvetica-Bold",
+        fontSize=6.0,
+        leading=7.4,
+        textColor=PRIMARY,
+        alignment=1,
+    )
+
+    td_lb_winner = ParagraphStyle(
+        "TableCellLbWinner",
+        fontName="Helvetica-Bold",
+        fontSize=6.0,
+        leading=7.4,
+        textColor=colors.HexColor("#065F46"), # Emerald dark
+        alignment=1,
+    )
+
     story = []
 
     # =========================================================================
@@ -266,7 +303,7 @@ def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos
         "<br/><br/>"
         "• <b>Temperatura Mínima (CHIRTS Tmin):</b> No modela inversiones térmicas nocturnas ni drenaje catabático en valles intramontanos cerrados (Constanza, Valle Nuevo, Quetzaltenango) con heladas (&lt;0 &deg;C), ni caídas térmicas bruscas asimétricas por frentes fríos invernales (<i>Nortes</i>) (Alfaro et al., 2018). "
         "<br/><br/>"
-        "<b>Objetivo:</b> Ejecutar una matriz de <b>26 experimentos controlados</b> (10 de Precipitación, 8 de Tmax y 8 de Tmin) estructurados estrictamente según las etapas de procesamiento de CDT para determinar la configuración óptima de fusión espacial.",
+        "<b>Objetivo:</b> Ejecutar una matriz de <b>31 experimentos controlados</b> (15 de Precipitación organizados en Fase 1 y Fase 2, 8 de Tmax y 8 de Tmin) estructurados estrictamente según las etapas de procesamiento de CDT para determinar la configuración óptima de fusión espacial.",
         body_style
     ))
     story.append(Spacer(1, 4))
@@ -410,11 +447,11 @@ def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos
     story.append(PageBreak())
 
     # =========================================================================
-    # PÁGINA 3: SUITE A - PRECIPITACIÓN (CHIRPS - 10 EXP)
+    # PÁGINA 3: SUITE A - PRECIPITACIÓN FASE 1 (CRIBADO EXPLORATORIO: EXP-R01 A R10)
     # =========================================================================
-    story.append(Paragraph("4. Suite A: Precipitación Diaria (CHIRPS 1991–2020: 10 Experimentos)", h1_style))
+    story.append(Paragraph("4.1. Suite A: Precipitación Diaria — Fase 1 (Cribado Exploratorio: 10 Experimentos)", h1_style))
     story.append(Paragraph(
-        "Batería experimental estructurada según los 3 pasos de CDT para aislar efectos de corrección de sesgo, filtro RnoR y fusión espacial:",
+        "Batería experimental estructurada según los 3 pasos de CDT para aislar efectos de corrección de sesgo, filtro RnoR y métodos de interpolación:",
         body_style
     ))
     story.append(Spacer(1, 2))
@@ -511,6 +548,152 @@ def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos
         ("RIGHTPADDING", (0, 0), (-1, -1), 3.0),
     ]))
     story.append(t_table_r)
+
+    story.append(PageBreak())
+
+    # =========================================================================
+    # PÁGINA 4: SUITE A - FASE 2 Y LEADERBOARD DE PRECIPITACIÓN
+    # =========================================================================
+    story.append(Paragraph("4.2. Suite A: Precipitación Diaria — Fase 2 (Optimización Dirigida) y Resultados del Benchmark", h1_style))
+    story.append(Paragraph(
+        "A partir de los resultados de la Fase 1, donde <b>Shepard Modificado (EXP_R08)</b> y <b>Spheremap (EXP_R09)</b> demostraron superioridad concluyente sobre métodos geoestadísticos rígidos y regresiones globales, la Fase 2 formuló 5 experimentos de refinamiento dirigidos a optimizar el estimador de sesgo (mediana), el confinamiento orográfico y la transición suave de lluvia:",
+        body_style
+    ))
+    story.append(Spacer(1, 2))
+
+    th_r2 = [
+        Paragraph("ID Exp.", th_sm),
+        Paragraph("Paso 1: Compute Bias Coeffs", th_sm),
+        Paragraph("Paso 2: Apply Bias", th_sm),
+        Paragraph("Paso 3: Merging Data (Fusión)", th_sm),
+        Paragraph("Hipótesis Física y Climatológica Regional (Fase 2)", th_sm),
+    ]
+    rows_r2 = [
+        [
+            Paragraph("<b>EXP-R11</b>", td_sm_bold),
+            Paragraph("• Método: <code>mbvar</code> (&plusmn;5 d)<br/>• <b>mulBiasFunction: 'median'</b><br/>• <b>addCoarseGrid: true (1.0°)</b><br/>• Interp: IDW (1.5°)", td_sm),
+            Paragraph("• Ajuste multiplicativo robusto sobre grillas CHIRPS<br/>• Salida: <code>rr_adj_*.nc</code>", td_sm),
+            Paragraph("• Método: <b>SBA multiescala</b> (3 pasadas: 1.0°, 0.75°, 0.5°)<br/>• Interp: Shepard Modificado (1.5°)<br/>• RnoR: Activada (Logit GLM)<br/>• <b>addCoarseGrid: true</b>", td_sm),
+            Paragraph("<b>Mediana Robusta y Malla Gruesa:</b> El estimador de mediana neutraliza eventos convectivos extremos atípicos que inflan el sesgo; la malla gruesa contiene anomalías espurias en áreas oceánicas y costeras sin estaciones.", td_sm),
+        ],
+        [
+            Paragraph("<b>EXP-R12</b>", td_sm_bold),
+            Paragraph("• Método: <code>mbvar</code> (&plusmn;5 d)<br/>• mulBiasFunction: 'median'<br/>• <b>Interp: IDW local (radio 0.9° ~100 km, nmin=3, nmax=8)</b>", td_sm),
+            Paragraph("• Ajuste con aislamiento transcordillera<br/>• Salida: <code>rr_adj_*.nc</code>", td_sm),
+            Paragraph("• Método: <b>SBA multiescala local</b> (3 pasadas: 1.0°, 0.67°, 0.33°)<br/>• <b>Interp: Shepard local (0.9°, nmin=3, nmax=8)</b><br/>• RnoR: Activada (Logit GLM)", td_sm),
+            Paragraph("<b>Aislamiento Transcordillera:</b> En Centroamérica, un radio de 1.5° (~165 km) cruza la cordillera central contaminando la vertiente seca del Pacífico con el Caribe húmedo. Acotar el radio a 0.9° preserva la sombra orográfica real.", td_sm),
+        ],
+        [
+            Paragraph("<b>EXP-R13</b>", td_sm_bold),
+            Paragraph("• Método: <b>Quantile Mapping Empírico (<code>qmecdf</code>)</b><br/>• Ajuste no-paramétrico cuantil a cuantil libre de distribución<br/>• Interp: IDW (1.5°)", td_sm),
+            Paragraph("• Mapeo cuantil empírico sobre grillas CHIRPS<br/>• Salida: <code>rr_adj_*.nc</code>", td_sm),
+            Paragraph("• Método: <b>SBA multiescala</b> (3 pasadas: 1.0°, 0.75°, 0.5°)<br/>• Interp: Shepard Modificado (1.5°)<br/>• RnoR: Activada (Logit GLM)", td_sm),
+            Paragraph("<b>Quantile Mapping No-Paramétrico (eCDF):</b> Supera la rigidez de las distribuciones teóricas (Gamma/Weibull) que colapsaron en Fase 1, modelando eventos ciclónicos extremos directamente a partir de la curva acumulada empírica observada.", td_sm),
+        ],
+        [
+            Paragraph("<b>EXP-R14</b>", td_sm_bold),
+            Paragraph("• Método: <code>mbvar</code> (&plusmn;5 d)<br/>• mulBiasFunction: 'median'<br/>• addCoarseGrid: true (1.0°)<br/>• Interp: IDW (1.5°)", td_sm),
+            Paragraph("• Ajuste esférico sobre grillas CHIRPS<br/>• Salida: <code>rr_adj_*.nc</code>", td_sm),
+            Paragraph("• Método: <b>SBA multiescala</b> (3 pasadas: 1.0°, 0.75°, 0.5°)<br/>• <b>Interp: Spheremap (Gran Círculo 1.5°)</b><br/>• RnoR: Activada (Logit GLM)<br/>• addCoarseGrid: true", td_sm),
+            Paragraph("<b>Spheremap con Mediana y Malla Gruesa:</b> Acopla la métrica de distancia de gran círculo sobre la curvatura terrestre real con estimador robusto de mediana y contención gruesa en costas del Caribe y Antillas.", td_sm),
+        ],
+        [
+            Paragraph("<b>EXP-R15</b><br/><font color='#065F46' size=6><b>GANADOR</b></font>", td_sm_bold),
+            Paragraph("• Método: <code>mbvar</code> (&plusmn;5 d)<br/>• <b>mulBiasFunction: 'median'</b><br/>• Interp: IDW (radio 1.2°, nmin=4, nmax=10)", td_sm),
+            Paragraph("• Ajuste multiplicativo sobre grillas CHIRPS 1991–2020<br/>• Salida: <code>rr_adj_*.nc</code>", td_sm),
+            Paragraph("• Método: <b>SBA multiescala</b> (3 pasadas: 1.0°, 0.75°, 0.5°)<br/>• Interp: Shepard Modificado (radio 1.2°)<br/>• <b>RnoR: Activada con RnoRCutOff = 2 (Suave)</b>", td_sm),
+            Paragraph("<b>MODELO GANADOR — Transición Continua Suave:</b> Sustituye el corte binario rígido (0.5) por una función de transición lineal suave (0.1 a 1.0 mm). Elimina el subestimado seco severo (-4.39% PBIAS vs -22.15% en R02), logrando el máximo KGE y Skill.", td_sm),
+        ],
+    ]
+    t_table_r2 = Table([th_r2] + rows_r2, colWidths=[0.65 * inch, 1.65 * inch, 1.20 * inch, 1.80 * inch, 2.20 * inch])
+    t_table_r2.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), SECONDARY),
+        ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("GRID", (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_BG]),
+        ("BACKGROUND", (0, 5), (-1, 5), colors.HexColor("#ECFDF5")), # Subtle emerald highlight for winner
+        ("TOPPADDING", (0, 0), (-1, -1), 1.5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 1.5),
+        ("LEFTPADDING", (0, 0), (-1, -1), 3.0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 3.0),
+    ]))
+    story.append(t_table_r2)
+    story.append(Spacer(1, 3))
+
+    # TABLA RESUMEN / LEADERBOARD FINAL DE LOS 15 EXPERIMENTOS
+    story.append(Paragraph("<b>Ranking Consolidado del Benchmark de Precipitación (29 Estaciones de Validación Ciega Holdout)</b>", h2_style))
+    th_lb_row = [
+        Paragraph("#", th_lb),
+        Paragraph("Experimento ID", th_lb),
+        Paragraph("Método Merging y Configuración", th_lb),
+        Paragraph("KGE", th_lb),
+        Paragraph("r", th_lb),
+        Paragraph("RMSE", th_lb),
+        Paragraph("PBIAS", th_lb),
+        Paragraph("POD", th_lb),
+        Paragraph("FAR", th_lb),
+        Paragraph("ETS", th_lb),
+        Paragraph("HSS", th_lb),
+        Paragraph("Skill", th_lb),
+        Paragraph("Estado / Posición", th_lb),
+    ]
+    rows_lb_data = [
+        ("1", "EXP_R15_Shepard_RnoR_Smooth", "Shepard Suave (RnoRCutOff=2, rad 1.2°)", "0.379", "0.479", "12.88", "-4.39%", "0.692", "0.304", "0.329", "0.479", "0.501", "GANADOR (Rank 1)", True),
+        ("2", "EXP_R12_Shepard_Local_Orn", "Shepard Confinado Local (rad 0.9°)", "0.372", "0.469", "13.21", "-3.21%", "0.673", "0.299", "0.324", "0.474", "0.499", "Fase 2 (Rank 2)", False),
+        ("3", "EXP_R08_Shepard_Complex_Relief", "Shepard Relieve Complejo (rad 1.5°)", "0.375", "0.479", "12.89", "-6.30%", "0.665", "0.304", "0.315", "0.464", "0.489", "Fase 1 (Rank 3)", False),
+        ("4", "EXP_R11_Shepard_Median_Coarse", "Shepard Mediana + CoarseGrid (1.5°)", "0.375", "0.479", "12.77", "-6.70%", "0.675", "0.304", "0.321", "0.470", "0.489", "Fase 2 (Rank 4)", False),
+        ("5", "EXP_R14_Spheremap_Median", "Spheremap Gran Círculo + Mediana", "0.362", "0.455", "13.56", "-4.43%", "0.654", "0.297", "0.317", "0.466", "0.486", "Fase 2 (Rank 5)", False),
+        ("6", "EXP_R09_Spheremap_Trans_Caribe", "Spheremap Gran Círculo Estándar", "0.358", "0.458", "13.59", "-4.59%", "0.648", "0.296", "0.313", "0.463", "0.484", "Fase 1 (Rank 6)", False),
+        ("7", "EXP_R07_Cressman_Spherical", "Cressman 4 pasadas (1.0° a 0.25°)", "0.332", "0.447", "14.44", "+3.64%", "0.630", "0.305", "0.296", "0.444", "0.472", "Fase 1 (Guía CDT)", False),
+        ("8", "EXP_R13_QM_Empirical_ECDF", "QM Empírico (qmecdf) + Shepard", "0.320", "0.465", "13.08", "-5.57%", "0.639", "0.303", "0.299", "0.446", "0.466", "Fase 2 (Rank 8)", False),
+        ("9", "EXP_R06_Barnes_Gauss_Coastal", "Barnes BSc Gaussiano Costero (NN-3D)", "0.309", "0.449", "14.22", "+4.08%", "0.646", "0.310", "0.298", "0.445", "0.463", "Fase 1 (Rank 9)", False),
+        ("10", "EXP_R01_SBA_IDW_Baseline", "IDW Plano Monocapa (Sin RnoR)", "0.335", "0.486", "12.22", "-13.53%", "0.666", "0.338", "0.274", "0.418", "0.440", "Línea Base", False),
+        ("11", "EXP_R02_SBA_IDW_RnoR", "IDW 3 pasadas + RnoR (Corte Duro)", "0.263", "0.466", "12.39", "-22.15%", "0.613", "0.315", "0.272", "0.411", "0.374", "Fase 1 (Rank 11)", False),
+        ("12", "EXP_R05_RK_Topography_BW", "Regression Kriging DEM+Slope (Weibull)", "0.215", "0.417", "13.28", "-18.28%", "0.522", "0.367", "0.201", "0.322", "0.346", "Fase 1 (Rank 12)", False),
+        ("13", "EXP_R03_SBA_OKR_BernoulliGamma", "QM Paramétrico Gamma + OKR Bloques", "-0.028", "0.427", "14.87", "-5.83%", "0.639", "0.348", "0.246", "0.373", "0.323", "Fase 1 (Rank 13)", False),
+        ("14", "EXP_R04_SBA_OKR_BernoulliWeib", "QM Paramétrico Weibull + OKR Bloques", "0.016", "0.431", "14.51", "-11.98%", "0.636", "0.348", "0.247", "0.373", "0.315", "Fase 1 (Rank 14)", False),
+        ("15", "EXP_R10_RK_FullTopography_Asp", "RK Máxima Complejidad DEM+Aspect", "0.106", "0.411", "14.11", "-18.36%", "0.508", "0.376", "0.190", "0.307", "0.305", "Fase 1 (Rank 15)", False),
+    ]
+
+    table_lb_rows = [th_lb_row]
+    winner_row_idx = None
+    for idx, (rk, eid, met, kge, r_val, rmse, pb, pod, far, ets, hss, sk, st, is_win) in enumerate(rows_lb_data, start=1):
+        st_style = td_lb_winner if is_win else td_lb
+        table_lb_rows.append([
+            Paragraph(f"<b>{rk}</b>", td_lb_winner if is_win else td_lb_bold),
+            Paragraph(eid, td_lb_winner if is_win else td_lb),
+            Paragraph(met, td_lb),
+            Paragraph(kge, td_lb_winner if is_win else td_lb),
+            Paragraph(r_val, td_lb),
+            Paragraph(rmse, td_lb),
+            Paragraph(pb, td_lb),
+            Paragraph(pod, td_lb),
+            Paragraph(far, td_lb),
+            Paragraph(ets, td_lb),
+            Paragraph(hss, td_lb),
+            Paragraph(sk, td_lb_winner if is_win else td_lb_bold),
+            Paragraph(st, st_style),
+        ])
+        if is_win:
+            winner_row_idx = idx
+
+    t_table_lb = Table(table_lb_rows, colWidths=[0.24 * inch, 1.36 * inch, 1.40 * inch, 0.38 * inch, 0.35 * inch, 0.40 * inch, 0.44 * inch, 0.36 * inch, 0.36 * inch, 0.36 * inch, 0.36 * inch, 0.39 * inch, 1.10 * inch])
+    style_lb_cmds = [
+        ("BACKGROUND", (0, 0), (-1, 0), PRIMARY),
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("GRID", (0, 0), (-1, -1), 0.4, BORDER_COLOR),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_BG]),
+        ("TOPPADDING", (0, 0), (-1, -1), 1.0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 1.0),
+        ("LEFTPADDING", (0, 0), (-1, -1), 1.5),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 1.5),
+    ]
+    if winner_row_idx:
+        style_lb_cmds.append(("BACKGROUND", (0, winner_row_idx), (-1, winner_row_idx), colors.HexColor("#D1FAE5"))) # Highlight row 1
+    t_table_lb.setStyle(TableStyle(style_lb_cmds))
+    story.append(t_table_lb)
 
     story.append(PageBreak())
 
@@ -725,12 +908,13 @@ def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos
     ))
     story.append(Spacer(1, 3))
 
-    story.append(Paragraph("7.1. Evaluación de Hardware: Servidor Intel Xeon Silver 4210R + 64 GB RAM + NVMe", h2_style))
-    th_hw = [Paragraph("Componente", th_style), Paragraph("Especificación Servidor", th_style), Paragraph("Evaluación de Desempeño en CDT", th_style)]
+    story.append(Paragraph("7.1. Plataforma de Cómputo Calibrada: Intel Core i9-10850K @ 3.60GHz, 32 GB RAM, NVMe 400 GB (Ubuntu 24.04.5 LTS)", h2_style))
+    th_hw = [Paragraph("Componente", th_style), Paragraph("Especificación de la Plataforma", th_style), Paragraph("Evaluación de Desempeño en CDT", th_style)]
     rows_hw = [
-        [Paragraph("<b>CPU</b>", td_bold), Paragraph("<b>Intel Xeon Silver 4210R</b><br/>10 Cores / 20 Hilos (2.4-3.2 GHz)<br/>Caché L3: 13.75 MB", td_style), Paragraph("<b>Óptimo para Procesamiento por Lotes:</b> 10 núcleos físicos con FPU/AVX dedicadas. Permite despachar <b>hasta 18 workers simultáneos</b> sin contención ni degradación térmica.", td_style)],
-        [Paragraph("<b>RAM</b>", td_bold), Paragraph("<b>64 GB DDR4 @ 2400 MT/s</b><br/>Quad-Channel (~76.8 GB/s)", td_style), Paragraph("<b>Capacidad Excedente (Cero OOM):</b> En mallas 0.05° consume ~2.5-4.5 GB con 18 workers (<b>&lt;7% de la RAM</b>). En mallas 0.01° consume ~8-12 GB (<b>&lt;18% de la RAM</b>). Sin swapping.", td_style)],
-        [Paragraph("<b>Disco</b>", td_bold), Paragraph("<b>SSD NVMe M.2 PCIe</b><br/>Lectura/Escritura &gt; 3000 MB/s", td_style), Paragraph("<b>Elimina Cuello de Botella I/O:</b> La lectura/escritura de <b>21,916 archivos NetCDF diarios</b> (30 años) se ejecuta a velocidad de bus PCIe sin latencia mecánica.", td_style)],
+        [Paragraph("<b>CPU</b>", td_bold), Paragraph("<b>Intel(R) Core(TM) i9-10850K CPU @ 3.60GHz</b><br/>10 Núcleos / 20 Hilos (Base 3.6 GHz, Turbo 5.2 GHz)<br/>Caché L3 Intel Smart Cache: 20 MB", td_style), Paragraph("<b>Excelente Rendimiento Multihilo:</b> 10 núcleos Comet Lake de alta frecuencia. Permite despachar <b>hasta 18 workers paralelos</b> continuos manteniendo 2 hilos reservados para el sistema operativo sin sobrecalentamiento ni contención.", td_style)],
+        [Paragraph("<b>RAM</b>", td_bold), Paragraph("<b>32 GB DDR4 @ 3200 MT/s</b><br/>Dual-Channel (~51.2 GB/s)", td_style), Paragraph("<b>Capacidad Óptima (Sin Paginación / Cero OOM):</b> En mallas 0.05° consume ~2.5–4.5 GB con 18 workers (<b>&lt;15% de la RAM</b>). En mallas 0.01° consume ~8–12 GB (<b>&lt;38% de la RAM</b>). Cero swapping a disco.", td_style)],
+        [Paragraph("<b>Disco</b>", td_bold), Paragraph("<b>SSD NVMe M.2 PCIe 400 GB</b><br/>Lectura/Escritura &gt; 3000 MB/s", td_style), Paragraph("<b>Elimina Cuello de Botella I/O:</b> La lectura y escritura masiva de los <b>10,958 archivos NetCDF diarios</b> por experimento (30 años) se ejecuta a máxima velocidad de bus PCIe sin latencia de cabezal.", td_style)],
+        [Paragraph("<b>Sistema Operativo</b>", td_bold), Paragraph("<b>Linux Ubuntu 24.04.5 LTS (x86_64)</b><br/>Kernel Linux con POSIX Forking", td_style), Paragraph("<b>Arquitectura de Ejecución Nativa:</b> Clústeres de procesos `doParallel` / `foreach` mediante `makeCluster(type='FORK')` o sockets locales en Linux, con gestión eficiente de descriptores de archivos.", td_style)],
     ]
     t_table_hw = Table([th_hw] + rows_hw, colWidths=[0.90 * inch, 2.30 * inch, 4.30 * inch])
     t_table_hw.setStyle(TableStyle([
@@ -747,21 +931,21 @@ def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos
     story.append(t_table_hw)
     story.append(Spacer(1, 3))
 
-    story.append(Paragraph("7.2. Diagnóstico Técnico de CDT y Tiempos de Cómputo Calibrados (18 Núcleos)", h2_style))
+    story.append(Paragraph("7.2. Diagnóstico Técnico de CDT y Tiempos de Cómputo Calibrados (18 Núcleos en Linux Ubuntu)", h2_style))
     story.append(Paragraph(
-        "<b>Diagnóstico de Paralelización y Rendimiento:</b> (1) <i>Modo Headless:</i> La orquestación en Python elimina la dependencia de Tcl/Tk e inyecta paralelismo estable en <code>.cdtData$Config$parallel</code> mediante clústeres de sockets en Windows con hasta 18 workers activos. "
-        "(2) <i>Diferenciación de Carga:</i> Los métodos algebraicos (IDW, Barnes, Shepard) computan 30 años en ~1.1–2.3 h; Regression Kriging en temperatura con DEM toma ~2.2–2.6 h (sin máscara de lluvia); y Kriging por Bloques con 3 pasadas y máscara logística (R03, R04, R05, R07) requiere ~4.0–4.5 h debido a la integración numérica 2D y doble Kriging diario. "
-        "(3) <i>Formato de Monitoreo:</i> El orquestador presenta los tiempos transcurridos en formato legible de horas y minutos (ej. <code>4h 16m 40s</code>) en consola y en el <code>manifest.json</code>.",
+        "<b>Diagnóstico de Paralelización y Rendimiento en Linux Ubuntu:</b> (1) <i>Modo Headless:</i> La orquestación en Python elimina la dependencia de Tcl/Tk e inyecta paralelismo estable en <code>.cdtData$Config$parallel</code> mediante clústeres multiproceso con 18 workers activos. "
+        "(2) <i>Diferenciación de Carga:</i> Métodos algebraicos rápidos (IDW, Barnes, Shepard) procesan 30 años (10,958 días) en ~1.1–2.2 h. Regression Kriging en temperatura con DEM toma ~1.8–2.3 h. En lluvia, la optimización vectorizada en cuantiles empíricos (R13) y Shepard multiescala reducen drásticamente la latencia. "
+        "(3) <i>Formato de Monitoreo:</i> El orquestador reporta duraciones formateadas (ej. <code>2h 15m 30s</code>) en consola y en el <code>manifest.json</code>.",
         body_style
     ))
     story.append(Spacer(1, 2))
 
     th_tm = [Paragraph("Suite de Experimentos", th_style), Paragraph("Número de Exp. y Métodos Clave", th_style), Paragraph("Tiempo Calibrado (18 Núcleos)", th_style), Paragraph("Memoria RAM", th_style)]
     rows_tm = [
-        [Paragraph("<b>Precipitación (CHIRPS)</b>", td_bold), Paragraph("<b>10 Experimentos (EXP-R01 a R10):</b> RnoR Logit, QM Gamma/Weibull/Lognorm/ECDF, RK Orográfico, Barnes, CSc y NN-3D", td_style), Paragraph("<b>~29.0 a 31.0 horas</b><br/><font size=6.5 color='#64748B'>(~20 h si Kriging puntual)</font>", td_style), Paragraph("~2.5–4.5 GB", td_style)],
-        [Paragraph("<b>Temperatura Máxima (Tmax)</b>", td_bold), Paragraph("<b>8 Experimentos (EXP-TX01 a TX08):</b> Control, RK Solo DEM, Skew-Normal, NN-3D Aspecto, Gumbel Olas Calor, Lognorm, Admon, Barnes", td_style), Paragraph("<b>~15.0 a 16.0 horas</b>", td_style), Paragraph("~3.5–4.6 GB", td_style)],
-        [Paragraph("<b>Temperatura Mínima (Tmin)</b>", td_bold), Paragraph("<b>8 Experimentos (EXP-TN01 a TN08):</b> Control, RK Solo DEM, Skew-Normal 'Nortes', NN-3D Inversiones, Gumbel Heladas, Lognorm, Admon, Barnes", td_style), Paragraph("<b>~15.0 a 16.0 horas</b>", td_style), Paragraph("~3.5–4.6 GB", td_style)],
-        [Paragraph("<b>TOTAL BATERÍA COMPLETA</b>", td_bold), Paragraph("<b>26 Experimentos Completos (Precipitación + Tmax + Tmin / 1991–2020)</b>", td_bold), Paragraph("<b>~60.0 a 63.0 horas</b><br/><font size=6.5 color='#64748B'>(~48 h con Kriging puntual)</font>", td_bold), Paragraph("<b>Máx. 4.6 GB</b>", td_bold)],
+        [Paragraph("<b>Precipitación (CHIRPS)</b>", td_bold), Paragraph("<b>15 Experimentos (Fase 1: R01–R10, Fase 2: R11–R15):</b> RnoR Suave, Shepard Local/Mediana, Spheremap, QM eCDF, Barnes, CSc, OKR Bloques y RK", td_style), Paragraph("<b>~35.0 a 38.0 horas</b><br/><font size=6.5 color='#64748B'>(Optimizado con R13 vectorizado)</font>", td_style), Paragraph("~2.5–4.5 GB", td_style)],
+        [Paragraph("<b>Temperatura Máxima (Tmax)</b>", td_bold), Paragraph("<b>8 Experimentos (EXP-TX01 a TX08):</b> Control, RK Solo DEM, Skew-Normal, NN-3D Aspecto, Gumbel Olas Calor, Lognorm, Cressman, Barnes", td_style), Paragraph("<b>~14.0 a 15.0 horas</b>", td_style), Paragraph("~3.5–4.6 GB", td_style)],
+        [Paragraph("<b>Temperatura Mínima (Tmin)</b>", td_bold), Paragraph("<b>8 Experimentos (EXP-TN01 a TN08):</b> Control, RK Solo DEM, Skew-Normal 'Nortes', NN-3D Inversiones, Gumbel Heladas, Lognorm, Cressman, Barnes", td_style), Paragraph("<b>~14.0 a 15.0 horas</b>", td_style), Paragraph("~3.5–4.6 GB", td_style)],
+        [Paragraph("<b>TOTAL BATERÍA COMPLETA</b>", td_bold), Paragraph("<b>31 Experimentos Completos (15 Precipitación + 8 Tmax + 8 Tmin / 1991–2020)</b>", td_bold), Paragraph("<b>~63.0 a 68.0 horas</b><br/><font size=6.5 color='#64748B'>(~2.7 días continuos en segundo plano)</font>", td_bold), Paragraph("<b>Máx. 4.6 GB (< 15%)</b>", td_bold)],
     ]
     t_table_tm = Table([th_tm] + rows_tm, colWidths=[1.50 * inch, 3.10 * inch, 1.45 * inch, 1.45 * inch])
     t_table_tm.setStyle(TableStyle([

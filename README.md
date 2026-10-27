@@ -4,7 +4,7 @@
 > **Estructura del Documento / Document Structure:**
 >
 > - **Parte 1 (Inglés / English):** Contiene las [instrucciones originales de instalación de CDT](#parte-1-instrucciones-originales-de-instalación-de-cdt-original-installation-guide) desarrolladas por el IRI (Columbia University) para Windows, macOS y Linux.
-> - **Parte 2 (Español / Spanish):** Contiene la [Suite de Automatización, Orquestación y Experimentos Científicos](#parte-2-suite-de-automatización-orquestación-y-experimentos-científicos-19912020) en Python para la ejecución de los 26 experimentos (Precipitación, $T_{max}$, $T_{min}$), verificación de datos (`--check-data`), despliegue en contenedores Docker/Apptainer y generación de benchmarks.
+> - **Parte 2 (Español / Spanish):** Contiene la [Suite de Automatización, Orquestación y Experimentos Científicos](#parte-2-suite-de-automatización-orquestación-y-experimentos-científicos-19912020) en Python para la ejecución de los 31 experimentos (15 de Precipitación organizados en Fase 1 y Fase 2, 8 de $T_{max}$ y 8 de $T_{min}$), verificación de datos (`--check-data`), despliegue en contenedores Docker/Apptainer y generación de benchmarks.
 
 ---
 
@@ -338,7 +338,7 @@ devtools::install_github("rijaf-iri/CDT")
 
 # Parte 2: Suite de Automatización, Orquestación y Experimentos Científicos (1991–2020)
 
-Este repositorio incluye una capa de orquestación en Python de grado de producción diseñada para ejecutar y validar **26 experimentos científicos controlados** (10 para Precipitación Diaria CHIRPS, 8 para Temperatura Máxima Diaria CHIRTS $T_{max}$ y 8 para Temperatura Mínima Diaria CHIRTS $T_{min}$) para el periodo climatológico estándar **1991–2020 (10,958 días / 30 años)** sobre **Centroamérica y República Dominicana**.
+Este repositorio incluye una capa de orquestación en Python de grado de producción diseñada para ejecutar y validar **31 experimentos científicos controlados** (15 para Precipitación Diaria CHIRPS divididos en Fase 1: R01–R10 y Fase 2: R11–R15, 8 para Temperatura Máxima Diaria CHIRTS $T_{max}$ y 8 para Temperatura Mínima Diaria CHIRTS $T_{min}$) para el periodo climatológico estándar **1991–2020 (10,958 días / 30 años)** sobre **Centroamérica y República Dominicana**.
 
 ## Guía Rápida de Ejecución
 
@@ -352,19 +352,19 @@ python launcher/experiment_runner.py --check-env
 python launcher/experiment_runner.py --check-data             # Valida región por defecto (Centroamérica)
 python launcher/experiment_runner.py --check-data --region rd # Valida República Dominicana
 
-# 3. Ejecutar suite de Precipitación (10 Experimentos, ~29-31h en 18 núcleos; o ~20h con Kriging puntual)
+# 3. Ejecutar suite de Precipitación (15 Experimentos: Fase 1 y Fase 2, ~35-38h en 18 núcleos)
 python launcher/experiment_runner.py --suite rainfall --cores 18
 python launcher/experiment_runner.py --suite rainfall --region rd --cores 18
 
-# 4. Ejecutar suite de Temperatura Máxima (8 Experimentos, ~15-16h)
+# 4. Ejecutar suite de Temperatura Máxima (8 Experimentos, ~14-15h)
 python launcher/experiment_runner.py --suite tmax --cores 18
 python launcher/experiment_runner.py --suite tmax --region rd --cores 18
 
-# 5. Ejecutar suite de Temperatura Mínima (8 Experimentos, ~15-16h)
+# 5. Ejecutar suite de Temperatura Mínima (8 Experimentos, ~14-15h)
 python launcher/experiment_runner.py --suite tmin --cores 18
 python launcher/experiment_runner.py --suite tmin --region rd --cores 18
 
-# 6. Ejecutar corrida batch completa (26 Experimentos, ~60-63h continuas)
+# 6. Ejecutar corrida batch completa (31 Experimentos, ~63-68h continuas)
 python launcher/experiment_runner.py --suite all --cores 18
 python launcher/experiment_runner.py --suite all --region rd --cores 18
 
@@ -373,11 +373,11 @@ python launcher/experiment_runner.py --benchmark
 python launcher/experiment_runner.py --benchmark --region rd
 ```
 
-> **Paralelismo y Formato de Tiempo:** Por defecto, el orquestador detecta automáticamente los núcleos disponibles (`N - 1`), o puedes asignar explícitamente los núcleos deseados con `--cores 18`. Los tiempos de ejecución se visualizan dinámicamente en formato legible de horas, minutos y segundos (`4h 16m 40s`).
+> **Plataforma de Hardware Calibrada y Paralelismo:** Calibrado en estación Linux Ubuntu 24.04.5 LTS con procesador Intel(R) Core(TM) i9-10850K @ 3.60GHz (10 núcleos / 20 hilos), 32 GB RAM DDR4 y SSD NVMe 400 GB. Por defecto, el orquestador detecta automáticamente los núcleos disponibles (`N - 1`), o puedes asignar explícitamente los núcleos deseados con `--cores 18`. Los tiempos de ejecución se visualizan dinámicamente en formato legible de horas, minutos y segundos (`1h 48m 22s`).
 
 ### Opción B: Ejecución Desatendida en Segundo Plano (`nohup` en Linux / WSL / Servidores)
 
-Para ejecuciones completas de larga duración (~60 horas), se debe lanzar el proceso desacoplado de la terminal, desactivando la variable `DISPLAY` (para evitar conflictos de `tcltk`/X11 en entornos sin entorno gráfico) y usando el flag `-u` de Python (para registrar logs en tiempo real sin latencia de búfer):
+Para ejecuciones completas de larga duración (~63 a 68 horas), se debe lanzar el proceso desacoplado de la terminal, desactivando la variable `DISPLAY` (para evitar conflictos de `tcltk`/X11 en entornos sin entorno gráfico) y usando el flag `-u` de Python (para registrar logs en tiempo real sin latencia de búfer):
 
 ```bash
 # Ejecutar toda la suite en segundo plano (producción desatendida)
@@ -410,6 +410,32 @@ docker compose run --rm cdt-runner python launcher/experiment_runner.py --suite 
 docker compose run --rm cdt-runner python launcher/experiment_runner.py --suite all --region rd
 ```
 
+## Resultados del Benchmark de Precipitación: 15 Experimentos (Fase 1 y Fase 2)
+
+Los 15 experimentos de precipitación diaria (CHIRPS 1991–2020) fueron ejecutados y calibrados en una estación Linux Ubuntu 24.04.5 LTS (Intel Core i9-10850K @ 3.60GHz, 32 GB RAM DDR4, SSD NVMe 400 GB) y evaluados contra **29 estaciones de validación ciega independiente (*holdout*)**:
+
+| Rank | Experimento ID | Método de Fusión y Configuración Clave | KGE | $r$ | RMSE (mm) | PBIAS (%) | POD | ETS | HSS | Global Skill | Clasificación |
+|:---:|---|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **1** | **EXP_R15_Shepard_RnoR_Smooth** | **Shepard Modificado + RnoR Suave (CutOff 2, rad 1.2°)** | **0.3791** | **0.4791** | **12.88** | **-4.39%** | **0.6922** | **0.3287** | **0.4785** | **0.5007** | **GANADOR (Rank 1)** |
+| **2** | **EXP_R12_Shepard_Local_Orn** | Shepard Confinado Local Anti-Cruce (rad 0.9° ~100 km) | 0.3716 | 0.4685 | 13.21 | -3.21% | 0.6731 | 0.3238 | 0.4735 | 0.4991 | Fase 2 (Rank 2) |
+| **3** | **EXP_R08_Shepard_Complex_Relief** | Shepard Relieve Complejo Estándar (rad 1.5°) | 0.3749 | 0.4794 | 12.89 | -6.30% | 0.6650 | 0.3147 | 0.4638 | 0.4888 | Fase 1 (Rank 3) |
+| **4** | **EXP_R11_Shepard_Median_Coarse** | Shepard Mediana Robusta + Malla Gruesa (rad 1.5°) | 0.3753 | 0.4787 | 12.77 | -6.70% | 0.6746 | 0.3213 | 0.4697 | 0.4885 | Fase 2 (Rank 4) |
+| **5** | **EXP_R14_Spheremap_Median** | Spheremap Gran Círculo + Mediana + Malla Gruesa | 0.3621 | 0.4552 | 13.56 | -4.43% | 0.6540 | 0.3174 | 0.4660 | 0.4863 | Fase 2 (Rank 5) |
+| **6** | **EXP_R09_Spheremap_Trans_Caribe** | Spheremap Gran Círculo Estándar (rad 1.5°) | 0.3584 | 0.4584 | 13.59 | -4.59% | 0.6477 | 0.3132 | 0.4633 | 0.4843 | Fase 1 (Rank 6) |
+| **7** | **EXP_R07_Cressman_Spherical** | Cressman Celdas Aisladas (4 pasadas: 1.0° a 0.25°) | 0.3318 | 0.4468 | 14.44 | +3.64% | 0.6299 | 0.2958 | 0.4436 | 0.4724 | Guía CDT |
+| **8** | **EXP_R13_QM_Empirical_ECDF** | Quantile Mapping Empírico No-Paramétrico (qmecdf) | 0.3196 | 0.4655 | 13.08 | -5.57% | 0.6393 | 0.2995 | 0.4458 | 0.4658 | Fase 2 (Rank 8) |
+| **9** | **EXP_R06_Barnes_Gauss_Coastal** | Barnes BSc Gaussiano Costero (NN-3D con DEM) | 0.3087 | 0.4490 | 14.22 | +4.08% | 0.6461 | 0.2976 | 0.4450 | 0.4635 | Fase 1 (Rank 9) |
+| **10** | **EXP_R01_SBA_IDW_Baseline** | Control Nulo / IDW Plano Monocapa (Sin RnoR) | 0.3353 | 0.4861 | 12.22 | -13.53% | 0.6657 | 0.2743 | 0.4178 | 0.4396 | Línea Base |
+| **11** | **EXP_R02_SBA_IDW_RnoR** | SBA IDW 3 pasadas + RnoR (Corte Rígido 0.5 mm) | 0.2631 | 0.4659 | 12.39 | -22.15% | 0.6132 | 0.2718 | 0.4109 | 0.3743 | Fase 1 (Rank 11) |
+| **12** | **EXP_R05_RK_Topography_BW** | Regression Kriging Topográfico (Weibull + DEM) | 0.2147 | 0.4166 | 13.28 | -18.28% | 0.5216 | 0.2010 | 0.3215 | 0.3463 | Fase 1 (Rank 12) |
+| **13** | **EXP_R03_SBA_OKR_BernoulliGamma** | QM Paramétrico Gamma + OKR por Bloques | -0.0277 | 0.4275 | 14.87 | -5.83% | 0.6389 | 0.2460 | 0.3729 | 0.3231 | Fase 1 (Rank 13) |
+| **14** | **EXP_R04_SBA_OKR_BernoulliWeib** | QM Paramétrico Weibull + OKR por Bloques | 0.0159 | 0.4306 | 14.51 | -11.98% | 0.6357 | 0.2475 | 0.3733 | 0.3148 | Fase 1 (Rank 14) |
+| **15** | **EXP_R10_RK_FullTopography_Asp** | RK Máxima Complejidad (DEM + Pendiente + Aspect) | 0.1062 | 0.4112 | 14.11 | -18.36% | 0.5084 | 0.1901 | 0.3073 | 0.3045 | Fase 1 (Rank 15) |
+
+> **Hallazgos Clave:**
+> 1. **Modelo Ganador:** `EXP_R15_Shepard_RnoR_Smooth` supera a todos los esquemas evaluados ($\text{Skill} = 0.5007$, $\text{KGE} = 0.3791$, $\text{POD} = 69.22\%$, $\text{ETS} = 0.3287$). La transición continua suave (`RnoRCutOff: 2`) entre 0.1 y 1.0 mm eliminó la subestimación severa de lluvia de la máscara binaria rígida ($\text{PBIAS} = -4.39\%$ frente a $-22.15\%$ en `R02`).
+> 2. **Familia Dominante:** La formulación de Shepard Modificado dominó los primeros 4 lugares del benchmark (`R15`, `R12`, `R08`, `R11`), debido a que su ponderación direccional atenúa la fuga espuria de humedad a través de barreras orográficas abruptas.
+
 ## Estructura de Preparación de Datos (`data/`)
 
 - **Estaciones y Listas de Exclusión (`data/stations/`):**
@@ -430,6 +456,7 @@ Para fundamentos matemáticos profundos, justificaciones físicas, menús de CDT
 
 - [**Índice General de Documentación Técnica**](docs/README.md)
 - [**Guía de Preparación de Datos (`data/`) y Arquitectura de Lanzadores**](docs/09_arquitectura_lanzadores_python_y_dependencias.md)
-- [**Protocolo Metodológico Maestro y Matriz de 26 Experimentos**](docs/10_matriz_maestra_experimentos_y_guia_metodologica.md)
+- [**Protocolo Metodológico Maestro y Matriz de 31 Experimentos**](docs/10_matriz_maestra_experimentos_y_guia_metodologica.md)
+- [**Diagnóstico Científico de Fase 1 y Diseño/Resultados de Fase 2 (Precipitación)**](docs/12_diagnostico_fase1_y_diseno_fase2_precipitacion.md)
 - [**Guía de Despliegue en Contenedores (Docker, Compose, Apptainer/Singularity)**](docs/11_guia_despliegue_contenedores_docker_apptainer.md)
 - [**Documento PDF Compilado**](docs/Matriz_Experimentos_CDT_Centroamerica_Dominicana.pdf)

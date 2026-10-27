@@ -1,6 +1,6 @@
 # Protocolo Metodológico Maestro y Matriz de Experimentos de Fusión Climática con CDT (1991–2020)
 ## Aplicación en Climas Complejos: Centroamérica y República Dominicana
-### Batería Completa de 26 Experimentos: Precipitación (10), Temperatura Máxima (8) y Temperatura Mínima (8)
+### Batería Completa de 31 Experimentos: Precipitación (15: Fase 1 y Fase 2), Temperatura Máxima (8) y Temperatura Mínima (8)
 
 ---
 
@@ -21,9 +21,11 @@ Los conjuntos de datos climáticos grillados basados exclusivamente en sensores 
    - **Falta de resolución de inversiones térmicas nocturnas y drenaje catabático:** Durante la noche, el enfriamiento radiativo provoca el drenaje de aire denso y frío (*cold-air pooling*) hacia el fondo de valles intramontanos cerrados (Constanza y Valle Nuevo en RD, Quetzaltenango en Guatemala), registrándose heladas y temperaturas bajo cero ($< 0\ ^\circ\text{C}$), mientras que las cumbres adyacentes permanecen más cálidas (inversión térmica). Los modelos globales no resuelven este desacople sin ponderación vertical estricta ($\Delta z$).
    - **Asimetría por intrusiones de frentes fríos invernales (*Nortes*):** Las invasiones de aire polar modificado generan descensos térmicos abruptos y asimétricos en laderas expuestas al norte que las distribuciones gaussianas estándar no capturan (Alfaro et al., 2018).
 
-**Estructura de la Matriz de Evaluación (26 Experimentos):**
+**Estructura de la Matriz de Evaluación (31 Experimentos):**
 Para aislar rigurosamente los efectos físicos y estadísticos de cada componente, se formulan **tres conjuntos experimentales independientes**:
-- **10 Experimentos de Precipitación (`EXP-R01` a `EXP-R10`)**: Evaluación de corrección de sesgo (Gamma, Weibull, Lognormal, ECDF empírico), máscara RnoR (Logit GLM), Kriging por Bloques, Regression Kriging orográfico y Esquemas de Barnes/Cressman/Shepard/Spheremap/NN-3D.
+- **15 Experimentos de Precipitación (`EXP-R01` a `EXP-R15`)**:
+  - *Fase 1 (Cribado Exploratorio: R01 a R10):* Evaluación de familias de interpolación (IDW, Kriging Ordinario por Bloques, Regression Kriging orográfico, Barnes, Cressman, Shepard Modificado, Spheremap Gran Círculo) y modelos de sesgo (Gamma, Weibull, Multiplicativo móvil).
+  - *Fase 2 (Optimización Dirigida: R11 a R15):* Refinamiento sobre los ganadores de la Fase 1 (Shepard y Spheremap) variando estimadores de mediana robusta, malla gruesa costera, acotamiento local orográfico anti-fuga transcordillera (0.9°), Quantile Mapping no paramétrico (eCDF) y transición de lluvia continua suave (`RnoRCutOff: 2`).
 - **8 Experimentos de Temperatura Máxima (`EXP-TX01` a `EXP-TX08`)**: Evaluación de radiación solar diurna, desescalado con DEM SRTM, gradiente adiabático, extremos por olas de calor con distribución de Gumbel, insolación según orientación (*aspect*) y consistencia costera con Barnes.
 - **8 Experimentos de Temperatura Mínima (`EXP-TN01` a `EXP-TN08`)**: Evaluación de enfriamiento nocturno, inversiones térmicas en valles intramontanos mediante NN-3D ($\Delta z$), frentes fríos invernales con Skew-Normal, heladas agronómicas con Gumbel y amortiguamiento marino nocturno.
 
@@ -128,8 +130,10 @@ La metodología de fusión en CDT se estructura en etapas analíticas secuencial
 
 ---
 
-### 5.2 Suite A: Precipitación Diaria (CHIRPS 1991–2020, 10 Experimentos)
+### 5.2 Suite A: Precipitación Diaria (CHIRPS 1991–2020: 15 Experimentos — Fase 1 y Fase 2)
 Configurados en [`config/experiments_rainfall/`](file:///d:/Workspace/CDT-8.0/config/experiments_rainfall):
+
+#### Fase 1: Cribado Exploratorio (EXP-R01 a EXP-R10)
 
 | ID Exp. | Paso 1: Compute Bias Coefficients (Cálculo de Sesgo) | Paso 2: Apply Bias Correction (Aplicación de Sesgo) | Paso 3: Merging Data (Fusión Espacial) | Hipótesis Física y Climatológica Regional |
 | :---: | :--- | :--- | :--- | :--- |
@@ -143,6 +147,38 @@ Configurados en [`config/experiments_rainfall/`](file:///d:/Workspace/CDT-8.0/co
 | **`EXP-R08`** | • Método: `mbvar` ($\pm 5$ d)<br>• Interp: **Shepard Modificado** | • Ajuste de sesgo con polinomios locales<br>• Salida: `rr_adj_%s%s%s.nc` | • Método: SBA multiescala (3 pasadas)<br>• Interp: Shepard Modificado con control de derivadas direccionales<br>• RnoR: Activada (Logit GLM)<br>• Covariables: Ninguna | **Relieve Escarpado y Cañones:** Los polinomios de Shepard evitan sobreoscilaciones numéricas en transiciones topográficas abruptas (zonas de cañones y fallas). |
 | **`EXP-R09`** | • Método: `mbvar` ($\pm 5$ d)<br>• Interp: **Spheremap (Gran Círculo)** | • Ajuste sobre CHIRPS en coordenadas esféricas<br>• Salida: `rr_adj_%s%s%s.nc` | • Método: SBA multiescala (3 pasadas)<br>• Interp: Spheremap en esfera terrestre real<br>• RnoR: Activada (Logit GLM)<br>• Covariables: Ninguna | **Geometría Esférica Trans-Caribe:** Corrige la distorsión métrica de latitud en distancias zonales amplias a lo largo del arco de las Antillas Mayores. |
 | **`EXP-R10`** | • Método: `qmdist`<br>• Distribución: Bernoulli-Weibull<br>• Interp: Kriging Ordinario por Bloques (`okr`) | • Corrección distribucional de extremos ciclónicos<br>• Salida: `rr_adj_%s%s%s.nc` | • Método: **Regression Kriging (RK)** multiescala<br>• **Covariables: DEM + Pendiente + Orientación (Aspect) + Lat + Lon**<br>• Interp. residuales: OKR por bloques<br>• RnoR: Activada (Logit GLM) | **Máxima Complejidad Física Acoplada:** Incorpora la orientación de ladera (*aspect*) para capturar la intercepción directa de la humedad transportada por el Chorro del Caribe (CLLJ) del noreste. |
+
+#### Fase 2: Optimización Dirigida (EXP-R11 a EXP-R15)
+
+| ID Exp. | Paso 1: Compute Bias Coefficients (Cálculo de Sesgo) | Paso 2: Apply Bias Correction (Aplicación de Sesgo) | Paso 3: Merging Data (Fusión Espacial) | Hipótesis Física y Climatológica Regional (Fase 2) |
+| :---: | :--- | :--- | :--- | :--- |
+| **`EXP-R11`** | • Método: `mbvar` ($\pm 5$ d)<br>• `mulBiasFunction: "median"`<br>• `addCoarseGrid: true` (resolución $1.0^\circ$)<br>• Interp: IDW ($1.5^\circ$) | • Ajuste multiplicativo robusto con mediana sobre CHIRPS 1991–2020<br>• Salida: `rr_adj_%s%s%s.nc` | • Método: SBA multiescala (3 pasadas: $1.0^\circ, 0.75^\circ, 0.5^\circ$)<br>• Interp: Shepard Modificado ($1.5^\circ$)<br>• RnoR: Activada (Logit GLM)<br>• `addCoarseGrid: true` | **Mediana Robusta y Malla Gruesa Costera:** El estimador de mediana neutraliza eventos convectivos extremos atípicos que inflan el sesgo multiplicativo; la malla gruesa atenúa los residuos hacia cero en áreas oceánicas y costeras sin estaciones. |
+| **`EXP-R12`** | • Método: `mbvar` ($\pm 5$ d)<br>• `mulBiasFunction: "median"`<br>• **Interp: IDW local (radio $0.9^\circ \approx 100\text{ km}$, $nmin=3, nmax=8$)** | • Ajuste con aislamiento transcordillera sobre CHIRPS<br>• Salida: `rr_adj_%s%s%s.nc` | • Método: **SBA multiescala local** (3 pasadas: $1.0^\circ, 0.67^\circ, 0.33^\circ$)<br>• **Interp: Shepard local ($0.9^\circ$, $nmin=3, nmax=8$)**<br>• RnoR: Activada (Logit GLM) | **Aislamiento Orográfico Transcordillera:** Un radio de $1.5^\circ$ (~165 km) cruza la cordillera central y contamina la estación seca del Pacífico con estaciones húmedas del Caribe. Confinar el radio a $0.9^\circ$ preserva la sombra orográfica real. |
+| **`EXP-R13`** | • Método: **Quantile Mapping Empírico (`qmecdf`)**<br>• Mapeo cuantil a cuantil no paramétrico sin distribución analítica predeterminada<br>• Interp: IDW ($1.5^\circ$) | • Mapeo empírico cuantil a cuantil sobre grillas CHIRPS<br>• Salida: `rr_adj_%s%s%s.nc` | • Método: SBA multiescala (3 pasadas: $1.0^\circ, 0.75^\circ, 0.5^\circ$)<br>• Interp: Shepard Modificado ($1.5^\circ$)<br>• RnoR: Activada (Logit GLM) | **Quantile Mapping No-Paramétrico (eCDF):** Supera la rigidez de las distribuciones teóricas de 2 parámetros (Gamma/Weibull) que colapsaron en la Fase 1, modelando eventos extremos directamente a partir de la distribución acumulada empírica observada. |
+| **`EXP-R14`** | • Método: `mbvar` ($\pm 5$ d)<br>• `mulBiasFunction: "median"`<br>• `addCoarseGrid: true` ($1.0^\circ$)<br>• Interp: IDW ($1.5^\circ$) | • Ajuste esférico sobre grillas CHIRPS<br>• Salida: `rr_adj_%s%s%s.nc` | • Método: **SBA multiescala** (3 pasadas: $1.0^\circ, 0.75^\circ, 0.5^\circ$)<br>• **Interp: Spheremap en esfera real ($1.5^\circ$)**<br>• RnoR: Activada (Logit GLM)<br>• `addCoarseGrid: true` | **Spheremap con Mediana y Malla Gruesa:** Acopla la proyección de gran círculo sobre la curvatura terrestre real con el estimador de mediana y contención de malla gruesa para eliminar distorsiones de borde en el arco de las Antillas. |
+| **`EXP-R15`**<br>*(GANADOR)* | • Método: `mbvar` ($\pm 5$ d)<br>• `mulBiasFunction: "median"`<br>• Interp: IDW ($1.2^\circ$, $nmin=4, nmax=10$) | • Ajuste multiplicativo sobre grillas CHIRPS 1991–2020<br>• Salida: `rr_adj_%s%s%s.nc` | • Método: **SBA multiescala** (3 pasadas: $1.0^\circ, 0.75^\circ, 0.5^\circ$)<br>• Interp: Shepard Modificado ($1.2^\circ$)<br>• **RnoR: Activada con `RnoRCutOff = 2` (Transición Suave)** | **MODELO GANADOR — Transición Continua Suave de Lluvia:** Sustituye el corte binario rígido (0.5 mm) por una función lineal continua entre 0.1 y 1.0 mm. Elimina el subestimado seco de RnoR duro (-4.39% PBIAS vs -22.15% en R02), alcanzando el KGE y Skill Score más altos. |
+
+#### Tablero Consolidado del Benchmark de Precipitación (29 Estaciones de Validación Ciega Holdout)
+
+| Rank | Experimento ID | Método de Fusión y Configuración Clave | KGE | $r$ | RMSE (mm) | PBIAS (%) | POD | FAR | ETS | HSS | Global Skill | Clasificación |
+|:---:|---|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **1** | **EXP_R15_Shepard_RnoR_Smooth** | **Shepard Modificado + RnoR Suave (CutOff 2, rad 1.2°)** | **0.3791** | **0.4791** | **12.88** | **-4.39%** | **0.6922** | **0.3038** | **0.3287** | **0.4785** | **0.5007** | **GANADOR (Rank 1)** |
+| **2** | **EXP_R12_Shepard_Local_Orn** | Shepard Confinado Local Anti-Cruce (rad 0.9° ~100 km) | 0.3716 | 0.4685 | 13.21 | -3.21% | 0.6731 | 0.2989 | 0.3238 | 0.4735 | 0.4991 | Fase 2 (Rank 2) |
+| **3** | **EXP_R08_Shepard_Complex_Relief** | Shepard Relieve Complejo Estándar (rad 1.5°) | 0.3749 | 0.4794 | 12.89 | -6.30% | 0.6650 | 0.3039 | 0.3147 | 0.4638 | 0.4888 | Fase 1 (Rank 3) |
+| **4** | **EXP_R11_Shepard_Median_Coarse** | Shepard Mediana Robusta + Malla Gruesa (rad 1.5°) | 0.3753 | 0.4787 | 12.77 | -6.70% | 0.6746 | 0.3037 | 0.3213 | 0.4697 | 0.4885 | Fase 2 (Rank 4) |
+| **5** | **EXP_R14_Spheremap_Median** | Spheremap Gran Círculo + Mediana + Malla Gruesa | 0.3621 | 0.4552 | 13.56 | -4.43% | 0.6540 | 0.2971 | 0.3174 | 0.4660 | 0.4863 | Fase 2 (Rank 5) |
+| **6** | **EXP_R09_Spheremap_Trans_Caribe** | Spheremap Gran Círculo Estándar (rad 1.5°) | 0.3584 | 0.4584 | 13.59 | -4.59% | 0.6477 | 0.2959 | 0.3132 | 0.4633 | 0.4843 | Fase 1 (Rank 6) |
+| **7** | **EXP_R07_Cressman_Spherical** | Cressman Celdas Aisladas (4 pasadas: 1.0° a 0.25°) | 0.3318 | 0.4468 | 14.44 | +3.64% | 0.6299 | 0.3048 | 0.2958 | 0.4436 | 0.4724 | Guía CDT |
+| **8** | **EXP_R13_QM_Empirical_ECDF** | Quantile Mapping Empírico No-Paramétrico (qmecdf) | 0.3196 | 0.4655 | 13.08 | -5.57% | 0.6393 | 0.3034 | 0.2995 | 0.4458 | 0.4658 | Fase 2 (Rank 8) |
+| **9** | **EXP_R06_Barnes_Gauss_Coastal** | Barnes BSc Gaussiano Costero (NN-3D con DEM) | 0.3087 | 0.4490 | 14.22 | +4.08% | 0.6461 | 0.3098 | 0.2976 | 0.4450 | 0.4635 | Fase 1 (Rank 9) |
+| **10** | **EXP_R01_SBA_IDW_Baseline** | Control Nulo / IDW Plano Monocapa (Sin RnoR) | 0.3353 | 0.4861 | 12.22 | -13.53% | 0.6657 | 0.3379 | 0.2743 | 0.4178 | 0.4396 | Línea Base |
+| **11** | **EXP_R02_SBA_IDW_RnoR** | SBA IDW 3 pasadas + RnoR (Corte Rígido 0.5 mm) | 0.2631 | 0.4659 | 12.39 | -22.15% | 0.6132 | 0.3153 | 0.2718 | 0.4109 | 0.3743 | Fase 1 (Rank 11) |
+| **12** | **EXP_R05_RK_Topography_BW** | Regression Kriging Topográfico (Weibull + DEM) | 0.2147 | 0.4166 | 13.28 | -18.28% | 0.5216 | 0.3673 | 0.2010 | 0.3215 | 0.3463 | Fase 1 (Rank 12) |
+| **13** | **EXP_R03_SBA_OKR_BernoulliGamma** | QM Paramétrico Gamma + OKR por Bloques | -0.0277 | 0.4275 | 14.87 | -5.83% | 0.6389 | 0.3484 | 0.2460 | 0.3729 | 0.3231 | Fase 1 (Rank 13) |
+| **14** | **EXP_R04_SBA_OKR_BernoulliWeib** | QM Paramétrico Weibull + OKR por Bloques | 0.0159 | 0.4306 | 14.51 | -11.98% | 0.6357 | 0.3479 | 0.2475 | 0.3733 | 0.3148 | Fase 1 (Rank 14) |
+| **15** | **EXP_R10_RK_FullTopography_Asp** | RK Máxima Complejidad (DEM + Pendiente + Aspect) | 0.1062 | 0.4112 | 14.11 | -18.36% | 0.5084 | 0.3761 | 0.1901 | 0.3073 | 0.3045 | Fase 1 (Rank 15) |
+
+---
 
 ---
 
@@ -217,24 +253,30 @@ Configurados en [`config/experiments_tmin/`](file:///d:/Workspace/CDT-8.0/config
 
 ## 7. Rendimiento de Hardware y Modo de Uso del Lanzador en Python
 
-### Evaluación y Calibración en Workstation (18 Núcleos Paralelos, 64 GB RAM, NVMe):
+### Evaluación y Calibración en Workstation Linux Ubuntu (18 Núcleos Paralelos, 32 GB RAM DDR4, SSD NVMe 400 GB):
+
+* **Sistema Operativo:** Linux Ubuntu 24.04.5 LTS (x86_64, Kernel nativo)
+* **Procesador (CPU):** Intel(R) Core(TM) i9-10850K CPU @ 3.60GHz (10 núcleos físicos / 20 hilos, Frecuencia base 3.60 GHz, Turbo Boost hasta 5.20 GHz, Caché L3 de 20 MB)
+* **Memoria RAM:** 32 GB DDR4 @ 3200 MT/s (Dual-Channel)
+* **Almacenamiento:** SSD NVMe M.2 PCIe de 400 GB (> 3,000 MB/s lectura/escritura)
 
 | Suite de Experimentos | Núm. Exp. | Días / Exp. | Rango Tiempo por Exp. | Tiempo Total Suite | Consumo RAM Máx. |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Precipitación (CHIRPS)** | 10 | 10,958 | 1.1 h (IDW) a 4.2 h (Block OKR) | **~29.0 – 31.0 horas** | 2.5 – 4.5 GB |
-| **Temperatura Máxima ($T_{max}$)** | 8 | 10,958 | 1.2 h (IDW) a 2.4 h (RK DEM) | **~15.0 – 16.0 horas** | 3.5 – 4.6 GB |
-| **Temperatura Mínima ($T_{min}$)** | 8 | 10,958 | 1.2 h (IDW) a 2.4 h (RK DEM) | **~15.0 – 16.0 horas** | 3.5 – 4.6 GB |
-| **TOTAL GENERAL 26 EXPERIMENTOS** | **26** | **10,958** | — | **~60.0 – 63.0 horas** | **Máx. 4.6 GB (< 8% RAM)** |
+| **Precipitación (CHIRPS)** | 15 (Fase 1 y 2) | 10,958 | 1.1 h (IDW/Shepard) a 3.8 h (Block OKR) | **~35.0 – 38.0 horas** | 2.5 – 4.5 GB |
+| **Temperatura Máxima ($T_{max}$)** | 8 | 10,958 | 1.2 h (IDW) a 2.3 h (RK DEM) | **~14.0 – 15.0 horas** | 3.5 – 4.6 GB |
+| **Temperatura Mínima ($T_{min}$)** | 8 | 10,958 | 1.2 h (IDW) a 2.3 h (RK DEM) | **~14.0 – 15.0 horas** | 3.5 – 4.6 GB |
+| **TOTAL GENERAL 31 EXPERIMENTOS** | **31** | **10,958** | — | **~63.0 – 68.0 horas** | **Máx. 4.6 GB (< 15% RAM)** |
 
 > [!NOTE]
-> **Diferenciación de Carga Computacional:**
-> - **Interpolaciones algebraicas (IDW, Barnes, Shepard):** Evalúan funciones analíticas directas ($O(N)$), completando 30 años en ~1.1 a 2.3 horas.
-> - **Regression Kriging en Temperatura con DEM:** No utiliza máscara binomial de lluvia, completando cada experimento en ~2.2 a 2.6 horas.
-> - **Kriging Ordinario por Bloques con Máscara Logística (Lluvia):** Al tener `use_block: true` y `RnoR: logit`, ejecuta 2 procesos de Kriging por cada una de las 3 pasadas diarias (6 Krigings por día con integración numérica 2D), requiriendo ~4.0 a 4.5 horas. Con Kriging puntual (`use_block: false`), el tiempo desciende a ~1.8 horas, reduciendo la batería completa a **~48 horas (~2 días)**.
+> **Diferenciación de Carga Computacional y Optimización Vectorizada:**
+> - **Interpolaciones algebraicas (IDW, Barnes, Shepard):** Evalúan funciones analíticas directas ($O(N)$), completando 30 años en ~1.1 a 2.2 horas.
+> - **Regression Kriging en Temperatura con DEM:** No utiliza máscara binomial de lluvia, completando cada experimento en ~1.8 a 2.3 horas.
+> - **Kriging Ordinario por Bloques con Máscara Logística (Lluvia):** Al tener `use_block: true` y `RnoR: logit`, ejecuta 2 procesos de Kriging por cada una de las 3 pasadas diarias (6 Krigings por día con integración numérica 2D), requiriendo ~3.8 a 4.2 horas.
+> - **Optimización en Quantile Mapping Empírico (`EXP_R13`):** Se vectorizó la evaluación de cuantiles mediante interpolación continua sobre `stats::knots()`, logrando una aceleración de 100x en el Paso 2 (de >30 h a 12 minutos), preservando precisión numérica exacta ($0.0$ de discrepancia).
 
 ### Formato de Salida y Monitoreo de Tiempos:
 El orquestador (`launcher/experiment_runner.py`) implementa la utilidad `format_duration()` que presenta los tiempos de ejecución en formato legible de horas, minutos y segundos:
-- Al terminar cada corrida: `>>> [OK] EXP_R03 completado con estado SUCCESS en 4h 16m 40s (15400.25s)`.
+- Al terminar cada corrida: `>>> [OK] EXP_R15_Shepard_RnoR_Smooth completado con estado SUCCESS en 1h 48m 22s (6502.15s)`.
 - En la tabla resumen: columna `Tiempo` formateada y pie con el `TIEMPO TOTAL ACUMULADO DE LA SUITE`.
 - En el archivo `manifest.json`: se preserva `execution_time_sec` (numérico) y se añade `execution_time_formatted`.
 
@@ -244,16 +286,16 @@ El orquestador (`launcher/experiment_runner.py`) implementa la utilidad `format_
 # Diagnóstico de dependencias
 python launcher/experiment_runner.py --check-env
 
-# Ejecutar suites completas (Workstation con 18 núcleos)
-python launcher/experiment_runner.py --suite rainfall --cores 18   # 10 Exp. Lluvia (~29-31 h)
-python launcher/experiment_runner.py --suite tmax     --cores 18   # 8 Exp. Tmax (~15-16 h)
-python launcher/experiment_runner.py --suite tmin     --cores 18   # 8 Exp. Tmin (~15-16 h)
+# Ejecutar suites completas (Workstation Ubuntu con 18 núcleos)
+python launcher/experiment_runner.py --suite rainfall --cores 18   # 15 Exp. Lluvia (~35-38 h)
+python launcher/experiment_runner.py --suite tmax     --cores 18   # 8 Exp. Tmax (~14-15 h)
+python launcher/experiment_runner.py --suite tmin     --cores 18   # 8 Exp. Tmin (~14-15 h)
 
-# Ejecutar corrida batch completa de los 26 experimentos
-python launcher/experiment_runner.py --suite all      --cores 18   # 26 Exp. (~60-63 h continuas)
+# Ejecutar corrida batch completa de los 31 experimentos
+python launcher/experiment_runner.py --suite all      --cores 18   # 31 Exp. (~63-68 h continuas)
 
 # Ejecutar un experimento individual parametrizado
-python launcher/experiment_runner.py --config config/experiments_rainfall/EXP_R03_SBA_OKR_BernoulliGamma.yaml --cores 18
+python launcher/experiment_runner.py --config config/experiments_rainfall/EXP_R15_Shepard_RnoR_Smooth.yaml --cores 18
 ```
 
 ### Ejecución Desatendida en Segundo Plano (`nohup` en Linux / WSL / Servidores):

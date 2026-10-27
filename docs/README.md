@@ -37,15 +37,15 @@ Esta carpeta contiene la documentación técnica, matemática y metodológica pa
    - Diagnóstico multiplataforma: comprobación de ejecutables `Rscript` (ej. R 4.4.3), librerías de sistema en Linux y Rtools en Windows.
    - Guía de uso de la CLI, flags (`--suite`, `--config`, `--base-config`), partición automática de estaciones omitidas y ensamblado NetCDF 3D CF-1.8.
 
-10. [**10. Protocolo Metodológico Maestro y Matriz Completa de 26 Experimentos**](file:///d:/Workspace/CDT-8.0/docs/10_matriz_maestra_experimentos_y_guia_metodologica.md)
-    - **Módulo Técnico Unificado:** Integra la significancia estadística y climatológica profunda de la interpolación, la justificación fisiográfica regional (Pacífico, Caribe, Corredor Seco, Azua, Enriquillo, valles altos), las tablas comparativas de los **26 experimentos** (10 Lluvia, 8 $T_{max}$, 8 $T_{min}$) con justificación celda por celda, fórmulas de validación cruzada independiente ($KGE$, $RMSE$, $MAE$, $PBIAS$, $POD$, $FAR$, $ETS$, $HSS$), evaluación de hardware en Intel Xeon Silver 4210R y 19 referencias bibliográficas científicas con DOIs verificados.
-    - Base técnica compilada en el documento PDF: [**`Matriz_Experimentos_CDT_Centroamerica_Dominicana.pdf`**](file:///d:/Workspace/CDT-8.0/docs/Matriz_Experimentos_CDT_Centroamerica_Dominicana.pdf).
+10. [**10. Protocolo Metodológico Maestro y Matriz Completa de 31 Experimentos**](file:///d:/Workspace/CDT-8.0/docs/10_matriz_maestra_experimentos_y_guia_metodologica.md)
+    - **Módulo Técnico Unificado:** Integra la significancia estadística y climatológica profunda de la interpolación, la justificación fisiográfica regional (Pacífico, Caribe, Corredor Seco, Azua, Enriquillo, valles altos), las tablas comparativas de los **31 experimentos** (15 Lluvia: Fase 1 y 2, 8 $T_{max}$, 8 $T_{min}$) con justificación celda por celda, fórmulas de validación cruzada independiente ($KGE$, $RMSE$, $MAE$, $PBIAS$, $POD$, $FAR$, $ETS$, $HSS$), evaluación de hardware en estación Linux Ubuntu (Intel Core i9-10850K @ 3.60GHz, 32 GB RAM DDR4, SSD NVMe 400 GB) y 19 referencias bibliográficas científicas con DOIs verificados.
+
 
 11. [**11. Guía de Despliegue en Contenedores: Docker, Docker Compose y Apptainer / Singularity**](file:///d:/Workspace/CDT-8.0/docs/11_guia_despliegue_contenedores_docker_apptainer.md)
     - Procedimientos de ejecución en contenedores inmutables: `Dockerfile`, `docker-compose.yml`, DevContainers y `Apptainer.def` para supercómputo HPC / SLURM.
 
-12. [**12. Diagnóstico Científico Fase 1 y Diseño Metodológico Fase 2 (Precipitación)**](file:///d:/Workspace/CDT-8.0/docs/12_diagnostico_fase1_y_diseno_fase2_precipitacion.md)
-    - Diagnóstico de los 10 experimentos de la Fase 1, análisis del ranking liderado por Modified Shepard (EXP_R08), colapso de QM teórico y diseño de los 5 experimentos de refinamiento (EXP_R11 a EXP_R15) usando mediana robusta, malla gruesa, eCDF empírico y aislamiento orográfico transcordillera.
+12. [**12. Diagnóstico Científico de Fase 1 y Diseño/Resultados de Fase 2 (Precipitación)**](file:///d:/Workspace/CDT-8.0/docs/12_diagnostico_fase1_y_diseno_fase2_precipitacion.md)
+    - Diagnóstico de los 10 experimentos de la Fase 1, diseño de los 5 experimentos de la Fase 2, y análisis exhaustivo del **tablero de liderazgo consolidado de los 15 experimentos** evaluados sobre las 29 estaciones de validación ciega independiente (*holdout*), donde **EXP_R15_Shepard_RnoR_Smooth** se corona como el modelo ganador absoluto ($KGE = 0.3791$, $Skill = 0.5007$, $PBIAS = -4.39\%$, $POD = 69.22\%$, $ETS = 0.3287$).
 
 ---
 
