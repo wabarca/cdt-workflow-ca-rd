@@ -6,7 +6,7 @@ professional running headers/footers, complete step-by-step CDT architecture tab
 Temperature: 5 steps), comprehensive matrices for all 31 experiments (15 Rainfall: Fase 1 & Fase 2, 8 Tmax, 8 Tmin)
 with detailed per-step parameter breakdowns and physical rationales, full validation leaderboard ranking (29 blind holdout stations),
 typographically rendered mathematical equations, calibrated hardware benchmarks (Ubuntu 24.04.5 LTS, i9-10850K, 32GB RAM, 400GB NVMe),
-and 19 annotated scientific references.
+and 21 annotated scientific references.
 """
 
 from __future__ import annotations
@@ -161,10 +161,10 @@ def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos
         "RefText",
         parent=styles["BodyText"],
         fontName="Helvetica",
-        fontSize=7.2,
-        leading=9.0,
+        fontSize=6.6,
+        leading=8.3,
         textColor=DARK_TEXT,
-        spaceAfter=1.4,
+        spaceAfter=0.8,
         leftIndent=10,
         firstLineIndent=-10,
     )
@@ -338,7 +338,7 @@ def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos
     # =========================================================================
     # PÁGINA 2: ARQUITECTURA SECUENCIAL DE PASOS EN CDT
     # =========================================================================
-    story.append(Paragraph("3. Arquitectura de Flujo Secuencial por Pasos en CDT y Justificación Climatológica", h1_style))
+    story.append(Paragraph("3. Arquitectura de Flujo Secuencial por Pasos en CDT", h1_style))
     story.append(Paragraph(
         "La metodología de fusión en CDT se estructura en etapas analíticas secuenciales independientes que permiten aislar y evaluar rigurosamente el impacto de cada técnica en el modelado climático regional:",
         body_style
@@ -351,30 +351,26 @@ def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos
     th_arch_r = [
         Paragraph("Paso en CDT", th_sm),
         Paragraph("Acción en CDT", th_sm),
-        Paragraph("Opciones y Parámetros que se Varían", th_sm),
-        Paragraph("Justificación Física y Climatológica Regional", th_sm),
+        Paragraph("Opciones y Parámetros que se Varían (Detalle Exhaustivo)", th_sm),
     ]
     rows_arch_r = [
         [
             Paragraph("<b>Paso 1:<br/>Compute Bias Coefficients</b><br/><i>(Cálculo de Coefs. de Sesgo)</i>", td_sm_bold),
-            Paragraph("Modela estadísticamente las discrepancias espaciales y distribucionales entre satélite y estaciones.", td_sm),
-            Paragraph("• Método: Multiplicativo móvil (<code>mbvar</code>), Mensual (<code>mbmon</code>), Quantile Mapping (<code>qmdist</code>), QM empírico (<code>qmecdf</code>).<br/>• Distribuciones: Bernoulli-Gamma, Bernoulli-Weibull, Bernoulli-LogNormal.<br/>• Interpolación: IDW (<i>p</i>=2), Kriging Ordinario (<code>okr</code>), Kriging por bloques (<code>use_block</code>).<br/>• Umbral de lluvia: <i>wet</i> = 1.0 mm.", td_sm),
-            Paragraph("La lluvia tropical presenta alta variabilidad por convección de mesoescala y forzamiento orográfico. CHIRPS sobreestima lloviznas y subestima tormentas severas. Modelar ocurrencia (Bernoulli) y magnitud (Gamma/Weibull) con Kriging por bloques remueve el sesgo sin crear ojos de buey (<i>bulls-eyes</i>).", td_sm),
+            Paragraph("Modela estadísticamente las discrepancias espaciales y distribucionales entre satélite y observaciones de estaciones de superficie.", td_sm),
+            Paragraph("• <b>Métodos de Estimación de Sesgo:</b> Multiplicativo móvil (<code>mbvar</code>, ventana temporal móvil de &plusmn;5 días), Mensual climatológico fijo (<code>mbmon</code>), Quantile Mapping paramétrico (<code>qmdist</code> con función analítica teórica), Quantile Mapping empírico no paramétrico (<code>qmecdf</code> directamente sobre la curva observada).<br/>• <b>Distribuciones de Probabilidad:</b> Bernoulli-Gamma, Bernoulli-Weibull, Bernoulli-LogNormal (modelado mixto: probabilidad de ocurrencia binaria <i>wet &ge; 1.0 mm</i> y distribución de intensidad continua).<br/>• <b>Interpolación Espacial de Coeficientes:</b> IDW (<i>p</i>=2.0, radios de búsqueda 0.9° a 1.5°, nmin=3–4, nmax=8–12), Kriging Ordinario (<code>okr</code>), Kriging por Bloques (<code>use_block=TRUE</code> con integración numérica sobre celda de 5.5 km y semivariogramas esférico, exponencial y gaussiano).<br/>• <b>Opciones Avanzadas de CDT:</b> Función de agregación del sesgo (<code>mulBiasFunction: 'mean'</code> aritmética vs <code>'median'</code> robusta para neutralizar tormentas convectivas severas aisladas); contención marina costera mediante malla gruesa (<code>addCoarseGrid: true</code>, <code>resCoarseGrid: 1.0°</code>) que atenúa residuos a cero en el océano.", td_sm),
         ],
         [
             Paragraph("<b>Paso 2:<br/>Apply Bias Correction</b><br/><i>(Aplicación del Ajuste de Sesgo)</i>", td_sm_bold),
-            Paragraph("Transforma las 10,958 grillas diarias de satélite aplicando los coeficientes calculados.", td_sm),
-            Paragraph("• Rango temporal: 1991–2020 continuo.<br/>• Archivo <code>.rds</code> de parámetros del Paso 1.<br/>• Formato de salida: <code>rr_adj_%s%s%s.nc</code>.", td_sm),
-            Paragraph("Garantiza que las propiedades distribucionales y extremos de la serie satelital completa queden calibrados contra estaciones de superficie antes de intentar cualquier asimilación puntual, preservando la textura sinóptica.", td_sm),
+            Paragraph("Transforma y calibra las 10,958 grillas diarias crudas de satélite aplicando los coeficientes calculados en el Paso 1.", td_sm),
+            Paragraph("• <b>Rango Temporal de Procesamiento:</b> Serie histórica continua 1991–2020 (10,958 días / 30 años climatológicos estándar).<br/>• <b>Archivos de Entrada:</b> Parámetros estructurados en archivo binario <code>.rds</code> generado en el Paso 1 (coeficientes espaciales o funciones acumuladas de cuantiles).<br/>• <b>Grillas Satelitales Objetivo:</b> CHIRPS v2.0 diario en formato NetCDF a resolución nativa de 0.05° (~5.5 km) con patrón <code>chirps-v2.0.%s.%s.%s.nc</code>.<br/>• <b>Optimización Algorítmica y Paralelismo:</b> Despacho multihilo en clúster local (<code>parsL <- doparallel.cond(...)</code>); evaluación cuantil acelerada mediante interpolación vectorial sobre <code>stats::knots()</code> en <code>qmecdf</code> (reducción de latencia de 30 h a 12 min).<br/>• <b>Formato de Salida:</b> Grillas diarias NetCDF ajustadas <code>rr_adj_%s%s%s.nc</code>.", td_sm),
         ],
         [
             Paragraph("<b>Paso 3:<br/>Merging Data</b><br/><i>(Fusión Espacial de Datos)</i>", td_sm_bold),
-            Paragraph("Combina las grillas satelitales corregidas (<i>first guess</i>) con las observaciones de estaciones.", td_sm),
-            Paragraph("• Método de fusión: SBA, Cressman (CSc), Barnes (BSc), Regression Kriging (RK).<br/>• Pasadas multiescala (3 pasadas: 1.0°, 0.75°, 0.5°).<br/>• Máscara Lluvia/No-Lluvia (RnoR: <code>use</code>, <code>wet</code>, <code>smooth</code>).<br/>• Covariables: DEM, pendiente, orientación (<i>aspect</i>), lat/lon.<br/>• Recorte espacial con buffer de 10 km.", td_sm),
-            Paragraph("En zonas semiáridas (Corredor Seco y Azua), propagar lluvia a celdas secas genera lluvia irreal; la máscara RnoR preserva las rachas secas de la Canícula. Las pasadas multiescala corrigen sesgos regionales y ajustan la señal convectiva local en puntos de estación.", td_sm),
+            Paragraph("Combina las grillas satelitales corregidas (<i>first guess</i>) con las observaciones de estaciones meteorológicas de superficie.", td_sm),
+            Paragraph("• <b>Métodos Geoestadísticos de Fusión:</b> Spatio-Temporal Bias Adjustment (<b>SBA</b>), Regression Kriging (<b>RK</b>), Barnes Objective Analysis (<b>BSc</b>), Cressman Scheme (<b>CSc</b>).<br/>• <b>Esquemas Multi-Pasada:</b> 3 o 4 pasadas con radios decrecientes (ej. regional 1.0°, 0.75°, 0.50°; local anti-cruce 1.0°, 0.67°, 0.33°; o Cressman 1.0°, 0.75°, 0.50°, 0.25°).<br/>• <b>Máscara Lluvia/No-Lluvia (RnoR):</b> Clasificación probabilística binomial (<code>logit</code>, <i>wet</i> = 1.0 mm); corte binario rígido (<code>CutOff=3</code> a 0.5 mm) vs <b>transición continua suave</b> (<code>RnoRCutOff = 2</code> entre 0.1 y 1.0 mm); suavizado espacial gaussiano (<code>smooth: true</code>).<br/>• <b>Interpolación de Residuales:</b> Modified Shepard con control de derivadas locales y ponderación direccional; Spheremap en esfera terrestre real (distancia de gran círculo); IDW (<i>p</i>=2.0); OKR por bloques; Vecino 3D (NN-3D) acoplado a elevación.<br/>• <b>Covariables Físicas y Recorte:</b> DEM SRTM, pendiente (<i>slope</i>), orientación (<i>aspect</i>) y lat/lon en RK; recorte cartográfico con shapefile y buffer de 10 km.", td_sm),
         ],
     ]
-    t_arch_r = Table([th_arch_r] + rows_arch_r, colWidths=[1.30 * inch, 1.65 * inch, 2.15 * inch, 2.40 * inch])
+    t_arch_r = Table([th_arch_r] + rows_arch_r, colWidths=[1.40 * inch, 2.10 * inch, 4.00 * inch])
     t_arch_r.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), PRIMARY),
         ("ALIGN", (0, 0), (-1, 0), "CENTER"),
@@ -387,7 +383,7 @@ def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos
         ("RIGHTPADDING", (0, 0), (-1, -1), 3.5),
     ]))
     story.append(t_arch_r)
-    story.append(Spacer(1, 4))
+    story.append(PageBreak())
 
     story.append(Paragraph("3.2. Cadena de Procesamiento para Temperatura (5 Etapas en CDT)", h2_style))
     story.append(Paragraph("<font size=7.5 color='#475569'><i>Ruta en CDT GUI: Gridding > Merging Climate Data > Temperatures Data</i></font>", body_style))
@@ -395,42 +391,36 @@ def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos
     th_arch_t = [
         Paragraph("Paso en CDT", th_xs),
         Paragraph("Acción en CDT", th_xs),
-        Paragraph("Opciones y Parámetros que se Varían", th_xs),
-        Paragraph("Justificación Física y Climatológica Regional", th_xs),
+        Paragraph("Opciones y Parámetros que se Varían (Detalle Exhaustivo)", th_xs),
     ]
     rows_arch_t = [
         [
             Paragraph("<b>Paso 1:<br/>Compute Downscaling Coeffs</b><br/><i>(Coefs. Desescalado)</i>", td_xs_bold),
-            Paragraph("Modela el gradiente térmico vertical (<i>lapse rate</i>) estación–elevación.", td_xs),
-            Paragraph("• Paso temporal: diario, mensual o estacional.<br/>• DEM de alta resolución (SRTM 90m / GEBCO).<br/>• Formato de coeficientes: archivo <code>.rds</code>.", td_xs),
-            Paragraph("La temperatura decrece con la altitud (&part;<i>T</i>/&part;<i>z</i> &approx; -5.5 a -6.5 °C/km). En Centroamérica y RD, la compleja orografía genera fuertes contrastes térmicos en distancias de pocos kilómetros.", td_xs),
+            Paragraph("Modela empíricamente el gradiente térmico vertical ambiental (<i>lapse rate</i>, &part;<i>T</i>/&part;<i>z</i>) entre estaciones y elevación.", td_xs),
+            Paragraph("• <b>Paso Temporal:</b> Coeficientes diarios móviles (&plusmn;5 días), mensuales fijos o estacionales.<br/>• <b>Topografía Base:</b> DEM SRTM de 90 m remuestreado a 0.05° o resolución nativa de 0.01° (~1.1 km).<br/>• <b>Modelado Estadístico:</b> Regresión lineal univariada estación–altitud o GLM multivariado con pendiente (<i>slope</i>) y orientación de ladera (<i>aspect</i>).<br/>• <b>Salida:</b> Archivo binario <code>.rds</code> estructurado con la matriz de coeficientes altimétricos por periodo.", td_xs),
         ],
         [
-            Paragraph("<b>Paso 2:<br/>Downscaling Data</b><br/><i>(Desescalado Grillas)</i>", td_xs_bold),
-            Paragraph("Proyecta las grillas térmicas sobre la malla topográfica fina del DEM.", td_xs),
-            Paragraph("• Interpolación: Bilineal (<code>blin</code>), IDW, Kriging Ordinario (<code>okr</code>).<br/>• Grilla objetivo: Resolución 0.05° (~5.5 km).<br/>• Formato de salida: <code>tmax_down_%s%s%s.nc</code>.", td_xs),
-            Paragraph("Corrige la distorsión de altura de la grilla satelital/reanálisis. Alta montaña (Cordillera Central en RD, Talamanca en CR/PA, Sierra Madre en GT/HN) y valles quedan con su cota real.", td_xs),
+            Paragraph("<b>Paso 2:<br/>Downscaling Data</b><br/><i>(Desescalado Espacial Grillas)</i>", td_xs_bold),
+            Paragraph("Proyecta y remuestrea las grillas térmicas satelitales/reanálisis sobre la malla topográfica fina del DEM.", td_xs),
+            Paragraph("• <b>Métodos de Interpolación Espacial:</b> Bilineal (<code>blin</code>), IDW local o Kriging Ordinario (<code>okr</code>).<br/>• <b>Resolución y Malla Objetivo:</b> Grilla regular a 0.05° (~5.5 km) o 0.01° (~1.1 km) sincronizada con el DEM regional.<br/>• <b>Rango Temporal:</b> Procesamiento continuo de los 10,958 días (1991–2020).<br/>• <b>Salida Estandarizada:</b> NetCDF desescalados topográficamente <code>tmax_down_%s%s%s.nc</code> / <code>tmin_down_%s%s%s.nc</code>.", td_xs),
         ],
         [
             Paragraph("<b>Paso 3:<br/>Compute Bias Coefficients</b><br/><i>(Cálculo Coefs. Sesgo)</i>", td_xs_bold),
-            Paragraph("Calcula el sesgo de las temperaturas desescaladas contra estaciones.", td_xs),
-            Paragraph("• Método: Multiplicativo (<code>mbvar</code>), QM paramétrico (<code>qmdist</code>: Normal, Skew-Normal, Gumbel, Lognormal), QM empírico (<code>qmecdf</code>).<br/>• Interpolación: IDW vs OKR (Sph, Exp, Gau, Pen). Radio 3.5°.", td_xs),
-            Paragraph("La temperatura sigue distribuciones casi continuas, pero Tmax presenta asimetría positiva en olas de calor (Skew-Normal o Gumbel) y Tmin presenta colas frías por heladas en zonas altas.", td_xs),
+            Paragraph("Calcula las discrepancias espaciales y distribucionales entre las temperaturas desescaladas y las estaciones observadas.", td_xs),
+            Paragraph("• <b>Métodos de Sesgo Térmico:</b> Multiplicativo móvil (<code>mbvar</code> &plusmn;5 días), Sesgo mensual fijo (<code>mbmon</code>), Quantile Mapping paramétrico (<code>qmdist</code>), QM empírico no paramétrico (<code>qmecdf</code>).<br/>• <b>Distribuciones Teóricas Continuas:</b> Normal gaussiana (<code>norm</code>), Asimétrica Skew-Normal (<code>snorm</code> para descensos bruscos por frentes fríos <i>Nortes</i> en Tmin u olas de calor en Tmax), Valores extremos Gumbel (<code>gumbel</code> para colas de eventos extremos >P95 en Tmax o heladas <P05 en Tmin), Log-Normal.<br/>• <b>Interpolación Espacial de Coeficientes:</b> IDW (<i>p</i>=2.0, radio sinóptico de 3.5°, nmin=4, nmax=12), OKR con variogramas Sph, Exp, Gau y Pen, Ponderación tridimensional NN-3D considerando diferencia altimétrica &Delta;<i>z</i>.", td_xs),
         ],
         [
             Paragraph("<b>Paso 4:<br/>Apply Bias Correction</b><br/><i>(Aplicación Ajuste Sesgo)</i>", td_xs_bold),
-            Paragraph("Aplica los coeficientes a las 10,958 grillas diarias desescaladas.", td_xs),
-            Paragraph("• Rango temporal: 1991–2020 continuo.<br/>• Archivo <code>.rds</code> de coeficientes del Paso 3.<br/>• Formato: <code>tmax_adj_%s%s%s.nc</code> / <code>tmin_adj_%s%s%s.nc</code>.", td_xs),
-            Paragraph("Remueve derivas estacionales y sesgos térmicos regionales previos a la interpolación de residuales con las estaciones de superficie.", td_xs),
+            Paragraph("Aplica las funciones de ajuste calculadas en el Paso 3 a las 10,958 grillas diarias desescaladas.", td_xs),
+            Paragraph("• <b>Rango Temporal:</b> Serie 1991–2020 continua.<br/>• <b>Archivo de Entrada:</b> Parámetros estructurados y curvas CDF en archivo <code>.rds</code> del Paso 3.<br/>• <b>Transformación:</b> Corrección multiplicativa proporcional o traslación no lineal cuantil a cuantil celda por celda.<br/>• <b>Salida:</b> Grillas NetCDF calibradas <code>tmax_adj_%s%s%s.nc</code> / <code>tmin_adj_%s%s%s.nc</code>.", td_xs),
         ],
         [
-            Paragraph("<b>Paso 5:<br/>Merging Data</b><br/><i>(Fusión Espacial)</i>", td_xs_bold),
-            Paragraph("Fusión final entre grillas desescaladas/ajustadas y estaciones.", td_xs),
-            Paragraph("• Métodos: Regression Kriging (RK) vs SBA.<br/>• Covariables físicas: DEM (altitud), Pendiente, Orientación (<i>aspect</i>), Coordenadas.<br/>• Pasadas multiescala: 1.0°, 0.75°, 0.5°.<br/>• Interp. residuales: IDW, OKR, Shepard, NN-3D, Barnes.", td_xs),
-            Paragraph("Para Tmax, pendiente y orientación modulan la radiación solar directa. Para Tmin, el drenaje de aire frío e inversión térmica nocturna en valles se capturan físicamente mediante elevación relativa en RK.", td_xs),
+            Paragraph("<b>Paso 5:<br/>Merging Data</b><br/><i>(Fusión Espacial de Residuales)</i>", td_xs_bold),
+            Paragraph("Fusión final entre las grillas desescaladas/ajustadas (<i>first guess</i>) y las observaciones puntuales de estaciones.", td_xs),
+            Paragraph("• <b>Métodos de Fusión:</b> Regression Kriging (<b>RK</b>) multivariado vs SBA.<br/>• <b>Covariables Físicas Acopladas:</b> DEM (elevación sobre el nivel del mar), pendiente del terreno, orientación de ladera (<i>aspect</i>), coordenadas lat/lon.<br/>• <b>Esquemas Multi-Pasada:</b> 3 pasadas decrecientes (1.0°, 0.75°, 0.50°) o Cressman 4 pasadas (1.0°, 0.75°, 0.50°, 0.25°).<br/>• <b>Interpolación de Residuales Térmicos:</b> IDW (3.5°), OKR por bloques, <b>NN-3D con restricción vertical estricta</b> (&Delta;<i>z</i> con el DEM para resolver inversiones térmicas y drenaje de aire frío nocturno), Barnes (<b>BSc</b>) gaussiano continuo para amortiguamiento marino costero.<br/>• <b>Salida Final:</b> NetCDF diarios fusionados y ensamblados en archivo 3D multitemporal conforme a CF-1.8.", td_xs),
         ],
     ]
-    t_arch_t = Table([th_arch_t] + rows_arch_t, colWidths=[1.30 * inch, 1.65 * inch, 2.15 * inch, 2.40 * inch])
+    t_arch_t = Table([th_arch_t] + rows_arch_t, colWidths=[1.40 * inch, 2.10 * inch, 4.00 * inch])
     t_arch_t.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), SECONDARY),
         ("ALIGN", (0, 0), (-1, 0), "CENTER"),
@@ -1019,7 +1009,7 @@ def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos
     # PÁGINA 8: REFERENCIAS BIBLIOGRÁFICAS CIENTÍFICAS VERIFICADAS
     # =========================================================================
     story.append(Paragraph("9. Referencias Bibliográficas Científicas Verificadas", h1_style))
-    story.append(Paragraph("Las siguientes 19 publicaciones indexadas sustentan física, estadística y metodológicamente los experimentos propuestos:", body_style))
+    story.append(Paragraph("Las siguientes 21 publicaciones indexadas sustentan física, estadística y metodológicamente los experimentos propuestos:", body_style))
     story.append(Spacer(1, 1))
 
     references_data = [
@@ -1062,6 +1052,14 @@ def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos
         ("Gupta, H. V., Kling, H., Yilmaz, K. K., & Martinez, G. F. (2009).",
          "<i>Decomposition of the mean squared error and NSE performance measures: Implications for improving hydrological modelling.</i> J. Hydrol., 377(1-2), 80–91. DOI: <a href='https://doi.org/10.1016/j.jhydrol.2009.08.003'>10.1016/j.jhydrol.2009.08.003</a>",
          "<b>Aporte:</b> Descomposición teórica del Kling-Gupta Efficiency (KGE) evaluando correlación, sesgo y dispersión."),
+        
+        ("Hastenrath, S. (1967).",
+         "<i>Rainfall distribution and regime in Central America.</i> Arch. Meteorol. Geophys. Bioklimatol. Ser. B, 15(3), 201–241. DOI: <a href='https://doi.org/10.1007/BF02243854'>10.1007/BF02243854</a>",
+         "<b>Aporte:</b> Estudio observacional pionero que documenta y cartografía la distribución de la lluvia, el contraste orográfico Pacífico-Caribe y la estructura estacional de la Canícula (<i>Veranillo</i>)."),
+        
+        ("Hastenrath, S. (1991).",
+         "<i>Climate Dynamics of the Tropics.</i> Atmospheric and Oceanographic Sciences Library, Vol. 8. Springer, Dordrecht. DOI: <a href='https://doi.org/10.1007/978-94-011-3156-8'>10.1007/978-94-011-3156-8</a>",
+         "<b>Aporte:</b> Tratado seminal sobre la circulación general tropical, la Zona de Convergencia Intertropical (ZCIT), los vientos Alisios y los patrones de forzamiento macroclimático en Centroamérica y el Caribe."),
         
         ("Hengl, T., Heuvelink, G. B., & Rossiter, D. G. (2007).",
          "<i>About regression-kriging: From equations to case studies.</i> Comput. Geosci., 33(10), 1301–1315. DOI: <a href='https://doi.org/10.1016/j.cageo.2007.05.001'>10.1016/j.cageo.2007.05.001</a>",
