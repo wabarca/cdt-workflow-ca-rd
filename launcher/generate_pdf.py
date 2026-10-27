@@ -11,7 +11,11 @@ and 21 annotated scientific references.
 
 from __future__ import annotations
 
+import io
 from pathlib import Path
+
+import matplotlib.pyplot as plt
+from PIL import Image as PILImage
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
@@ -19,6 +23,7 @@ from reportlab.lib.units import inch
 from reportlab.pdfgen import canvas
 from reportlab.platypus import (
     HRFlowable,
+    Image as RLImage,
     PageBreak,
     Paragraph,
     SimpleDocTemplate,
@@ -26,6 +31,39 @@ from reportlab.platypus import (
     Table,
     TableStyle,
 )
+
+
+def render_latex_math(
+    latex_lines: list[str] | str,
+    max_w_pt: float = 168.0,
+    max_h_pt: float = 23.0,
+    fontsize: float = 9.5,
+    dpi: int = 300,
+) -> RLImage:
+    """Renders LaTeX math equations using matplotlib mathtext into a high-DPI transparent PNG flowable."""
+    fig = plt.figure(figsize=(0.1, 0.1), dpi=dpi)
+    text_str = "\n".join(latex_lines) if isinstance(latex_lines, (list, tuple)) else latex_lines
+    fig.text(0, 0, text_str, fontsize=fontsize, color="#0F172A")
+    fig.patch.set_alpha(0.0)
+    buf = io.BytesIO()
+    plt.savefig(buf, format="png", bbox_inches="tight", pad_inches=0.015, transparent=True)
+    plt.close(fig)
+    buf.seek(0)
+    pil_img = PILImage.open(buf)
+    w_px, h_px = pil_img.size
+    w_pt = (w_px / dpi) * 72.0
+    h_pt = (h_px / dpi) * 72.0
+
+    scale = 1.0
+    if w_pt > max_w_pt:
+        scale = min(scale, max_w_pt / w_pt)
+    if h_pt > max_h_pt:
+        scale = min(scale, max_h_pt / h_pt)
+
+    final_w = w_pt * scale
+    final_h = h_pt * scale
+    buf.seek(0)
+    return RLImage(buf, width=final_w, height=final_h)
 
 
 class NumberedCanvas(canvas.Canvas):
@@ -999,53 +1037,57 @@ def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos
     story.append(Paragraph("8.1. Métricas Continuas (Magnitud, Dispersión y Distribución del Error)", h2_style))
     th_val_c = [
         Paragraph("Métrica", th_val),
-        Paragraph("Ecuación Matemática", th_val),
+        Paragraph("Ecuación Matemática (LaTeX)", th_val),
         Paragraph("Qué Cuantifica y Rango Óptimo", th_val),
         Paragraph("Interpretación Física y Climatológica Regional", th_val),
     ]
     rows_val_c = [
         [
             Paragraph("<b>KGE</b><br/><i>Kling-Gupta Efficiency</i><br/>(Gupta et al., 2009)", td_val_bold),
-            Paragraph("<b>KGE</b> = 1 &minus; &radic;[(<i>r</i> &minus; 1)<sup>2</sup> + (&beta; &minus; 1)<sup>2</sup> + (&gamma; &minus; 1)<sup>2</sup>]<br/>&bull; &beta; = &mu;<sub>S</sub> / &mu;<sub>O</sub> &nbsp;(sesgo medio)<br/>&bull; &gamma; = (&sigma;<sub>S</sub>/&mu;<sub>S</sub>) / (&sigma;<sub>O</sub>/&mu;<sub>O</sub>) &nbsp;(variabilidad)", td_val),
+            render_latex_math([r'$KGE = 1 - \sqrt{(r - 1)^2 + (\beta - 1)^2 + (\gamma - 1)^2}$',
+                               r'$\beta = \frac{\mu_S}{\mu_O}, \quad \gamma = \frac{\sigma_S/\mu_S}{\sigma_O/\mu_O}$'], max_w_pt=168.0, max_h_pt=24.0),
             Paragraph("Descompone el error en 3 ejes ortogonales: dinámica temporal (<i>r</i>), sesgo de volumen (&beta;) y dispersión relativa (&gamma;).<br/><b>Rango:</b> (&minus;&infin;, 1]. <b>Óptimo: 1.0</b>.<br/><i>KGE &gt; 0.3 indica habilidad predictiva real sobre la media.</i>", td_val),
             Paragraph("<b>Métrica rectora multiobjetivo:</b> Equilibra dinámica sinóptica, conservación de masa y dispersión. Evita que modelos que alisan la varianza obtengan puntajes artificialmente altos.", td_val),
         ],
         [
             Paragraph("<b>r</b><br/><i>Correlación de Pearson</i>", td_val_bold),
-            Paragraph("<i>r</i> = &Sigma;[(<i>S<sub>i</sub></i>&minus;<i>S̄</i>)(<i>O<sub>i</sub></i>&minus;<i>Ō</i>)] / [&radic;&Sigma;(<i>S<sub>i</sub></i>&minus;<i>S̄</i>)<sup>2</sup> &radic;&Sigma;(<i>O<sub>i</sub></i>&minus;<i>Ō</i>)<sup>2</sup>]", td_val),
+            render_latex_math([r'$r = \frac{\mathrm{Cov}(S, O)}{\sigma_S \cdot \sigma_O}$',
+                               r'$\mathrm{Cov}(S,O) = \frac{1}{N}\sum (S_i - \bar{S})(O_i - \bar{O})$'], max_w_pt=168.0, max_h_pt=24.0),
             Paragraph("Covarianza lineal y sincronía temporal de fases de la señal.<br/><b>Rango:</b> [&minus;1, 1]. <b>Óptimo: 1.0</b>.", td_val),
             Paragraph("<b>Sincronía de eventos:</b> Mide la fidelidad para captar la llegada y ciclo estacional de ondas tropicales, frentes fríos (<i>Nortes</i>) y giros ciclónicos, independiente del sesgo de escala.", td_val),
         ],
         [
             Paragraph("<b>RMSE</b><br/><i>Root Mean Square Error</i>", td_val_bold),
-            Paragraph("<b>RMSE</b> = &radic;[&Sigma;(<i>S<sub>i</sub></i> &minus; <i>O<sub>i</sub></i>)<sup>2</sup> / <i>N</i>]", td_val),
+            render_latex_math(r'$RMSE = \sqrt{\frac{1}{N} \sum_{i=1}^N (S_i - O_i)^2}$', max_w_pt=168.0, max_h_pt=19.0),
             Paragraph("Magnitud cuadrática media del error en unidades físicas (mm o &deg;C).<br/><b>Rango:</b> [0, &infin;). <b>Óptimo: 0.0</b>.", td_val),
             Paragraph("<b>Sensibilidad a extremos:</b> Penaliza desproporcionadamente errores grandes; detecta fallas severas en núcleos convectivos intensos (&gt;100 mm) u olas de calor (&gt;38 &deg;C).", td_val),
         ],
         [
             Paragraph("<b>MAE</b><br/><i>Mean Absolute Error</i>", td_val_bold),
-            Paragraph("<b>MAE</b> = &Sigma;|<i>S<sub>i</sub></i> &minus; <i>O<sub>i</sub></i>| / <i>N</i>", td_val),
+            render_latex_math(r'$MAE = \frac{1}{N} \sum_{i=1}^N |S_i - O_i|$', max_w_pt=168.0, max_h_pt=19.0),
             Paragraph("Magnitud lineal promedio del error absoluto en unidades físicas (mm o &deg;C).<br/><b>Rango:</b> [0, &infin;). <b>Óptimo: 0.0</b>.", td_val),
             Paragraph("<b>Magnitud típica diaria:</b> Discrepancia esperada en un día cualquiera; ofrece una lectura no sesgada por valores atípicos (<i>outliers</i>) aislados.", td_val),
         ],
         [
             Paragraph("<b>PBIAS</b><br/><i>Percent Bias</i>", td_val_bold),
-            Paragraph("<b>PBIAS</b> = [&Sigma;(<i>S<sub>i</sub></i> &minus; <i>O<sub>i</sub></i>) / &Sigma;<i>O<sub>i</sub></i>] &times; 100%", td_val),
+            render_latex_math(r'$PBIAS = \left[ \frac{\sum (S_i - O_i)}{\sum O_i} \right] \times 100\%$', max_w_pt=168.0, max_h_pt=19.0),
             Paragraph("Desviación porcentual neta acumulada de volumen.<br/><b>Rango:</b> (&minus;&infin;, &infin;)%. <b>Óptimo: 0.0%</b>.", td_val),
             Paragraph("<b>Conservación de balance:</b> Cuantifica el déficit (&minus;) o superávit (+) acumulado total; esencial en balances hídricos para no falsear la disponibilidad de agua en cuencas.", td_val),
         ],
     ]
-    t_val_c = Table([th_val_c] + rows_val_c, colWidths=[0.95 * inch, 1.90 * inch, 2.30 * inch, 2.35 * inch])
+    t_val_c = Table([th_val_c] + rows_val_c, colWidths=[0.85 * inch, 2.40 * inch, 2.10 * inch, 2.15 * inch])
     t_val_c.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), SECONDARY),
         ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+        ("ALIGN", (1, 1), (1, -1), "CENTER"),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("VALIGN", (1, 1), (1, -1), "MIDDLE"),
         ("GRID", (0, 0), (-1, -1), 0.5, BORDER_COLOR),
         ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_BG]),
-        ("TOPPADDING", (0, 0), (-1, -1), 1.3),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 1.3),
-        ("LEFTPADDING", (0, 0), (-1, -1), 3.0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 3.0),
+        ("TOPPADDING", (0, 0), (-1, -1), 1.1),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 1.1),
+        ("LEFTPADDING", (0, 0), (-1, -1), 2.8),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 2.8),
     ]))
     story.append(t_val_c)
     story.append(Spacer(1, 2))
@@ -1057,53 +1099,56 @@ def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos
     ))
     th_val_k = [
         Paragraph("Métrica", th_val),
-        Paragraph("Ecuación Matemática", th_val),
+        Paragraph("Ecuación Matemática (LaTeX)", th_val),
         Paragraph("Qué Cuantifica y Rango Óptimo", th_val),
         Paragraph("Interpretación Física y Climatológica Regional", th_val),
     ]
     rows_val_k = [
         [
             Paragraph("<b>POD</b><br/><i>Probability of Detection</i>", td_val_bold),
-            Paragraph("<b>POD</b> = <i>a</i> / (<i>a</i> + <i>c</i>)", td_val),
+            render_latex_math(r'$POD = \frac{a}{a + c}$', max_w_pt=168.0, max_h_pt=18.0),
             Paragraph("Fracción de días lluviosos observados que fueron detectados por el modelo.<br/><b>Rango:</b> [0, 1]. <b>Óptimo: 1.0</b>.", td_val),
             Paragraph("<b>Sensibilidad de lluvia:</b> Mide la eficacia del satélite fusionado para captar precipitación real sin perder eventos agronómicamente significativos.", td_val),
         ],
         [
             Paragraph("<b>FAR</b><br/><i>False Alarm Ratio</i>", td_val_bold),
-            Paragraph("<b>FAR</b> = <i>b</i> / (<i>a</i> + <i>b</i>)", td_val),
+            render_latex_math(r'$FAR = \frac{b}{a + b}$', max_w_pt=168.0, max_h_pt=18.0),
             Paragraph("Fracción de lluvia simulada que resultó ser día seco en superficie.<br/><b>Rango:</b> [0, 1]. <b>Óptimo: 0.0</b>.", td_val),
             Paragraph("<b>Control de lloviznas espurias:</b> Cuantifica la persistencia del efecto <i>drizzle</i> y falsa lluvia por cirros fríos; clave para validar la máscara RnoR en la Canícula.", td_val),
         ],
         [
             Paragraph("<b>FBI</b><br/><i>Frequency Bias Index</i>", td_val_bold),
-            Paragraph("<b>FBI</b> = (<i>a</i> + <i>b</i>) / (<i>a</i> + <i>c</i>)", td_val),
+            render_latex_math(r'$FBI = \frac{a + b}{a + c}$', max_w_pt=168.0, max_h_pt=18.0),
             Paragraph("Razón entre días lluviosos simulados vs. observados.<br/><b>Rango:</b> [0, &infin;). <b>Óptimo: 1.0</b>.", td_val),
             Paragraph("<b>Sesgo de frecuencia:</b> FBI &gt; 1 denota tendencia crónica a simular días de lluvia en exceso; FBI &lt; 1 indica subestimación en la ocurrencia de eventos.", td_val),
         ],
         [
             Paragraph("<b>ETS</b><br/><i>Equitable Threat Score</i><br/>(Gilbert Skill Score)", td_val_bold),
-            Paragraph("<b>ETS</b> = (<i>a</i> &minus; <i>a<sub>r</sub></i>) / (<i>a</i> + <i>b</i> + <i>c</i> &minus; <i>a<sub>r</sub></i>)<br/>&bull; <i>a<sub>r</sub></i> = (<i>a</i>+<i>b</i>)(<i>a</i>+<i>c</i>) / <i>n</i>", td_val),
+            render_latex_math([r'$ETS = \frac{a - a_r}{a + b + c - a_r}$',
+                               r'$a_r = \frac{(a+b)(a+c)}{n}$'], max_w_pt=168.0, max_h_pt=24.0),
             Paragraph("Detección equitativa penalizando falsas alarmas y fallos, descontando aciertos fortuitos.<br/><b>Rango:</b> [&minus;1/3, 1]. <b>Óptimo: 1.0</b>.", td_val),
             Paragraph("<b>Destreza sobre el azar:</b> Excluye los aciertos que ocurrirían por mera probabilidad climatológica; ETS &gt; 0 certifica habilidad predictiva real de la fusión.", td_val),
         ],
         [
             Paragraph("<b>HSS</b><br/><i>Heidke Skill Score</i>", td_val_bold),
-            Paragraph("<b>HSS</b> = 2(<i>ad</i> &minus; <i>bc</i>) / [(<i>a</i>+<i>c</i>)(<i>c</i>+<i>d</i>) + (<i>a</i>+<i>b</i>)(<i>b</i>+<i>d</i>)]", td_val),
+            render_latex_math(r'$HSS = \frac{2(ad - bc)}{(a+c)(c+d) + (a+b)(b+d)}$', max_w_pt=168.0, max_h_pt=19.0),
             Paragraph("Exactitud de clasificación binaria (lluvia / no-lluvia) relativa al azar.<br/><b>Rango:</b> (&minus;&infin;, 1]. <b>Óptimo: 1.0</b>.", td_val),
             Paragraph("<b>Habilidad categórica global:</b> Evalúa conjuntamente el acierto en días secos (rachas sin lluvia en Corredor Seco) y días húmedos, validando la Canícula.", td_val),
         ],
     ]
-    t_val_k = Table([th_val_k] + rows_val_k, colWidths=[0.95 * inch, 1.90 * inch, 2.30 * inch, 2.35 * inch])
+    t_val_k = Table([th_val_k] + rows_val_k, colWidths=[0.85 * inch, 2.40 * inch, 2.10 * inch, 2.15 * inch])
     t_val_k.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), SECONDARY),
         ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+        ("ALIGN", (1, 1), (1, -1), "CENTER"),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("VALIGN", (1, 1), (1, -1), "MIDDLE"),
         ("GRID", (0, 0), (-1, -1), 0.5, BORDER_COLOR),
         ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_BG]),
-        ("TOPPADDING", (0, 0), (-1, -1), 1.3),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 1.3),
-        ("LEFTPADDING", (0, 0), (-1, -1), 3.0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 3.0),
+        ("TOPPADDING", (0, 0), (-1, -1), 1.1),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 1.1),
+        ("LEFTPADDING", (0, 0), (-1, -1), 2.8),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 2.8),
     ]))
     story.append(t_val_k)
     story.append(Spacer(1, 2))
