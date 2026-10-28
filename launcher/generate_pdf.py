@@ -1037,7 +1037,7 @@ def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos
     story.append(Paragraph("8.1. Métricas Continuas (Magnitud, Dispersión y Distribución del Error)", h2_style))
     th_val_c = [
         Paragraph("Métrica", th_val),
-        Paragraph("Ecuación Matemática (LaTeX)", th_val),
+        Paragraph("Ecuación Matemática", th_val),
         Paragraph("Qué Cuantifica y Rango Óptimo", th_val),
         Paragraph("Interpretación Física y Climatológica Regional", th_val),
     ]
@@ -1099,7 +1099,7 @@ def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos
     ))
     th_val_k = [
         Paragraph("Métrica", th_val),
-        Paragraph("Ecuación Matemática (LaTeX)", th_val),
+        Paragraph("Ecuación Matemática", th_val),
         Paragraph("Qué Cuantifica y Rango Óptimo", th_val),
         Paragraph("Interpretación Física y Climatológica Regional", th_val),
     ]
