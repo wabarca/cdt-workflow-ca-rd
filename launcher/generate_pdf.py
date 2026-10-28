@@ -562,7 +562,7 @@ def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos
             Paragraph("<b>Gradientes Costeros e Insulares Suaves:</b> Función gaussiana continua de Barnes evita singularidades y ojos de buey (<i>bulls-eyes</i>) en islas y franjas litorales.", td_sm),
         ],
         [
-            Paragraph("<b>EXP-R07</b>", td_sm_bold),
+            Paragraph("<b>EXP-R07</b><br/><font color='#1E40AF'><b>[Guía Oficial CDT]</b></font>", td_sm_bold),
             Paragraph("• Método: <code>mbvar</code> (&plusmn;5 d)<br/>• Interp: IDW (<i>p</i>=2.0, radio 1.5°)", td_sm),
             Paragraph("• Ajuste sobre grillas satelitales<br/>• Salida: <code>rr_adj_*.nc</code>", td_sm),
             Paragraph("• Método: <b>Cressman Scheme (CSc)</b> (4 pasadas: 1.0°, 0.75°, 0.5°, 0.25°)<br/>• RnoR: Activada (Logit GLM)<br/>• Covariables: Ninguna", td_sm),
@@ -749,6 +749,11 @@ def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos
         style_lb_cmds.append(("BACKGROUND", (0, winner_row_idx), (-1, winner_row_idx), colors.HexColor("#D1FAE5"))) # Highlight row 1
     t_table_lb.setStyle(TableStyle(style_lb_cmds))
     story.append(t_table_lb)
+    story.append(Spacer(1, 3))
+    story.append(Paragraph(
+        "<b>Nota de Referencia (Guía Oficial CDT):</b> El experimento <b>EXP_R07_Cressman_Spherical</b> (Rank 7) reproduce con exactitud la parametrización estándar documentada en la Guía de Procedimientos de CDT (ajuste multiplicativo de sesgo diario variable <code>mbvar</code> e interpolación de Cressman en 4 pasadas anidadas: 1.0°, 0.75°, 0.50°, 0.25°). De igual forma, en las suites térmicas siguientes, <b>EXP-TX07</b> (Tmax) y <b>EXP-TN07</b> (Tmin) corresponden a la configuración estándar de dicha guía (Downscaling bilineal con DEM, sesgo mensual <code>mbmon</code> y fusión Cressman de 4 pasadas).",
+        ref_style,
+    ))
 
     story.append(PageBreak())
 
@@ -820,7 +825,7 @@ def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos
             Paragraph("<b>Llanuras y Brisas Costeras Diurnas:</b> Transición espacial continua sin saltos abruptos a lo largo de llanuras litorales del Caribe y planicies de RD.", td_xs),
         ],
         [
-            Paragraph("<b>EXP-TX07</b>", td_xs_bold),
+            Paragraph("<b>EXP-TX07</b><br/><font color='#1E40AF'><b>[Guía Oficial CDT]</b></font>", td_xs_bold),
             Paragraph("<b>[P1]</b> Regresión altimétrica con DEM.<br/><b>[P2]</b> Bilineal sobre DEM SRTM.", td_xs),
             Paragraph("• Método: <code>mbmon</code> (sesgo mensual fijo)<br/>• Interp: IDW (3.5°)", td_xs),
             Paragraph("• Ajuste por mes climatológico.<br/>Salida: <code>tmax_adj_*.nc</code>", td_xs),
@@ -920,7 +925,7 @@ def generate_experiments_pdf(output_path: Path | str = "docs/Matriz_Experimentos
             Paragraph("<b>Amortiguamiento Marino y Llanuras Homogéneas:</b> Representa el efecto regulador térmico del océano en costas caribeñas y valles aluviales amplios.", td_xs),
         ],
         [
-            Paragraph("<b>EXP-TN07</b>", td_xs_bold),
+            Paragraph("<b>EXP-TN07</b><br/><font color='#1E40AF'><b>[Guía Oficial CDT]</b></font>", td_xs_bold),
             Paragraph("<b>[P1]</b> Regresión altimétrica con DEM.<br/><b>[P2]</b> Bilineal sobre DEM SRTM.", td_xs),
             Paragraph("• Método: <code>mbmon</code> (sesgo mensual fijo)<br/>• Interp: IDW (3.5°)", td_xs),
             Paragraph("• Corrección mensual estacional.<br/>Salida: <code>tmin_adj_*.nc</code>", td_xs),

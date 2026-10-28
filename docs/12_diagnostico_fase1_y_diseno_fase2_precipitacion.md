@@ -20,7 +20,7 @@ La Fase 1 evaluó 10 familias metodológicas representativas del estado del arte
 | **EXP_R08** | **Modified Shepard (Relieve Complejo)** | `mbvar` (IDW) | **Shepard (3 pasadas)** | **0.375** | **0.479** | **12.89** | **0.665** | **0.304** | **0.315** | **0.464** |
 | **EXP_R09** | **Spheremap (Geometría Esférica)** | `mbvar` (IDW) | **Spheremap (3 pasadas)** | **0.358** | **0.458** | **13.59** | 0.648 | 0.296 | 0.313 | 0.463 |
 | **EXP_R01** | Control Nulo / IDW Plano (Baseline) | `mbvar` (IDW) | IDW 1 pasada (sin RnoR) | 0.335 | 0.486 | 12.22 | 0.666 | 0.338 | 0.274 | 0.418 |
-| **EXP_R07** | Cressman Celdas Aisladas | `mbvar` (IDW) | Cressman (4 pasadas) | 0.332 | 0.447 | 14.44 | 0.630 | 0.305 | 0.296 | 0.444 |
+| **EXP_R07** | Cressman Celdas Aisladas (Guía Oficial CDT) | `mbvar` (IDW) | Cressman (4 pasadas) | 0.332 | 0.447 | 14.44 | 0.630 | 0.305 | 0.296 | 0.444 |
 | **EXP_R06** | Barnes BSc Gradientes Costeros | `mbvar` (NN-3D) | Barnes BSc (3 pasadas) | 0.309 | 0.449 | 14.22 | 0.646 | 0.310 | 0.298 | 0.445 |
 | **EXP_R02** | SBA IDW con Filtro RnoR | `mbvar` (IDW) | IDW 3 pasadas (RnoR logit) | 0.263 | 0.466 | 12.39 | 0.613 | 0.315 | 0.272 | 0.411 |
 | **EXP_R05** | Regression Kriging Topográfico | `qmdist` (Weibull) | RK (DEM + Pendiente) | 0.215 | 0.417 | 13.28 | 0.522 | 0.367 | 0.201 | 0.322 |
@@ -117,7 +117,7 @@ La ejecución y evaluación cuantitativa de los 15 experimentos sobre las **29 e
 | **4** | **EXP_R11_Shepard_Median_Coarse** | Shepard Mediana Robusta + Malla Gruesa (1.5°) | 0.3753 | 0.4041 | 0.4787 | 12.77 | 5.76 | -6.70% | 0.6746 | 0.3037 | 0.3213 | 0.4697 | 0.4885 | Fase 2 |
 | **5** | **EXP_R14_Spheremap_Median** | Spheremap Gran Círculo + Mediana + Malla | 0.3621 | 0.3978 | 0.4552 | 13.56 | 6.06 | -4.43% | 0.6540 | 0.2971 | 0.3174 | 0.4660 | 0.4863 | Fase 2 |
 | **6** | **EXP_R09_Spheremap_Trans_Caribe** | Spheremap Gran Círculo Estándar (rad 1.5°) | 0.3584 | 0.3992 | 0.4584 | 13.59 | 6.09 | -4.59% | 0.6477 | 0.2959 | 0.3132 | 0.4633 | 0.4843 | Fase 1 |
-| **7** | **EXP_R07_Cressman_Spherical** | Cressman Celdas Aisladas (4 pasadas: 1.0° a 0.25°) | 0.3318 | 0.3669 | 0.4468 | 14.44 | 6.44 | +3.64% | 0.6299 | 0.3048 | 0.2958 | 0.4436 | 0.4724 | Guía CDT |
+| **7** | **EXP_R07_Cressman_Spherical** | Cressman Celdas Aisladas (Guía Oficial CDT: 4 pasadas 1.0° a 0.25°) | 0.3318 | 0.3669 | 0.4468 | 14.44 | 6.44 | +3.64% | 0.6299 | 0.3048 | 0.2958 | 0.4436 | 0.4724 | Guía CDT |
 | **8** | **EXP_R13_QM_Empirical_ECDF** | Quantile Mapping Empírico (qmecdf) + Shepard | 0.3196 | 0.3602 | 0.4655 | 13.08 | 6.03 | -5.57% | 0.6393 | 0.3034 | 0.2995 | 0.4458 | 0.4658 | Fase 2 |
 | **9** | **EXP_R06_Barnes_Gauss_Coastal** | Barnes BSc Gaussiano Costero (NN-3D) | 0.3087 | 0.3458 | 0.4490 | 14.22 | 6.40 | +4.08% | 0.6461 | 0.3098 | 0.2976 | 0.4450 | 0.4635 | Fase 1 |
 | **10** | **EXP_R01_SBA_IDW_Baseline** | Control Nulo / IDW Plano Monocapa (Sin RnoR) | 0.3353 | 0.3984 | 0.4861 | 12.22 | 5.62 | -13.53% | 0.6657 | 0.3379 | 0.2743 | 0.4178 | 0.4396 | Base |
