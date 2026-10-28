@@ -17,7 +17,14 @@ from launcher.metrics import (
     compute_categorical_metrics,
 )
 from launcher.cdt_bridge import CDTBridge, _to_r_val
-from launcher.benchmark_reporter import compute_leaderboard_ranking
+from launcher.benchmark_reporter import (
+    compute_leaderboard_ranking,
+    generate_taylor_diagram,
+    generate_radar_skill_chart,
+    generate_metrics_heatmap,
+    generate_roc_pod_vs_far,
+    generate_interactive_html_dashboard,
+)
 from launcher.generate_pdf import generate_experiments_pdf
 
 
@@ -194,6 +201,79 @@ class TestBenchmarkReporter(unittest.TestCase):
         self.assertEqual(len(df_ranked), 2)
         self.assertEqual(df_ranked.iloc[0]["experiment_id"], "EXP_R07_RK_DEM")
         self.assertTrue(df_ranked.iloc[0]["is_winner"])
+
+    def test_benchmark_figures_and_dashboard_generation(self):
+        with tempfile.TemporaryDirectory() as td:
+            temp_dir = Path(td)
+            figures_dir = temp_dir / "figures"
+            figures_rain = figures_dir / "rainfall"
+            figures_rain.mkdir(parents=True, exist_ok=True)
+
+            df_summaries = pd.DataFrame([
+                {
+                    "experiment_id": "EXP_R01_Control",
+                    "variable": "rainfall",
+                    "kge": 0.55,
+                    "r": 0.60,
+                    "rmse": 6.8,
+                    "mae": 3.4,
+                    "pbias": 8.5,
+                    "pod": 0.72,
+                    "far": 0.35,
+                    "ets": 0.42,
+                    "hss": 0.50,
+                },
+                {
+                    "experiment_id": "EXP_R15_QM_RK_Coviables",
+                    "variable": "rainfall",
+                    "kge": 0.88,
+                    "r": 0.91,
+                    "rmse": 3.8,
+                    "mae": 1.9,
+                    "pbias": 0.8,
+                    "pod": 0.94,
+                    "far": 0.11,
+                    "ets": 0.78,
+                    "hss": 0.82,
+                },
+            ])
+            df_ranked = compute_leaderboard_ranking(df_summaries)
+
+            taylor_png = figures_rain / "fig_taylor.png"
+            radar_png = figures_rain / "fig_radar.png"
+            heatmap_png = figures_rain / "fig_heatmap.png"
+            roc_png = figures_rain / "fig_roc.png"
+
+            generate_taylor_diagram(df_ranked, taylor_png, var_type="rainfall")
+            generate_radar_skill_chart(df_ranked, radar_png, var_type="rainfall")
+            generate_metrics_heatmap(df_ranked, heatmap_png, var_type="rainfall")
+            generate_roc_pod_vs_far(df_ranked, roc_png)
+
+            self.assertTrue(taylor_png.exists() and taylor_png.stat().st_size > 0)
+            self.assertTrue(radar_png.exists() and radar_png.stat().st_size > 0)
+            self.assertTrue(heatmap_png.exists() and heatmap_png.stat().st_size > 0)
+            self.assertTrue(roc_png.exists() and roc_png.stat().st_size > 0)
+
+            # Test HTML dashboard generation
+            fig_map = {
+                "rainfall": {
+                    "taylor": str(taylor_png),
+                    "radar": str(radar_png),
+                    "heatmap": str(heatmap_png),
+                    "roc": str(roc_png),
+                    "kge_boxplots": "",
+                    "strata": "",
+                }
+            }
+            html_out = temp_dir / "benchmark_report.html"
+            generate_interactive_html_dashboard(df_ranked, fig_map, html_out)
+            self.assertTrue(html_out.exists() and html_out.stat().st_size > 0)
+
+            # Check that tabs, lightbox modal, and experiment IDs are inside the rendered HTML
+            html_text = html_out.read_text(encoding="utf-8")
+            self.assertIn("tab-btn-rainfall", html_text)
+            self.assertIn("lightboxModal", html_text)
+            self.assertIn("EXP_R15_QM_RK_Coviables", html_text)
 from launcher.data_preprocessor import validate_project_inputs, check_data_readiness
 
 
