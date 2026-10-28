@@ -1042,6 +1042,18 @@ class ExperimentRunner:
             effective_adj_format = f"{var_prefix}_adj_%s%s%s.nc"
 
         # Step 5: Merging Data
+        # Auto-recuperacion en caso de que CDT haya generado archivos con prefijo tmax_mrg_ para tmin
+        if var_prefix == "tmin":
+            cand_tmax = list(out_dir.rglob("tmax_mrg_*.nc"))
+            if cand_tmax:
+                print(f"  --> [Auto-Fix] Detectados {len(cand_tmax)} archivos 'tmax_mrg_*.nc' en experimento TMIN. Renombrando a 'tmin_mrg_*.nc'...")
+                for f in cand_tmax:
+                    dest = f.parent / f.name.replace("tmax_mrg_", "tmin_mrg_")
+                    try:
+                        f.rename(dest)
+                    except Exception:
+                        pass
+
         consolidate_daily_files(out_dir, f"{var_prefix}_mrg_")
         mrg_complete, resume_mrg_date, mrg_count, mrg_total = check_daily_files_coverage(
             out_dir, f"{var_prefix}_mrg_", start_date, end_date
@@ -1076,6 +1088,7 @@ class ExperimentRunner:
             netcdf_dir=effective_adj_dir,
             netcdf_format=effective_adj_format,
             output_dir=out_dir,
+            output_format=f"{var_prefix}_mrg_%s%s%s.nc",
             var_id=eff_var_id,
             merge_method=m_method_clean,
             nrun=merging.get("nrun", 3 if isinstance(merging.get("passes"), list) and len(merging.get("passes")) > 1 else 1),
@@ -1096,6 +1109,16 @@ class ExperimentRunner:
             log_dir=log_dir,
         )
         total_time += t3
+        # Auto-recuperacion post-fusion por si CDT genero tmax_mrg_ para tmin
+        if var_prefix == "tmin":
+            cand_tmax = list(out_dir.rglob("tmax_mrg_*.nc"))
+            if cand_tmax:
+                for f in cand_tmax:
+                    dest = f.parent / f.name.replace("tmax_mrg_", "tmin_mrg_")
+                    try:
+                        f.rename(dest)
+                    except Exception:
+                        pass
         consolidate_daily_files(out_dir, f"{var_prefix}_mrg_")
 
         # Verificacion estricta de completitud post-fusion (100% de dias requeridos)
