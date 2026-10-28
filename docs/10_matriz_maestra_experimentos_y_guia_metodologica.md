@@ -293,6 +293,29 @@ Para precipitación, la ocurrencia o no de lluvia es una variable discreta funda
 
 ---
 
+### 6.4 Síntesis de Resultados, Frontera Asintótica de Destreza y Transición a Producción
+
+#### 6.4.1 Dominio de la Familia Shepard y Superioridad Física de `EXP_R15`
+1. **Supresión del Efecto Llovizna (*Drizzle Effect*) sin Bordes Espurios:** `EXP_R15_Shepard_RnoR_Smooth` combina la interpolación de Shepard Modificada con una máscara RnoR continua suave (`RnoRCutOff = 2`, transición sigmoidea entre 25% y 75% de probabilidad). En Centroamérica y el Caribe, la presencia de nubosidad cirriforme fría no precipitante induce al sensor infrarrojo satelital a reportar lloviznas irreales; la máscara continua elimina estas falsas alarmas sin crear discontinuidades artificiales en los gradientes de lluvia convectiva.
+2. **Aislamiento Transcordillera en `EXP_R12` (Rank 2):** Confinar el radio de búsqueda a $0.9^\circ$ (~99 km) evita la contaminación cruzada entre la vertiente lluviosa del Caribe (forzada por alisios) y la vertiente del Pacífico (con estación seca y Canícula pronunciada), alcanzando el menor sesgo volumétrico del benchmark ($\text{PBIAS} = -3.21\%$) y el menor ratio de falsas alarmas ($FAR = 0.2989$).
+3. **Control de Gradientes en Relieve Complejo en `EXP_R08` (Rank 3):** Al evaluar derivadas locales direccionales de primer orden, Shepard previene la formación de conos agudos u "ojos de buey" (*bull's eyes*) en estaciones aisladas en cumbres y cañones, superando al IDW plano y a los variogramas isotrópicos de Kriging.
+4. **Comportamiento Diferenciado de Covariables Topográficas:** Mientras que en temperatura el gradiente adiabático lineal estricto ($\approx -6.5\ ^\circ\text{C/km}$) convierte al DEM en el predictor por excelencia, en la lluvia tropical diaria la relación con la altitud es **no lineal y no monótona** (la máxima precipitación se concentra en laderas medias de barlovento y no en las cumbres más altas). Por ello, Regression Kriging con DEM colapsa en lluvia diaria ($KGE < 0.22$), pero triunfa en temperatura.
+
+#### 6.4.2 Diagnóstico de la Frontera Asintótica de Mejora (*Skill Plateau*)
+* **¿Podría ser mejorado el producto afinando hiperparámetros?** No se justifica técnicamente. Entre el Top 1 (`EXP_R15`, $KGE = 0.3791$, Skill = $0.5007$) y el Top 2 (`EXP_R12`, $KGE = 0.3716$, Skill = $0.4991$), la discrepancia en KGE es inferior a $0.007$, encontrándose las 4 variantes de Shepard en un margen estadístico indistinguible.
+* **Límite Físico de Soporte Espacial:** La resolución nativa de CHIRPS ($0.05^\circ \approx 5.5\text{ km}$) impone un límite físico infranqueable ante la convección tropical profunda submalla.
+* **Riesgo de Sobreajuste (*Overfitting*):** Modificar continuamente radios o umbrales en fracciones mínimas sobreajustaría el algoritmo a las 29 estaciones de prueba, destruyendo la generalización del modelo en cuencas no aforadas. La fase de diseño experimental ha concluido y se fija `EXP_R15` como modelo definitivo.
+
+#### 6.4.3 Transición al Producto Final Operativo (Full-Station Gridding)
+* La partición holdout (29 estaciones ciegas) fue imprescindible para rankear imparcialmente las 15 arquitecturas sin sesgo circular.
+* Una vez seleccionada la formulación ganadora `EXP_R15`, el producto climatológico oficial final (1991–2020) para transferencia operativa a los servicios meteorológicos e hidrológicos regionales debe generarse **asimilando el 100% de las estaciones disponibles** (entrenamiento + las 29 de validación), garantizando la mayor densidad observacional in situ posible en cada celda del territorio.
+
+#### 6.4.4 Validación Frente a la Literatura Científica y la Guía Oficial CDT
+* **Consistencia con Literatura Internacional:** Los resultados ($KGE = 0.3791$, $r = 0.4791$, $ETS = 0.3287$) se ubican en el rango superior reportado internacionalmente para CHIRPS diario en orografía tropical compleja: Funk et al. (2015, Nature Sci. Data; $r \approx 0.40 - 0.55$), Dinku et al. (2018, QJRMS; KGE diario $0.25 - 0.42$ usando CDT en África oriental), Mendez et al. (2020, Atmósfera; $r \approx 0.42 - 0.51$ en Costa Rica) y Zambrano-Bigiarini et al. (2017, HESS; KGE diario $0.30 - 0.45$).
+* **Superación Contundente de la Guía Oficial CDT:** El experimento `EXP_R07_Cressman_Spherical` (Rank 7) reproduce con exactitud la Guía Oficial de CDT (`mbvar` + Cressman 4 pasadas). La configuración ganadora `EXP_R15` la supera con $+0.0473$ en KGE, $-1.56\text{ mm/d}$ en RMSE y $+11.1\%$ en destreza categórica ETS.
+
+---
+
 ## 7. Rendimiento de Hardware y Modo de Uso del Lanzador en Python
 
 ### Evaluación y Calibración en Workstation Linux Ubuntu (18 Núcleos Paralelos, 32 GB RAM DDR4, SSD NVMe 400 GB):
