@@ -45,7 +45,9 @@ flowchart TD
 Combina una distribución discreta de Bernoulli para la probabilidad de ocurrencia de lluvia ($P(R > \text{wet})$) con una distribución continua para la intensidad de la precipitación:
 
 1. **Bernoulli-Gamma (`"berngamma"`):** Estándar climatológico para precipitación diaria.
+
    $$f(x) = (1 - p)\delta(x) + p \cdot \frac{1}{\Gamma(\alpha)\beta^\alpha} x^{\alpha - 1} e^{-x/\beta}, \quad x > 0$$
+
    donde $p$ es la probabilidad de día lluvioso, $\alpha$ es el parámetro de forma y $\beta$ de escala.
 2. **Bernoulli-Weibull (`"bernweibull"`):** Excelente comportamiento en eventos de precipitación severa y colas pesadas.
 3. **Bernoulli-Exponential (`"bernexp"`):** Modelo simplificado de 1 parámetro de intensidad.
@@ -58,7 +60,9 @@ Ajusta la curva acumulada empírica punto a punto sin parametrización analític
 
 ### Paso 3: Gridding > Bias Correction > Apply Bias Correction
 - **Fundamento Estadístico:** Mapea cada valor satelital diario $x$ a la probabilidad $P_{\text{sat}}(x)$ y halla el cuantil correspondiente en la distribución de las estaciones:
+
   $$x_{\text{corregido}} = F_{\text{estación}}^{-1}\left( F_{\text{sat}}(x) \right)$$
+
 - **Salida generada:** NetCDFs de CHIRPS corregidos por sesgo en volumen y distribución de frecuencias.
 
 ---

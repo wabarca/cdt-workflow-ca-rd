@@ -82,15 +82,21 @@ Trata la presencia/ausencia como un campo continuo $[0, 1]$ e interpola los resi
 CDT implementa tres funciones de transferencia para transformar la probabilidad $P(s)$ en el factor multiplicativo final:
 
 ### Opción 1: Corte Binario Duro (*Hard Threshold*)
+
 $$\text{Mask}(s) = \begin{cases} 0 & \text{si } P(s) < 0.5 \\ 1 & \text{si } P(s) \geq 0.5 \end{cases}$$
+
 - *Comportamiento:* Genera límites muy definidos entre lluvia y no lluvia. Puede crear gradientes abruptos en los bordes de tormentas.
 
 ### Opción 2: Supresión de Baja Probabilidad
+
 $$\text{Mask}(s) = \begin{cases} 0 & \text{si } P(s) < 0.1 \\ P(s) & \text{si } P(s) \geq 0.1 \end{cases}$$
+
 - *Comportamiento:* Elimina lloviznas marginales por debajo del 10% de probabilidad, pero modula la intensidad de la precipitación con la probabilidad estimada.
 
 ### Opción 3: Rampa Sigmoide Suave (*Smooth Ramp*) - **Recomendada**
+
 $$\text{Mask}(s) = \begin{cases} 0 & \text{si } P(s) < 0.25 \\ P(s) & \text{si } 0.25 \le P(s) < 0.75 \\ 1 & \text{si } P(s) \geq 0.75 \end{cases}$$
+
 - *Comportamiento:* Ofrece el mejor equilibrio: anula con seguridad zonas secas ($< 25\%$), preserva al 100% las áreas de lluvia consolidada ($> 75\%$) y genera una transición espacial continua en el área perimetral.
 
 ---

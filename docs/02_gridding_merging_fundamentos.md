@@ -50,11 +50,16 @@ flowchart TD
 Es el método más directo y robusto cuando la densidad de estaciones es baja o la relación con variables topográficas es compleja.
 
 1. **Tendencia espacial:** Es directamente el campo del NetCDF original:
+
    $$\text{Trend}(s) = G(s)$$
+
 2. **Residual en las estaciones:**
+
    $$R(s_i) = S(s_i) - G(s_i)$$
+
 3. **Interpolación:** Se interpola $R(s_i)$ sobre la malla para obtener $\hat{R}(s)$.
 4. **Campo fusionado:**
+
    $$M(s) = G(s) + \hat{R}(s)$$
 
 ---
@@ -63,7 +68,9 @@ Es el método más directo y robusto cuando la densidad de estaciones es baja o 
 Combina un modelo de regresión lineal multivariado (mediante un Modelo Lineal Generalizado - GLM con distribución Gaussiana) para modelar la tendencia espacial en función del proxy y variables auxiliares del terreno (DEM, pendiente, orientación, latitud, longitud), seguido de la interpolación de los residuales del modelo.
 
 1. **Fórmula del GLM:**
+
    $$S(s_i) = \beta_0 + \beta_1 G(s_i) + \sum_{k=1}^{p} \beta_{k+1} X_k(s_i) + \varepsilon(s_i)$$
+
    donde $X_k$ representa variables auxiliares:
    - `dem`: Elevación del Modelo Digital de Elevación (m).
    - `slope`: Pendiente calculada del DEM.
@@ -72,14 +79,17 @@ Combina un modelo de regresión lineal multivariado (mediante un Modelo Lineal G
    - `lat`: Latitud geográfica.
 
 2. **Tendencia en toda la malla:**
+
    $$\text{Trend}(s) = \hat{\beta}_0 + \hat{\beta}_1 G(s) + \sum_{k=1}^{p} \hat{\beta}_{k+1} X_k(s)$$
 
 3. **Residuales en las estaciones:**
+
    $$R(s_i) = S(s_i) - \text{Trend}(s_i)$$
 
 4. **Interpolación de residuales:** $\hat{R}(s)$ mediante Kriging Ordinario o IDW.
 
 5. **Campo fusionado final:**
+
    $$M(s) = \text{Trend}(s) + \hat{R}(s)$$
 
 > [!IMPORTANT]
@@ -97,9 +107,13 @@ Combina un modelo de regresión lineal multivariado (mediante un Modelo Lineal G
 Es un método de corrección sucesiva ampliamente usado en análisis objetivo meteorológico.
 
 - En cada iteración $k$, el valor en cada celda $j$ se ajusta mediante una suma ponderada de las diferencias entre las estaciones y el campo base:
+
   $$\Delta M_j = \frac{\sum_{i=1}^{N} W_{ij} \left(S_i - M_i^{(k-1)}\right)}{\sum_{i=1}^{N} W_{ij}}$$
+
 - **Función de peso de Cressman:**
+
   $$W_{ij} = \begin{cases} \dfrac{R^2 - d_{ij}^2}{R^2 + d_{ij}^2} & \text{si } d_{ij} < R \\ 0 & \text{si } d_{ij} \ge R \end{cases}$$
+
   donde $d_{ij}$ es la distancia entre la estación $i$ y la celda $j$, y $R$ es el radio de influencia.
 
 ---
@@ -107,7 +121,9 @@ Es un método de corrección sucesiva ampliamente usado en análisis objetivo me
 ### D. Esquema de Barnes (`"BSc"`)
 Similar a Cressman, pero utiliza una función de decaimiento gaussiana continua:
 - **Función de peso de Barnes:**
+
   $$W_{ij} = \exp\left( - \frac{d_{ij}^2}{4 c} \right)$$
+
   donde $c$ es un parámetro de escala dependiente del radio de influencia y de la densidad media de estaciones. Ofrece transiciones espaciales más suaves que el esquema de Cressman.
 
 ---

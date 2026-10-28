@@ -44,10 +44,14 @@ flowchart TD
   1. Agrega el DEM fino a la resolución gruesa del reanálisis: $\text{DEM}_{\text{coarse}}$.
   2. Predice la temperatura gruesa esperada por topografía: $\hat{T}_{\text{coarse}} = f_m(\text{DEM}_{\text{coarse}})$.
   3. Extrae la anomalía climática sinóptica / residual grueso:
+
      $$R_{\text{coarse}} = T_{\text{reanalysis}} - \hat{T}_{\text{coarse}}$$
+
   4. Interpola el residual $R_{\text{coarse}}$ a la cuadrícula fina mediante **Bilineal**, **IDW** o **Kriging**.
   5. Reconstruye la temperatura desescalada de alta resolución:
+
      $$T_{\text{downscaled}}(s_{\text{fino}}) = f_m(\text{DEM}_{\text{fino}}) + \hat{R}_{\text{fino}}(s_{\text{fino}})$$
+
 - **Salida generada:** NetCDFs diarios de temperatura desescalada con la resolución del DEM.
 
 ---
@@ -72,7 +76,9 @@ flowchart TD
 
 ### Paso 5: Gridding > Bias Correction > Apply Bias Correction
 - **Fundamento Estadístico:** Para cada día $t$, transforma el valor del pixel $x$ mediante la función de cuantiles inversos:
+
   $$\hat{T}_{\text{corrected}}(s) = F_{\text{stn}}^{-1}\left( F_{\text{proxy}}(T_{\text{downscaled}}(s)) \right)$$
+
 - **Salida generada:** NetCDFs diarios ajustados por sesgo, preservando la media y los cuantiles observados por las estaciones.
 
 ---

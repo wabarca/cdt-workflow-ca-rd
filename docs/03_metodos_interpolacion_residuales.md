@@ -44,7 +44,9 @@ $$\gamma(h) = \frac{1}{2 N(h)} \sum_{i=1}^{N(h)} \left[ R(s_i) - R(s_i + h) \rig
 
 2. **Block Kriging (`use.block = TRUE`):**
    En lugar de predecir el residual en un punto matemático sin dimensión, Kriging integra la predicción sobre el área espacial de la celda NetCDF:
+
    $$\hat{R}(B) = \frac{1}{|B|} \int_{B} \hat{R}(s) ds$$
+
    Esto reduce drásticamente el error de soporte espacial cuando se combina información puntual con celdas satelitales de $5\text{ km}$ o $25\text{ km}$.
    - Opciones en `merging.options()`: `blockType = "gaussian"` o `"userdefined"`.
 
@@ -54,6 +56,7 @@ $$\gamma(h) = \frac{1}{2 N(h)} \sum_{i=1}^{N(h)} \left[ R(s_i) - R(s_i + h) \rig
 Es una variante local de IDW que utiliza una función de influencia suave y corrige la ponderación mediante derivadas directas de primer orden para evitar el efecto de "ojo de buey" (*bull's-eye*) característico del IDW clásico.
 
 $$\text{Peso base: } w_i = \left( \frac{\max(0, R_w - d_i)}{R_w \cdot d_i} \right)^p$$
+
 - Potencia por defecto: `powerWeightShepard = 0.7`.
 
 ---
