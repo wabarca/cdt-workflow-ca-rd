@@ -3,10 +3,9 @@
 This module consolidates validation metrics across all executed CDT experiments
 (Rainfall, Tmax, Tmin), computes multi-criteria skill scores (Global Skill Score),
 ranks the experiments to identify the optimal grid correction candidate,
-generates publication-ready figures (Taylor diagrams, boxplots, strata charts,
-radar skill diagrams, metrics heatmaps, and ROC detection spaces) segregated
-by variable, and builds an interactive HTML dashboard with tabbed navigation
-and full-resolution image lightboxes for scientific decision-making.
+generates publication-ready static figures (300 DPI) segregated by variable,
+and compiles a standalone interactive HTML dashboard powered entirely by Plotly.js
+with tabbed navigation, hover diagnostics, and neutral scientific presentation.
 """
 
 from __future__ import annotations
@@ -48,7 +47,6 @@ def harvest_experiment_metrics(experiments_root: Path | str) -> Tuple[pd.DataFra
     summary_rows = []
     station_rows = []
 
-    # Search for all subdirectories containing validation files
     for exp_dir in sorted(root.iterdir()):
         if not exp_dir.is_dir():
             continue
@@ -143,7 +141,6 @@ def compute_leaderboard_ranking(df_summaries: pd.DataFrame) -> pd.DataFrame:
 
         if var in ("rainfall", "precip", "rain"):
             ets = df["ets"].fillna(0.0).clip(lower=0.0, upper=1.0)
-            # Multi-criteria GSS for Rainfall
             df["global_skill_score"] = (
                 0.35 * kge +
                 0.25 * r +
@@ -151,7 +148,6 @@ def compute_leaderboard_ranking(df_summaries: pd.DataFrame) -> pd.DataFrame:
                 0.20 * pbias_score
             )
         else:
-            # Multi-criteria GSS for Temperature
             df["global_skill_score"] = (
                 0.40 * kge +
                 0.30 * r +
@@ -163,7 +159,6 @@ def compute_leaderboard_ranking(df_summaries: pd.DataFrame) -> pd.DataFrame:
         df = df.sort_values(by="global_skill_score", ascending=False).reset_index(drop=True)
         df["rank"] = df.index + 1
 
-        # Identify Baseline (EXP_R01, EXP_TX01, EXP_TN01 or 1st lowest/initial)
         baseline_mask = df["experiment_id"].str.contains("01", regex=False)
         if baseline_mask.any():
             base_row = df[baseline_mask].iloc[0]
@@ -175,7 +170,7 @@ def compute_leaderboard_ranking(df_summaries: pd.DataFrame) -> pd.DataFrame:
         base_ets = base_row.get("ets", np.nan)
 
         df["delta_kge_vs_base"] = df["kge"] - base_kge
-        df["delta_rmse_vs_base"] = base_rmse - df["rmse"]  # positive means improvement (reduction)
+        df["delta_rmse_vs_base"] = base_rmse - df["rmse"]
         if "ets" in df.columns:
             df["delta_ets_vs_base"] = df["ets"] - base_ets
 
@@ -187,7 +182,7 @@ def compute_leaderboard_ranking(df_summaries: pd.DataFrame) -> pd.DataFrame:
 
 
 # =============================================================================
-# 3. PUBLICATION-READY SCIENTIFIC FIGURES (SEGREGATED BY VARIABLE)
+# 3. PUBLICATION-READY STATIC SCIENTIFIC FIGURES (300 DPI)
 # =============================================================================
 
 def generate_taylor_diagram(
@@ -196,7 +191,7 @@ def generate_taylor_diagram(
     var_type: str = "rainfall",
     title: Optional[str] = None
 ):
-    """Generates a high-resolution, publication-grade polar Taylor Diagram for a specific variable."""
+    """Generates a polar Taylor Diagram for a specific variable."""
     df_var = df_summaries[df_summaries["variable"] == var_type].copy() if not df_summaries.empty else pd.DataFrame()
     if df_var.empty:
         return
@@ -211,11 +206,9 @@ def generate_taylor_diagram(
     plt.figure(figsize=(8.5, 8.0), dpi=300)
     ax = plt.subplot(111, projection="polar")
 
-    # Set angular range [0, pi/2] for positive correlation r in [0, 1]
     ax.set_thetamin(0)
     ax.set_thetamax(90)
 
-    # Standard correlation ticks
     r_ticks = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 1.0])
     angles = np.arccos(r_ticks)
 
@@ -223,17 +216,14 @@ def generate_taylor_diagram(
     ax.set_xticklabels([f"{v:.2f}" for v in r_ticks], fontsize=8, color="#334155")
     ax.tick_params(pad=8)
 
-    # Label on angular axis
     plt.text(
         np.pi / 4, 1.45, "Coeficiente de Correlación de Pearson (r)",
         horizontalalignment="center", verticalalignment="bottom",
         rotation=-45, fontsize=10, fontweight="bold", color="#1e293b"
     )
 
-    # Reference Observation Point at (r=1.0, normalized std=1.0)
     ax.plot(0, 1.0, marker="*", markersize=14, color="#dc2626", label="Estaciones Holdout (Referencia)", zorder=10)
 
-    # Plot RMS error arcs centered on (0, 1.0)
     radii = np.linspace(0, 1.5, 100)
     theta = np.linspace(0, np.pi / 2, 100)
     R, TH = np.meshgrid(radii, theta)
@@ -243,7 +233,6 @@ def generate_taylor_diagram(
     contours = ax.contour(TH, R, E_rms, levels=[0.25, 0.5, 0.75, 1.0, 1.25], colors="#94a3b8", linestyles="--", linewidths=0.75)
     ax.clabel(contours, inline=True, fontsize=7, fmt="RMS=%.2f")
 
-    # Color palette tailored by variable
     var_colors = {
         "rainfall": ["#0369a1", "#0284c7", "#38bdf8", "#0891b2", "#0d9488", "#16a34a"],
         "tmax": ["#b45309", "#d97706", "#f59e0b", "#ea580c", "#c2410c", "#9a3412"],
@@ -256,7 +245,6 @@ def generate_taylor_diagram(
         r_val = max(0.0, min(1.0, row["r"])) if pd.notna(row["r"]) else 0.0
         theta_pt = np.arccos(r_val)
         
-        # Estimate normalized standard deviation from bias/variance
         std_norm = 1.0 - (row["pbias"] / 100.0) if pd.notna(row["pbias"]) else 1.0
         std_norm = max(0.4, min(1.4, std_norm))
 
@@ -270,7 +258,7 @@ def generate_taylor_diagram(
             color="#e11d48" if is_win else color,
             markeredgecolor="#fbbf24" if is_win else "#ffffff",
             markeredgewidth=2.2 if is_win else 0.8,
-            label=f"{row['experiment_id']}{' [GANADOR]' if is_win else ''}",
+            label=f"{row['experiment_id']}{' [ÓPTIMO]' if is_win else ''}",
             zorder=9 if is_win else 5
         )
 
@@ -286,7 +274,6 @@ def generate_taylor_diagram(
     out_p.parent.mkdir(parents=True, exist_ok=True)
     plt.savefig(out_p, dpi=300, bbox_inches="tight")
     plt.close()
-    print(f"  [Fig] Taylor Diagram ({var_type}): {out_p}")
 
 
 def generate_kge_boxplots(
@@ -313,7 +300,6 @@ def generate_kge_boxplots(
     plt.figure(figsize=(12, 6), dpi=300)
     sns.set_theme(style="whitegrid")
 
-    # Order experiments by median KGE
     exp_order = (
         df_var.groupby("experiment_id")["kge"]
         .median()
@@ -336,7 +322,6 @@ def generate_kge_boxplots(
         linewidth=1.2,
     )
     
-    # Highlight threshold KGE = 0.75 (Good) and KGE = 0.50 (Satisfactory)
     plt.axhline(0.75, color="#16a34a", linestyle="--", linewidth=1.2, label="Umbral Óptimo (KGE >= 0.75)")
     plt.axhline(0.50, color="#d97706", linestyle=":", linewidth=1.0, label="Umbral Aceptable (KGE >= 0.50)")
     plt.axhline(0.00, color="#dc2626", linestyle="-", linewidth=0.8, alpha=0.6, label="Sin Habilidad vs Media (KGE <= 0.0)")
@@ -353,7 +338,6 @@ def generate_kge_boxplots(
     out_p.parent.mkdir(parents=True, exist_ok=True)
     plt.savefig(out_p, dpi=300, bbox_inches="tight")
     plt.close()
-    print(f"  [Fig] KGE Boxplots ({var_type}): {out_p}")
 
 
 def generate_strata_performance_chart(
@@ -370,13 +354,11 @@ def generate_strata_performance_chart(
     if df_var.empty:
         return
 
-    # Assign elevation bins
     bins = [-np.inf, 500, 1500, np.inf]
     labels = ["Tierras Bajas (<500 m)", "Transición Premontana (500–1500 m)", "Tierras Altas (>1500 m)"]
     df = df_var.copy()
     df["stratum"] = pd.cut(df["elev"], bins=bins, labels=labels)
 
-    # Filter to top 5 experiments + baseline
     top_exps = (
         df.groupby("experiment_id")["kge"]
         .median()
@@ -413,7 +395,6 @@ def generate_strata_performance_chart(
     out_p.parent.mkdir(parents=True, exist_ok=True)
     plt.savefig(out_p, dpi=300, bbox_inches="tight")
     plt.close()
-    print(f"  [Fig] Topographic Strata ({var_type}): {out_p}")
 
 
 def generate_radar_skill_chart(
@@ -422,12 +403,11 @@ def generate_radar_skill_chart(
     var_type: str = "rainfall",
     title: Optional[str] = None
 ):
-    """Generates a high-impact multi-criteria Radar (Spider) chart showing multidimensional skill."""
+    """Generates a multi-criteria Radar (Spider) chart showing multidimensional skill."""
     df_var = df_summaries[df_summaries["variable"] == var_type].copy() if not df_summaries.empty else pd.DataFrame()
     if df_var.empty:
         return
 
-    # Select top 4 experiments plus baseline
     df_sorted = df_var.sort_values(by="global_skill_score", ascending=False)
     top_candidates = df_sorted.head(4).copy()
     base_candidates = df_sorted[df_sorted["experiment_id"].str.contains("01", regex=False)]
@@ -455,7 +435,7 @@ def generate_radar_skill_chart(
 
     num_vars = len(dimensions)
     angles = np.linspace(0, 2 * np.pi, num_vars, endpoint=False).tolist()
-    angles += angles[:1]  # Complete loop
+    angles += angles[:1]
 
     plt.figure(figsize=(8.0, 7.5), dpi=300)
     ax = plt.subplot(111, polar=True)
@@ -483,7 +463,7 @@ def generate_radar_skill_chart(
         ls = "-" if not is_base else "--"
         alpha = 0.22 if is_win else 0.06
 
-        label_text = f"{row['experiment_id']}{' [GANADOR]' if is_win else (' [BASE]' if is_base else '')}"
+        label_text = f"{row['experiment_id']}{' [ÓPTIMO]' if is_win else (' [BASE]' if is_base else '')}"
         ax.plot(angles, values, color=c, linewidth=lw, linestyle=ls, label=label_text, zorder=10 if is_win else 4)
         ax.fill(angles, values, color=c, alpha=alpha)
 
@@ -496,7 +476,6 @@ def generate_radar_skill_chart(
     out_p.parent.mkdir(parents=True, exist_ok=True)
     plt.savefig(out_p, dpi=300, bbox_inches="tight")
     plt.close()
-    print(f"  [Fig] Radar Skill Chart ({var_type}): {out_p}")
 
 
 def generate_metrics_heatmap(
@@ -535,7 +514,6 @@ def generate_metrics_heatmap(
             ("pbias", "PBIAS (%)", "abs_zero", "{:+.1f}%"),
         ]
 
-    # Build numeric normalized array for colormap and text array for annotations
     norm_matrix = []
     text_matrix = []
     row_labels = []
@@ -548,7 +526,6 @@ def generate_metrics_heatmap(
     for col_key, _, is_higher_better, fmt in metric_cols:
         series = df_sorted[col_key] if col_key in df_sorted.columns else pd.Series(np.nan, index=df_sorted.index)
         
-        # Compute normalized skill (1 = optimal, 0 = worst)
         if is_higher_better == "abs_zero":
             abs_val = series.abs()
             norm_col = np.clip(1.0 - (abs_val / (abs_val.max() + 1e-6)), 0.0, 1.0)
@@ -563,7 +540,6 @@ def generate_metrics_heatmap(
 
         norm_matrix.append(norm_col.values)
         
-        # Build formatted text labels
         col_texts = []
         for v in series:
             if pd.isna(v):
@@ -601,7 +577,6 @@ def generate_metrics_heatmap(
     out_p.parent.mkdir(parents=True, exist_ok=True)
     plt.savefig(out_p, dpi=300, bbox_inches="tight")
     plt.close()
-    print(f"  [Fig] Metrics Heatmap ({var_type}): {out_p}")
 
 
 def generate_roc_pod_vs_far(
@@ -617,7 +592,6 @@ def generate_roc_pod_vs_far(
     plt.figure(figsize=(8.0, 7.5), dpi=300)
     ax = plt.subplot(111)
 
-    # Plot Critical Success Index (CSI) isolines: CSI = 1 / (1/POD + 1/(1-FAR) - 1)
     far_vals = np.linspace(0.001, 0.7, 200)
     pod_vals = np.linspace(0.4, 1.0, 200)
     FAR_grid, POD_grid = np.meshgrid(far_vals, pod_vals)
@@ -626,10 +600,8 @@ def generate_roc_pod_vs_far(
     cs = ax.contour(FAR_grid, POD_grid, CSI_grid, levels=[0.3, 0.4, 0.5, 0.6, 0.7, 0.8], colors="#cbd5e1", linestyles="--", linewidths=0.9)
     ax.clabel(cs, inline=True, fontsize=8, fmt="CSI=%.2f")
 
-    # Mark the ideal point (FAR = 0, POD = 1)
-    ax.plot(0.0, 1.0, marker="*", markersize=14, color="#16a34a", label="Detección Perfecta (Sin Llovizna Espuria)", zorder=10)
+    ax.plot(0.0, 1.0, marker="*", markersize=14, color="#16a34a", label="Detección Perfecta (FAR=0, POD=1)", zorder=10)
 
-    # Plot experiment points
     winner_row = None
     for _, row in df_rain.iterrows():
         pod_val = row["pod"]
@@ -643,7 +615,7 @@ def generate_roc_pod_vs_far(
             ax.scatter(
                 far_val, pod_val,
                 s=180, color="#dc2626", edgecolors="#fbbf24", linewidth=2.5,
-                zorder=12, label=f"{row['experiment_id']} [GANADOR]"
+                zorder=12, label=f"{row['experiment_id']} [ÓPTIMO]"
             )
         else:
             is_base = "01" in row["experiment_id"]
@@ -656,10 +628,9 @@ def generate_roc_pod_vs_far(
                 label=f"{row['experiment_id']}" if is_base else None
             )
 
-    # Annotate winner showing trade-off
     if winner_row is not None and pd.notna(winner_row["pod"]) and pd.notna(winner_row["far"]):
         ax.annotate(
-            f"  {winner_row['experiment_id']}\n  (POD: {winner_row['pod']:.2f}, FAR: {winner_row['far']:.2f})\n  [Máxima Supresión de Falsa Alarma]",
+            f"  {winner_row['experiment_id']}\n  (POD: {winner_row['pod']:.2f}, FAR: {winner_row['far']:.2f})\n  [Mayor captura y menor falsa alarma]",
             xy=(winner_row["far"], winner_row["pod"]),
             xytext=(winner_row["far"] + 0.05, winner_row["pod"] - 0.08),
             arrowprops=dict(facecolor="#dc2626", shrink=0.08, width=1.5, headwidth=7),
@@ -669,8 +640,8 @@ def generate_roc_pod_vs_far(
 
     ax.set_xlim(-0.02, 0.65)
     ax.set_ylim(0.40, 1.02)
-    ax.set_xlabel("Razón de Falsa Alarma (FAR) [Menor es mejor -> Sin llovizna espuria]", fontsize=10, fontweight="bold", labelpad=10)
-    ax.set_ylabel("Probabilidad de Detección (POD) [Mayor es mejor -> Capta eventos reales]", fontsize=10, fontweight="bold", labelpad=10)
+    ax.set_xlabel("Razón de Falsa Alarma (FAR) [Menor es mejor]", fontsize=10, fontweight="bold", labelpad=10)
+    ax.set_ylabel("Probabilidad de Detección (POD) [Mayor es mejor]", fontsize=10, fontweight="bold", labelpad=10)
     
     plot_title = title or "Espacio ROC Categórico: Detección vs Falsa Alarma (Precipitación)"
     plt.title(plot_title, fontsize=12, fontweight="bold", color="#0f172a", pad=15)
@@ -682,11 +653,362 @@ def generate_roc_pod_vs_far(
     out_p.parent.mkdir(parents=True, exist_ok=True)
     plt.savefig(out_p, dpi=300, bbox_inches="tight")
     plt.close()
-    print(f"  [Fig] Categorical ROC Space (Rainfall): {out_p}")
 
 
 # =============================================================================
-# 4. INTERACTIVE HTML DASHBOARD GENERATOR WITH TABS & IMAGE LIGHTBOX
+# 4. PLOTLY INTERACTIVE CHART PAYLOAD GENERATOR
+# =============================================================================
+
+def build_interactive_chart_payloads(
+    df_ranked: pd.DataFrame,
+    df_stations: Optional[pd.DataFrame],
+    var_type: str
+) -> Dict[str, Any]:
+    """Prepares structured Plotly.js JSON payloads for all diagnostic charts of a variable."""
+    df_var = df_ranked[df_ranked["variable"] == var_type].copy() if not df_ranked.empty else pd.DataFrame()
+    if df_var.empty:
+        return {}
+
+    payloads = {}
+
+    # 1. Taylor Diagram (Polar Scatter)
+    taylor_traces = [{
+        "type": "scatterpolar",
+        "mode": "markers+text",
+        "r": [1.0],
+        "theta": [0.0],
+        "text": ["Referencia (Holdout)"],
+        "textposition": "top right",
+        "marker": {"symbol": "star", "size": 14, "color": "#dc2626"},
+        "name": "Estaciones Holdout",
+        "hoverinfo": "text",
+    }]
+
+    for _, row in df_var.iterrows():
+        r_val = float(np.clip(row["r"], 0.0, 1.0)) if pd.notna(row["r"]) else 0.0
+        theta_deg = float(math.acos(r_val) * 180.0 / math.pi)
+        std_norm = float(np.clip(1.0 - (row["pbias"] / 100.0) if pd.notna(row["pbias"]) else 1.0, 0.4, 1.4))
+        is_win = bool(row.get("is_winner", False))
+        
+        hover_txt = (
+            f"<b>{row['experiment_id']}</b><br>"
+            f"Correlación (r): {r_val:.3f}<br>"
+            f"Desv. Est. Normalizada: {std_norm:.3f}<br>"
+            f"KGE: {row['kge']:.3f}<br>"
+            f"RMSE: {row['rmse']:.2f}"
+        )
+        taylor_traces.append({
+            "type": "scatterpolar",
+            "mode": "markers",
+            "r": [std_norm],
+            "theta": [theta_deg],
+            "name": f"{row['experiment_id']}{' [ÓPTIMO]' if is_win else ''}",
+            "text": [hover_txt],
+            "hoverinfo": "text",
+            "marker": {
+                "size": 12 if is_win else 9,
+                "color": "#e11d48" if is_win else ("#0284c7" if var_type == "rainfall" else ("#d97706" if var_type == "tmax" else "#7c3aed")),
+                "line": {"color": "#fbbf24" if is_win else "#ffffff", "width": 2 if is_win else 1}
+            }
+        })
+
+    taylor_layout = {
+        "polar": {
+            "radialaxis": {"visible": True, "range": [0, 1.5], "title": {"text": "Desv. Estándar Normalizada (σs/σo)"}},
+            "angularaxis": {
+                "direction": "counterclockwise",
+                "period": 360,
+                "min": 0,
+                "max": 90,
+                "tickmode": "array",
+                "tickvals": [0, 18.2, 25.8, 36.9, 45.6, 53.1, 60.0, 66.4, 72.5, 78.5, 84.3, 90.0],
+                "ticktext": ["1.00", "0.95", "0.90", "0.80", "0.70", "0.60", "0.50", "0.40", "0.30", "0.20", "0.10", "0.00"]
+            }
+        },
+        "margin": {"t": 30, "b": 30, "l": 40, "r": 40},
+        "showlegend": True,
+        "legend": {"orientation": "h", "y": -0.15}
+    }
+    payloads["taylor"] = {"data": taylor_traces, "layout": taylor_layout}
+
+    # 2. Boxplots KGE
+    box_traces = []
+    if df_stations is not None and not df_stations.empty and "kge" in df_stations.columns:
+        st_var = df_stations[df_stations["variable"] == var_type]
+        if not st_var.empty:
+            med_order = st_var.groupby("experiment_id")["kge"].median().sort_values(ascending=False).index
+            for exp_id in med_order:
+                vals = [float(v) for v in st_var[st_var["experiment_id"] == exp_id]["kge"].dropna()]
+                box_traces.append({
+                    "type": "box",
+                    "name": exp_id,
+                    "y": vals,
+                    "boxpoints": "outliers",
+                    "jitter": 0.2,
+                })
+    box_layout = {
+        "yaxis": {"title": "Kling-Gupta Efficiency (KGE)", "range": [-0.2, 1.05]},
+        "xaxis": {"tickangle": -45},
+        "shapes": [
+            {"type": "line", "y0": 0.75, "y1": 0.75, "x0": 0, "x1": 1, "xref": "paper", "line": {"color": "#16a34a", "dash": "dash", "width": 1.2}},
+            {"type": "line", "y0": 0.50, "y1": 0.50, "x0": 0, "x1": 1, "xref": "paper", "line": {"color": "#d97706", "dash": "dot", "width": 1.2}},
+            {"type": "line", "y0": 0.00, "y1": 0.00, "x0": 0, "x1": 1, "xref": "paper", "line": {"color": "#dc2626", "width": 0.8}}
+        ],
+        "margin": {"t": 30, "b": 100, "l": 50, "r": 20},
+        "showlegend": False
+    }
+    payloads["boxplots"] = {"data": box_traces, "layout": box_layout}
+
+    # 3. Strata Performance
+    strata_traces = []
+    if df_stations is not None and not df_stations.empty and "elev" in df_stations.columns and "kge" in df_stations.columns:
+        st_var = df_stations[df_stations["variable"] == var_type].copy()
+        if not st_var.empty:
+            bins = [-np.inf, 500, 1500, np.inf]
+            labels = ["Tierras Bajas (<500 m)", "Transición (500–1500 m)", "Tierras Altas (>1500 m)"]
+            st_var["stratum"] = pd.cut(st_var["elev"], bins=bins, labels=labels)
+            
+            top_exps = st_var.groupby("experiment_id")["kge"].median().sort_values(ascending=False).head(5).index
+            for exp_id in top_exps:
+                exp_df = st_var[st_var["experiment_id"] == exp_id]
+                means = []
+                for s in labels:
+                    m = exp_df[exp_df["stratum"] == s]["kge"].mean()
+                    means.append(float(round(m, 3)) if pd.notna(m) else 0.0)
+                strata_traces.append({
+                    "type": "bar",
+                    "name": exp_id,
+                    "x": labels,
+                    "y": means,
+                })
+    strata_layout = {
+        "barmode": "group",
+        "yaxis": {"title": "KGE Promedio", "range": [0, 1.05]},
+        "xaxis": {"title": "Estrato Altitudinal"},
+        "margin": {"t": 30, "b": 50, "l": 50, "r": 20},
+        "legend": {"orientation": "h", "y": -0.25}
+    }
+    payloads["strata"] = {"data": strata_traces, "layout": strata_layout}
+
+    # 4. Radar Skill Chart
+    df_sorted = df_var.sort_values(by="global_skill_score", ascending=False)
+    top_exps = pd.concat([df_sorted.head(4), df_sorted[df_sorted["experiment_id"].str.contains("01", regex=False)]]).drop_duplicates(subset=["experiment_id"])
+    
+    if var_type in ("rainfall", "precip", "rain"):
+        dims = ["Eficiencia (KGE)", "Correlación (r)", "Control Sesgo", "Precisión (1-RMSE)", "Habilidad Lluvia (ETS)", "Detección (POD)"]
+        def calc_vals(r):
+            return [
+                float(np.clip((r["kge"] - 0.2) / 0.8, 0, 1)),
+                float(np.clip(r["r"], 0, 1)),
+                float(np.clip(1.0 - (abs(r["pbias"]) / 40.0), 0, 1)),
+                float(np.clip(1.0 - (r["rmse"] / (df_var["rmse"].max() * 1.1 + 1e-6)), 0, 1)),
+                float(np.clip(r["ets"] / max(0.01, df_var["ets"].max()), 0, 1)),
+                float(np.clip(r["pod"], 0, 1))
+            ]
+    else:
+        dims = ["Eficiencia (KGE)", "Correlación (r)", "Control Sesgo", "Precisión (1-RMSE)", "Error Absoluto (1-MAE)"]
+        def calc_vals(r):
+            return [
+                float(np.clip((r["kge"] - 0.4) / 0.6, 0, 1)),
+                float(np.clip(r["r"], 0, 1)),
+                float(np.clip(1.0 - (abs(r["pbias"]) / 15.0), 0, 1)),
+                float(np.clip(1.0 - (r["rmse"] / (df_var["rmse"].max() * 1.1 + 1e-6)), 0, 1)),
+                float(np.clip(1.0 - (r["mae"] / (df_var["mae"].max() * 1.1 + 1e-6)), 0, 1))
+            ]
+
+    radar_traces = []
+    for _, row in top_exps.iterrows():
+        v = calc_vals(row)
+        v_loop = v + [v[0]]
+        dims_loop = dims + [dims[0]]
+        is_win = bool(row.get("is_winner", False))
+        radar_traces.append({
+            "type": "scatterpolar",
+            "r": v_loop,
+            "theta": dims_loop,
+            "fill": "toself",
+            "name": f"{row['experiment_id']}{' [ÓPTIMO]' if is_win else ''}",
+            "line": {"width": 2.5 if is_win else 1.2},
+            "opacity": 0.85 if is_win else 0.5
+        })
+    radar_layout = {
+        "polar": {"radialaxis": {"visible": True, "range": [0, 1], "tickvals": [0.2, 0.4, 0.6, 0.8, 1.0]}},
+        "margin": {"t": 40, "b": 40, "l": 40, "r": 40},
+        "legend": {"orientation": "h", "y": -0.2}
+    }
+    payloads["radar"] = {"data": radar_traces, "layout": radar_layout}
+
+    # 5. Metrics Heatmap
+    if var_type in ("rainfall", "precip", "rain"):
+        m_keys = [
+            ("global_skill_score", "GSS", True, "{:.3f}"),
+            ("kge", "KGE", True, "{:.3f}"),
+            ("r", "r", True, "{:.3f}"),
+            ("rmse", "RMSE", False, "{:.2f}"),
+            ("mae", "MAE", False, "{:.2f}"),
+            ("pbias", "PBIAS (%)", "abs_zero", "{:+.1f}%"),
+            ("pod", "POD", True, "{:.3f}"),
+            ("far", "FAR", False, "{:.3f}"),
+            ("ets", "ETS", True, "{:.3f}"),
+        ]
+    else:
+        m_keys = [
+            ("global_skill_score", "GSS", True, "{:.3f}"),
+            ("kge", "KGE", True, "{:.3f}"),
+            ("r", "r", True, "{:.3f}"),
+            ("rmse", "RMSE (°C)", False, "{:.2f}"),
+            ("mae", "MAE (°C)", False, "{:.2f}"),
+            ("pbias", "PBIAS (%)", "abs_zero", "{:+.1f}%"),
+        ]
+    
+    df_hm = df_var.sort_values(by="rank", ascending=False)
+    y_labels = [f"#{r['rank']:02d} {r['experiment_id']}" for _, r in df_hm.iterrows()]
+    x_labels = [m[1] for m in m_keys]
+    
+    z_norm = []
+    text_vals = []
+    for _, row in df_hm.iterrows():
+        row_z = []
+        row_txt = []
+        for k, name, is_high, fmt in m_keys:
+            val = row.get(k, np.nan)
+            if pd.isna(val):
+                row_z.append(0.5)
+                row_txt.append("-")
+            else:
+                row_txt.append(fmt.format(val))
+                s = df_var[k]
+                min_v, max_v = s.min(), s.max()
+                if is_high == "abs_zero":
+                    norm = 1.0 - (abs(val) / (abs(s).max() + 1e-6))
+                elif is_high is True:
+                    norm = (val - min_v) / (max_v - min_v + 1e-6) if max_v > min_v else 1.0
+                else:
+                    norm = 1.0 - ((val - min_v) / (max_v - min_v + 1e-6)) if max_v > min_v else 1.0
+                row_z.append(float(round(norm, 3)))
+        z_norm.append(row_z)
+        text_vals.append(row_txt)
+
+    heatmap_traces = [{
+        "type": "heatmap",
+        "z": z_norm,
+        "x": x_labels,
+        "y": y_labels,
+        "text": text_vals,
+        "texttemplate": "%{text}",
+        "textfont": {"size": 10, "color": "#0f172a"},
+        "colorscale": [[0, "#fca5a5"], [0.5, "#fef08a"], [1, "#86efac"]],
+        "showscale": True,
+        "colorbar": {"title": "Rendimiento Normalizado", "len": 0.8}
+    }]
+    heatmap_layout = {
+        "xaxis": {"tickangle": -30},
+        "margin": {"t": 30, "b": 60, "l": 160, "r": 20}
+    }
+    payloads["heatmap"] = {"data": heatmap_traces, "layout": heatmap_layout}
+
+    # 6. ROC Space (Only rainfall)
+    if var_type in ("rainfall", "precip", "rain"):
+        roc_traces = []
+        far_grid = np.linspace(0.01, 0.65, 50)
+        for csi in [0.3, 0.4, 0.5, 0.6, 0.7, 0.8]:
+            line_x, line_y = [], []
+            for far_val in far_grid:
+                denom = (1.0 / csi) + 1.0 - (1.0 / (1.0 - far_val))
+                if denom > 0:
+                    pod_val = 1.0 / denom
+                    if 0.4 <= pod_val <= 1.0:
+                        line_x.append(float(round(far_val, 3)))
+                        line_y.append(float(round(pod_val, 3)))
+            if line_x:
+                roc_traces.append({
+                    "type": "scatter",
+                    "mode": "lines",
+                    "x": line_x,
+                    "y": line_y,
+                    "line": {"dash": "dot", "color": "#cbd5e1", "width": 1},
+                    "name": f"CSI = {csi:.1f}",
+                    "hoverinfo": "name",
+                    "showlegend": False
+                })
+        roc_traces.append({
+            "type": "scatter",
+            "mode": "markers+text",
+            "x": [0.0],
+            "y": [1.0],
+            "text": ["Punto Ideal (FAR=0, POD=1)"],
+            "textposition": "top right",
+            "marker": {"symbol": "star", "size": 14, "color": "#16a34a"},
+            "name": "Detección Perfecta",
+            "hoverinfo": "name"
+        })
+        exp_x, exp_y, exp_txt = [], [], []
+        for _, row in df_var.iterrows():
+            if pd.notna(row["far"]) and pd.notna(row["pod"]):
+                exp_x.append(float(row["far"]))
+                exp_y.append(float(row["pod"]))
+                exp_txt.append(f"<b>{row['experiment_id']}</b><br>POD: {row['pod']:.3f}<br>FAR: {row['far']:.3f}<br>ETS: {row['ets']:.3f}")
+        roc_traces.append({
+            "type": "scatter",
+            "mode": "markers+text",
+            "x": exp_x,
+            "y": exp_y,
+            "text": [r["experiment_id"] for _, r in df_var.iterrows() if pd.notna(r["far"])],
+            "textposition": "bottom center",
+            "textfont": {"size": 9},
+            "hovertext": exp_txt,
+            "hoverinfo": "text",
+            "marker": {"size": 11, "color": "#0284c7"},
+            "name": "Experimentos"
+        })
+        roc_layout = {
+            "xaxis": {"title": "Razón de Falsa Alarma (FAR) [Menor es mejor]", "range": [-0.02, 0.65]},
+            "yaxis": {"title": "Probabilidad de Detección (POD) [Mayor es mejor]", "range": [0.4, 1.02]},
+            "margin": {"t": 30, "b": 50, "l": 50, "r": 20},
+            "showlegend": True,
+            "legend": {"orientation": "h", "y": -0.2}
+        }
+        payloads["roc"] = {"data": roc_traces, "layout": roc_layout}
+
+    # 7. Scatter KGE vs RMSE per variable
+    scatter_traces = [{
+        "type": "scatter",
+        "mode": "markers+text",
+        "x": [float(v) for v in df_var["rmse"]],
+        "y": [float(v) for v in df_var["kge"]],
+        "text": [r["experiment_id"] for _, r in df_var.iterrows()],
+        "textposition": "top center",
+        "marker": {"size": 11, "color": "#0284c7" if var_type == "rainfall" else ("#ea580c" if var_type == "tmax" else "#7c3aed")},
+        "hoverinfo": "text",
+        "hovertext": [f"<b>{r['experiment_id']}</b><br>RMSE: {r['rmse']:.2f}<br>KGE: {r['kge']:.3f}" for _, r in df_var.iterrows()]
+    }]
+    unit = "mm/día" if var_type == "rainfall" else "°C"
+    scatter_layout = {
+        "xaxis": {"title": f"RMSE ({unit}) [Menor es mejor]"},
+        "yaxis": {"title": "KGE [Mayor es mejor]", "range": [0, 1.05]},
+        "margin": {"t": 30, "b": 50, "l": 50, "r": 20}
+    }
+    payloads["scatter_kge_rmse"] = {"data": scatter_traces, "layout": scatter_layout}
+
+    # 8. Delta KGE vs Base per variable
+    bar_traces = [{
+        "type": "bar",
+        "x": [r["experiment_id"] for _, r in df_var.iterrows()],
+        "y": [float(round(r["delta_kge_vs_base"], 3)) if pd.notna(r["delta_kge_vs_base"]) else 0.0 for _, r in df_var.iterrows()],
+        "marker": {"color": ["#16a34a" if (r["delta_kge_vs_base"] or 0) >= 0 else "#dc2626" for _, r in df_var.iterrows()]}
+    }]
+    delta_layout = {
+        "yaxis": {"title": "Δ KGE vs Línea Base"},
+        "xaxis": {"tickangle": -45},
+        "margin": {"t": 30, "b": 100, "l": 50, "r": 20}
+    }
+    payloads["delta_kge"] = {"data": bar_traces, "layout": delta_layout}
+
+    return payloads
+
+
+# =============================================================================
+# 5. INTERACTIVE HTML DASHBOARD GENERATOR WITH PLOTLY
 # =============================================================================
 
 HTML_DASHBOARD_TEMPLATE = """<!DOCTYPE html>
@@ -705,15 +1027,15 @@ HTML_DASHBOARD_TEMPLATE = """<!DOCTYPE html>
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
         .tab-btn.active {
             border-bottom: 3px solid #2563eb;
-            color: #1e40af;
+            color: #ffffff;
             font-weight: 700;
         }
-        .gallery-card {
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-        .gallery-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        .plot-card {
+            background-color: #ffffff;
+            border-radius: 0.75rem;
+            border: 1px solid #e2e8f0;
+            padding: 1.25rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
         }
     </style>
 </head>
@@ -723,11 +1045,11 @@ HTML_DASHBOARD_TEMPLATE = """<!DOCTYPE html>
     <header class="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-40">
         <div class="max-w-7xl mx-auto px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
             <div class="flex items-center space-x-3">
-                <span class="bg-blue-600 text-white font-black text-xs px-2.5 py-1 rounded tracking-wider">CDT 8.0 CLIMATE BENCHMARK</span>
-                <h1 class="text-base font-bold tracking-tight text-white">Tablero Diagnóstico de Validación y Selección de Malla</h1>
+                <span class="bg-blue-600 text-white font-bold text-xs px-2.5 py-1 rounded tracking-wider">CDT 8.0</span>
+                <h1 class="text-base font-bold tracking-tight text-white">Evaluación y Selección de Modelos de Malla (Benchmark)</h1>
             </div>
             <div class="text-xs text-slate-400">
-                Generado: <span class="font-mono text-slate-200">{{ timestamp }}</span> | Período: 1991–2020 | Holdout Independiente
+                Fecha: <span class="font-mono text-slate-200">{{ timestamp }}</span> | Período: 1991–2020 | Validación Holdout
             </div>
         </div>
 
@@ -755,140 +1077,118 @@ HTML_DASHBOARD_TEMPLATE = """<!DOCTYPE html>
         <!-- ========================================================================= -->
         <div id="tab-content-rainfall" class="tab-panel space-y-8">
             
-            <!-- Winner Highlight Card -->
             {% if win_rain %}
-            <div class="bg-gradient-to-r from-blue-900 via-sky-800 to-cyan-700 text-white rounded-2xl p-6 shadow-xl relative overflow-hidden">
+            <div class="bg-slate-900 border border-slate-800 text-white rounded-xl p-6 shadow-md">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
-                        <div class="inline-flex items-center space-x-2 bg-blue-500/30 text-blue-200 text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full mb-2">
-                            <span>🏆 Candidato Ganador Recomendado para Publicación</span>
-                        </div>
-                        <h2 class="text-3xl font-black text-white">{{ win_rain.experiment_id }}</h2>
-                        <p class="text-sm text-sky-100 max-w-2xl mt-1">{{ win_rain.description }}</p>
+                        <div class="text-xs text-sky-400 font-semibold uppercase tracking-wider mb-1">Configuración con Mayor Desempeño Global</div>
+                        <h2 class="text-2xl font-black text-white">{{ win_rain.experiment_id }}</h2>
+                        <p class="text-xs text-slate-300 max-w-2xl mt-1">{{ win_rain.description }}</p>
                     </div>
-                    <div class="grid grid-cols-4 gap-3 bg-black/25 backdrop-blur-md rounded-xl p-4 border border-white/10 text-center">
+                    <div class="grid grid-cols-4 gap-3 bg-slate-800/80 rounded-lg p-3 border border-slate-700 text-center">
                         <div>
-                            <div class="text-[10px] uppercase text-sky-200 font-semibold">GSS Skill</div>
-                            <div class="text-lg font-black text-emerald-300">{{ "%.3f"|format(win_rain.global_skill_score) }}</div>
+                            <div class="text-[10px] uppercase text-slate-400">GSS</div>
+                            <div class="text-base font-bold text-sky-400">{{ "%.3f"|format(win_rain.global_skill_score) }}</div>
                         </div>
                         <div>
-                            <div class="text-[10px] uppercase text-sky-200 font-semibold">KGE</div>
-                            <div class="text-lg font-black">{{ "%.3f"|format(win_rain.kge) }}</div>
+                            <div class="text-[10px] uppercase text-slate-400">KGE</div>
+                            <div class="text-base font-bold text-white">{{ "%.3f"|format(win_rain.kge) }}</div>
                         </div>
                         <div>
-                            <div class="text-[10px] uppercase text-sky-200 font-semibold">Corr (r)</div>
-                            <div class="text-lg font-black">{{ "%.3f"|format(win_rain.r) }}</div>
+                            <div class="text-[10px] uppercase text-slate-400">Corr (r)</div>
+                            <div class="text-base font-bold text-white">{{ "%.3f"|format(win_rain.r) }}</div>
                         </div>
                         <div>
-                            <div class="text-[10px] uppercase text-sky-200 font-semibold">ETS</div>
-                            <div class="text-lg font-black">{{ "%.3f"|format(win_rain.ets) if win_rain.ets else '-' }}</div>
+                            <div class="text-[10px] uppercase text-slate-400">ETS</div>
+                            <div class="text-base font-bold text-white">{{ "%.3f"|format(win_rain.ets) if win_rain.ets else '-' }}</div>
                         </div>
                     </div>
                 </div>
             </div>
             {% endif %}
 
-            <!-- Scientific Figures Gallery for Rainfall -->
-            <section>
-                <div class="flex justify-between items-end mb-4">
-                    <div>
-                        <h3 class="text-lg font-bold text-slate-900">📈 Galería de Figuras Diagnósticas de Alta Resolución (Precipitación)</h3>
-                        <p class="text-xs text-slate-500">Figuras científicas a 300 DPI segregadas exclusivamente para la variable lluvia. Clic para ampliar en Lightbox.</p>
-                    </div>
-                    <span class="text-xs font-semibold px-2.5 py-1 bg-sky-100 text-sky-800 rounded">6 Figuras de Diagnóstico</span>
+            <!-- Interactive Diagnostic Suite: Precipitation -->
+            <section class="space-y-6">
+                <div>
+                    <h3 class="text-base font-bold text-slate-900">Gráficos Diagnósticos Interactivos: Precipitación</h3>
+                    <p class="text-xs text-slate-500">Inspeccione métricas pasando el cursor, use zoom interactivo o aísle experimentos desde la leyenda.</p>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    
-                    <!-- Fig 1: Taylor -->
-                    <div class="gallery-card bg-white rounded-xl border border-slate-200 overflow-hidden cursor-pointer shadow-sm"
-                         onclick="openLightbox('{{ fig_rain.taylor }}', 'Diagrama Polar de Taylor: Precipitación', 'Muestra la distancia RMS normalizada, coeficiente de correlación de Pearson y desviación estándar relativa frente a observaciones holdout independientes.')">
-                        <div class="h-56 bg-slate-100 overflow-hidden flex items-center justify-center">
-                            <img src="{{ fig_rain.taylor }}" alt="Taylor Diagram" class="w-full h-full object-contain hover:scale-105 transition-transform duration-300" loading="lazy">
+                <!-- Row 1: Taylor & Radar -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="plot-card">
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="text-sm font-bold text-slate-900">Diagrama Polar de Taylor</h4>
+                            {% if fig_rain.taylor %}<a href="{{ fig_rain.taylor }}" target="_blank" class="text-[11px] text-blue-600 hover:underline">Descargar PNG (300 DPI)</a>{% endif %}
                         </div>
-                        <div class="p-4">
-                            <div class="text-[11px] font-bold text-sky-700 uppercase">Figura 1</div>
-                            <h4 class="text-sm font-bold text-slate-900 mt-0.5">Diagrama Polar de Taylor</h4>
-                            <p class="text-xs text-slate-500 mt-1 line-clamp-2">Evaluación armónica de correlación (r), varianza relativa y error centrado RMS.</p>
-                        </div>
+                        <div id="plot_taylor_rainfall" style="height: 380px;"></div>
                     </div>
-
-                    <!-- Fig 2: KGE Boxplots -->
-                    <div class="gallery-card bg-white rounded-xl border border-slate-200 overflow-hidden cursor-pointer shadow-sm"
-                         onclick="openLightbox('{{ fig_rain.kge_boxplots }}', 'Distribución Espacial de KGE en Estaciones Holdout', 'Distribución estadística (mediana, rango intercuartil y colas) de Kling-Gupta Efficiency a lo largo de todas las estaciones de validación.')">
-                        <div class="h-56 bg-slate-100 overflow-hidden flex items-center justify-center">
-                            <img src="{{ fig_rain.kge_boxplots }}" alt="KGE Boxplots" class="w-full h-full object-contain hover:scale-105 transition-transform duration-300" loading="lazy">
+                    <div class="plot-card">
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="text-sm font-bold text-slate-900">Diagrama Radial Multicriterio</h4>
+                            {% if fig_rain.radar %}<a href="{{ fig_rain.radar }}" target="_blank" class="text-[11px] text-blue-600 hover:underline">Descargar PNG (300 DPI)</a>{% endif %}
                         </div>
-                        <div class="p-4">
-                            <div class="text-[11px] font-bold text-sky-700 uppercase">Figura 2</div>
-                            <h4 class="text-sm font-bold text-slate-900 mt-0.5">Boxplots de Eficiencia (KGE)</h4>
-                            <p class="text-xs text-slate-500 mt-1 line-clamp-2">Comportamiento espacial y robustez contra estaciones con regímenes extremos.</p>
-                        </div>
+                        <div id="plot_radar_rainfall" style="height: 380px;"></div>
                     </div>
+                </div>
 
-                    <!-- Fig 3: Strata -->
-                    <div class="gallery-card bg-white rounded-xl border border-slate-200 overflow-hidden cursor-pointer shadow-sm"
-                         onclick="openLightbox('{{ fig_rain.strata }}', 'Rendimiento por Estratos Altitudinales', 'Compara el desempeño de los mejores experimentos en tierras bajas (<500m), valles premontanos (500-1500m) y cordilleras (>1500m).')">
-                        <div class="h-56 bg-slate-100 overflow-hidden flex items-center justify-center">
-                            <img src="{{ fig_rain.strata }}" alt="Strata Performance" class="w-full h-full object-contain hover:scale-105 transition-transform duration-300" loading="lazy">
+                <!-- Row 2: Boxplots & Strata -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="plot-card">
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="text-sm font-bold text-slate-900">Distribución Espacial de Eficiencia (KGE Boxplots)</h4>
+                            {% if fig_rain.kge_boxplots %}<a href="{{ fig_rain.kge_boxplots }}" target="_blank" class="text-[11px] text-blue-600 hover:underline">Descargar PNG (300 DPI)</a>{% endif %}
                         </div>
-                        <div class="p-4">
-                            <div class="text-[11px] font-bold text-sky-700 uppercase">Figura 3</div>
-                            <h4 class="text-sm font-bold text-slate-900 mt-0.5">Rendimiento por Relieve</h4>
-                            <p class="text-xs text-slate-500 mt-1 line-clamp-2">Comportamiento orográfico y control de sobredispersión en relieve complejo.</p>
-                        </div>
+                        <div id="plot_box_rainfall" style="height: 380px;"></div>
                     </div>
-
-                    <!-- Fig 4: Radar Skill -->
-                    <div class="gallery-card bg-white rounded-xl border border-slate-200 overflow-hidden cursor-pointer shadow-sm"
-                         onclick="openLightbox('{{ fig_rain.radar }}', 'Diagrama Radial Multicriterio (Radar Skill)', 'Demuestra la superioridad convexa del experimento ganador sobre 6 dimensiones simultáneas normalizadas.')">
-                        <div class="h-56 bg-slate-100 overflow-hidden flex items-center justify-center">
-                            <img src="{{ fig_rain.radar }}" alt="Radar Skill Chart" class="w-full h-full object-contain hover:scale-105 transition-transform duration-300" loading="lazy">
+                    <div class="plot-card">
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="text-sm font-bold text-slate-900">Rendimiento por Estratos Topográficos</h4>
+                            {% if fig_rain.strata %}<a href="{{ fig_rain.strata }}" target="_blank" class="text-[11px] text-blue-600 hover:underline">Descargar PNG (300 DPI)</a>{% endif %}
                         </div>
-                        <div class="p-4">
-                            <div class="text-[11px] font-bold text-sky-700 uppercase">Figura 4 (Novedad)</div>
-                            <h4 class="text-sm font-bold text-slate-900 mt-0.5">Diagrama Radial Multicriterio</h4>
-                            <p class="text-xs text-slate-500 mt-1 line-clamp-2">Visualiza el polígono convexo de habilidad y equilibrio multivariable.</p>
-                        </div>
+                        <div id="plot_strata_rainfall" style="height: 380px;"></div>
                     </div>
+                </div>
 
-                    <!-- Fig 5: Metrics Heatmap -->
-                    <div class="gallery-card bg-white rounded-xl border border-slate-200 overflow-hidden cursor-pointer shadow-sm"
-                         onclick="openLightbox('{{ fig_rain.heatmap }}', 'Heatmap Diagnóstico de Rendimiento Multimétrica', 'Matriz de experimentos vs métricas con gradiente de color relativo y valores cuantitativos rotulados.')">
-                        <div class="h-56 bg-slate-100 overflow-hidden flex items-center justify-center">
-                            <img src="{{ fig_rain.heatmap }}" alt="Metrics Heatmap" class="w-full h-full object-contain hover:scale-105 transition-transform duration-300" loading="lazy">
+                <!-- Row 3: Heatmap & ROC Space -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="plot-card">
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="text-sm font-bold text-slate-900">Matriz Diagnóstica de Métricas (Heatmap)</h4>
+                            {% if fig_rain.heatmap %}<a href="{{ fig_rain.heatmap }}" target="_blank" class="text-[11px] text-blue-600 hover:underline">Descargar PNG (300 DPI)</a>{% endif %}
                         </div>
-                        <div class="p-4">
-                            <div class="text-[11px] font-bold text-sky-700 uppercase">Figura 5 (Novedad)</div>
-                            <h4 class="text-sm font-bold text-slate-900 mt-0.5">Heatmap de Métricas</h4>
-                            <p class="text-xs text-slate-500 mt-1 line-clamp-2">Ranking directo celda a celda de todas las métricas de validación.</p>
-                        </div>
+                        <div id="plot_heatmap_rainfall" style="height: 380px;"></div>
                     </div>
-
-                    <!-- Fig 6: ROC Categorical -->
-                    <div class="gallery-card bg-white rounded-xl border border-slate-200 overflow-hidden cursor-pointer shadow-sm"
-                         onclick="openLightbox('{{ fig_rain.roc }}', 'Espacio ROC Categórico: Detección vs Falsa Alarma', 'Gráfico de POD vs FAR con isolíneas de Critical Success Index (CSI). Demuestra la eliminación de llovizna satelital espuria sin perder lluvia real.')">
-                        <div class="h-56 bg-slate-100 overflow-hidden flex items-center justify-center">
-                            <img src="{{ fig_rain.roc }}" alt="ROC POD vs FAR" class="w-full h-full object-contain hover:scale-105 transition-transform duration-300" loading="lazy">
+                    <div class="plot-card">
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="text-sm font-bold text-slate-900">Espacio ROC Categórico (POD vs FAR)</h4>
+                            {% if fig_rain.roc %}<a href="{{ fig_rain.roc }}" target="_blank" class="text-[11px] text-blue-600 hover:underline">Descargar PNG (300 DPI)</a>{% endif %}
                         </div>
-                        <div class="p-4">
-                            <div class="text-[11px] font-bold text-sky-700 uppercase">Figura 6 (Exclusivo Lluvia)</div>
-                            <h4 class="text-sm font-bold text-slate-900 mt-0.5">Espacio ROC (POD vs FAR)</h4>
-                            <p class="text-xs text-slate-500 mt-1 line-clamp-2">Compromiso óptimo entre captura de precipitación y supresión de llovizna.</p>
-                        </div>
+                        <div id="plot_roc_rainfall" style="height: 380px;"></div>
                     </div>
+                </div>
 
+                <!-- Row 4: KGE vs RMSE & Delta KGE -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="plot-card">
+                        <h4 class="text-sm font-bold text-slate-900 mb-2">Dispersión: Precisión vs Error (KGE vs RMSE)</h4>
+                        <div id="plot_scatter_rainfall" style="height: 340px;"></div>
+                    </div>
+                    <div class="plot-card">
+                        <h4 class="text-sm font-bold text-slate-900 mb-2">Ganancia de Eficiencia frente a Línea Base (Δ KGE)</h4>
+                        <div id="plot_delta_rainfall" style="height: 340px;"></div>
+                    </div>
                 </div>
             </section>
 
             <!-- Table of Experiments for Rainfall -->
             <section class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                <h3 class="text-base font-bold text-slate-900 mb-4">📋 Leaderboard de Experimentos: Precipitación</h3>
+                <h3 class="text-sm font-bold text-slate-900 mb-4">Tabla de Evaluación Cuantitativa: Precipitación</h3>
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm text-left datatable-var display">
                         <thead class="bg-slate-100 text-slate-700 text-xs uppercase">
                             <tr>
-                                <th>Rank</th>
+                                <th>Rango</th>
                                 <th>ID Experimento</th>
                                 <th>GSS Score</th>
                                 <th>KGE</th>
@@ -902,8 +1202,8 @@ HTML_DASHBOARD_TEMPLATE = """<!DOCTYPE html>
                         </thead>
                         <tbody>
                             {% for row in rows_rain %}
-                            <tr class="hover:bg-slate-50 border-b border-slate-100 {% if row.is_winner %}bg-blue-50/60 font-semibold{% endif %}">
-                                <td class="text-center font-bold">{% if row.rank == 1 %}🥇 1{% elif row.rank == 2 %}🥈 2{% elif row.rank == 3 %}🥉 3{% else %}{{ row.rank }}{% endif %}</td>
+                            <tr class="hover:bg-slate-50 border-b border-slate-100 {% if row.is_winner %}bg-sky-50/60 font-semibold{% endif %}">
+                                <td class="text-center font-bold">{{ row.rank }}</td>
                                 <td class="font-mono text-xs font-bold text-blue-900">{{ row.experiment_id }}</td>
                                 <td class="font-bold text-emerald-700">{{ "%.3f"|format(row.global_skill_score) }}</td>
                                 <td class="font-bold">{{ "%.3f"|format(row.kge) }}</td>
@@ -930,118 +1230,104 @@ HTML_DASHBOARD_TEMPLATE = """<!DOCTYPE html>
         <div id="tab-content-tmax" class="tab-panel hidden space-y-8">
             
             {% if win_tmax %}
-            <div class="bg-gradient-to-r from-amber-900 via-orange-800 to-amber-700 text-white rounded-2xl p-6 shadow-xl relative overflow-hidden">
+            <div class="bg-slate-900 border border-slate-800 text-white rounded-xl p-6 shadow-md">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
-                        <div class="inline-flex items-center space-x-2 bg-amber-500/30 text-amber-200 text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full mb-2">
-                            <span>🏆 Candidato Ganador Recomendado para Publicación</span>
-                        </div>
-                        <h2 class="text-3xl font-black text-white">{{ win_tmax.experiment_id }}</h2>
-                        <p class="text-sm text-amber-100 max-w-2xl mt-1">{{ win_tmax.description }}</p>
+                        <div class="text-xs text-amber-400 font-semibold uppercase tracking-wider mb-1">Configuración con Mayor Desempeño Global</div>
+                        <h2 class="text-2xl font-black text-white">{{ win_tmax.experiment_id }}</h2>
+                        <p class="text-xs text-slate-300 max-w-2xl mt-1">{{ win_tmax.description }}</p>
                     </div>
-                    <div class="grid grid-cols-4 gap-3 bg-black/25 backdrop-blur-md rounded-xl p-4 border border-white/10 text-center">
+                    <div class="grid grid-cols-4 gap-3 bg-slate-800/80 rounded-lg p-3 border border-slate-700 text-center">
                         <div>
-                            <div class="text-[10px] uppercase text-amber-200 font-semibold">GSS Skill</div>
-                            <div class="text-lg font-black text-emerald-300">{{ "%.3f"|format(win_tmax.global_skill_score) }}</div>
+                            <div class="text-[10px] uppercase text-slate-400">GSS</div>
+                            <div class="text-base font-bold text-amber-400">{{ "%.3f"|format(win_tmax.global_skill_score) }}</div>
                         </div>
                         <div>
-                            <div class="text-[10px] uppercase text-amber-200 font-semibold">KGE</div>
-                            <div class="text-lg font-black">{{ "%.3f"|format(win_tmax.kge) }}</div>
+                            <div class="text-[10px] uppercase text-slate-400">KGE</div>
+                            <div class="text-base font-bold text-white">{{ "%.3f"|format(win_tmax.kge) }}</div>
                         </div>
                         <div>
-                            <div class="text-[10px] uppercase text-amber-200 font-semibold">Corr (r)</div>
-                            <div class="text-lg font-black">{{ "%.3f"|format(win_tmax.r) }}</div>
+                            <div class="text-[10px] uppercase text-slate-400">Corr (r)</div>
+                            <div class="text-base font-bold text-white">{{ "%.3f"|format(win_tmax.r) }}</div>
                         </div>
                         <div>
-                            <div class="text-[10px] uppercase text-amber-200 font-semibold">RMSE</div>
-                            <div class="text-lg font-black">{{ "%.2f °C"|format(win_tmax.rmse) }}</div>
+                            <div class="text-[10px] uppercase text-slate-400">RMSE</div>
+                            <div class="text-base font-bold text-white">{{ "%.2f °C"|format(win_tmax.rmse) }}</div>
                         </div>
                     </div>
                 </div>
             </div>
             {% endif %}
 
-            <!-- Figures Gallery for Tmax -->
-            <section>
-                <div class="flex justify-between items-end mb-4">
-                    <div>
-                        <h3 class="text-lg font-bold text-slate-900">📈 Galería de Figuras Diagnósticas de Alta Resolución (Tmax)</h3>
-                        <p class="text-xs text-slate-500">Evaluación del gradiente adiabático y ajuste térmico diurno en Centroamérica y R. Dominicana.</p>
-                    </div>
-                    <span class="text-xs font-semibold px-2.5 py-1 bg-amber-100 text-amber-800 rounded">5 Figuras de Diagnóstico</span>
+            <!-- Interactive Diagnostic Suite: Tmax -->
+            <section class="space-y-6">
+                <div>
+                    <h3 class="text-base font-bold text-slate-900">Gráficos Diagnósticos Interactivos: Temperatura Máxima</h3>
+                    <p class="text-xs text-slate-500">Evaluación de gradiente adiabático y ajuste térmico diurno en estaciones independientes.</p>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <div class="gallery-card bg-white rounded-xl border border-slate-200 overflow-hidden cursor-pointer shadow-sm"
-                         onclick="openLightbox('{{ fig_tmax.taylor }}', 'Diagrama Polar de Taylor: Tmax', 'Dispersión y variabilidad de temperatura máxima modelada vs estaciones holdout.')">
-                        <div class="h-56 bg-slate-100 overflow-hidden flex items-center justify-center">
-                            <img src="{{ fig_tmax.taylor }}" alt="Taylor Tmax" class="w-full h-full object-contain hover:scale-105 transition-transform duration-300" loading="lazy">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="plot-card">
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="text-sm font-bold text-slate-900">Diagrama Polar de Taylor</h4>
+                            {% if fig_tmax.taylor %}<a href="{{ fig_tmax.taylor }}" target="_blank" class="text-[11px] text-blue-600 hover:underline">Descargar PNG (300 DPI)</a>{% endif %}
                         </div>
-                        <div class="p-4">
-                            <div class="text-[11px] font-bold text-amber-700 uppercase">Figura 1</div>
-                            <h4 class="text-sm font-bold text-slate-900 mt-0.5">Diagrama Polar de Taylor</h4>
-                            <p class="text-xs text-slate-500 mt-1 line-clamp-2">Evaluación armónica de correlación (r), varianza relativa y error RMS de temperatura.</p>
-                        </div>
+                        <div id="plot_taylor_tmax" style="height: 380px;"></div>
                     </div>
+                    <div class="plot-card">
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="text-sm font-bold text-slate-900">Diagrama Radial Multicriterio</h4>
+                            {% if fig_tmax.radar %}<a href="{{ fig_tmax.radar }}" target="_blank" class="text-[11px] text-blue-600 hover:underline">Descargar PNG (300 DPI)</a>{% endif %}
+                        </div>
+                        <div id="plot_radar_tmax" style="height: 380px;"></div>
+                    </div>
+                </div>
 
-                    <div class="gallery-card bg-white rounded-xl border border-slate-200 overflow-hidden cursor-pointer shadow-sm"
-                         onclick="openLightbox('{{ fig_tmax.kge_boxplots }}', 'Distribución Espacial de KGE: Tmax', 'Distribución estadística de eficiencia térmica por estación.')">
-                        <div class="h-56 bg-slate-100 overflow-hidden flex items-center justify-center">
-                            <img src="{{ fig_tmax.kge_boxplots }}" alt="KGE Boxplots Tmax" class="w-full h-full object-contain hover:scale-105 transition-transform duration-300" loading="lazy">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="plot-card">
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="text-sm font-bold text-slate-900">Distribución Espacial de Eficiencia (KGE Boxplots)</h4>
+                            {% if fig_tmax.kge_boxplots %}<a href="{{ fig_tmax.kge_boxplots }}" target="_blank" class="text-[11px] text-blue-600 hover:underline">Descargar PNG (300 DPI)</a>{% endif %}
                         </div>
-                        <div class="p-4">
-                            <div class="text-[11px] font-bold text-amber-700 uppercase">Figura 2</div>
-                            <h4 class="text-sm font-bold text-slate-900 mt-0.5">Boxplots de Eficiencia (KGE)</h4>
-                            <p class="text-xs text-slate-500 mt-1 line-clamp-2">Rendimiento térmico en estaciones de llanura costera y valles intermontanos.</p>
-                        </div>
+                        <div id="plot_box_tmax" style="height: 380px;"></div>
                     </div>
+                    <div class="plot-card">
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="text-sm font-bold text-slate-900">Rendimiento por Estratos Topográficos</h4>
+                            {% if fig_tmax.strata %}<a href="{{ fig_tmax.strata }}" target="_blank" class="text-[11px] text-blue-600 hover:underline">Descargar PNG (300 DPI)</a>{% endif %}
+                        </div>
+                        <div id="plot_strata_tmax" style="height: 380px;"></div>
+                    </div>
+                </div>
 
-                    <div class="gallery-card bg-white rounded-xl border border-slate-200 overflow-hidden cursor-pointer shadow-sm"
-                         onclick="openLightbox('{{ fig_tmax.strata }}', 'Rendimiento por Estratos Altitudinales: Tmax', 'Comportamiento del gradiente adiabático estimado en tierras bajas vs mesetas altas.')">
-                        <div class="h-56 bg-slate-100 overflow-hidden flex items-center justify-center">
-                            <img src="{{ fig_tmax.strata }}" alt="Strata Tmax" class="w-full h-full object-contain hover:scale-105 transition-transform duration-300" loading="lazy">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="plot-card">
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="text-sm font-bold text-slate-900">Matriz Diagnóstica de Métricas (Heatmap)</h4>
+                            {% if fig_tmax.heatmap %}<a href="{{ fig_tmax.heatmap }}" target="_blank" class="text-[11px] text-blue-600 hover:underline">Descargar PNG (300 DPI)</a>{% endif %}
                         </div>
-                        <div class="p-4">
-                            <div class="text-[11px] font-bold text-amber-700 uppercase">Figura 3</div>
-                            <h4 class="text-sm font-bold text-slate-900 mt-0.5">Rendimiento por Estratos de Relieve</h4>
-                            <p class="text-xs text-slate-500 mt-1 line-clamp-2">Validación del lapse rate térmico a través de las capas de elevación DEM.</p>
-                        </div>
+                        <div id="plot_heatmap_tmax" style="height: 380px;"></div>
                     </div>
+                    <div class="plot-card">
+                        <h4 class="text-sm font-bold text-slate-900 mb-2">Dispersión: Precisión vs Error (KGE vs RMSE)</h4>
+                        <div id="plot_scatter_tmax" style="height: 380px;"></div>
+                    </div>
+                </div>
 
-                    <div class="gallery-card bg-white rounded-xl border border-slate-200 overflow-hidden cursor-pointer shadow-sm"
-                         onclick="openLightbox('{{ fig_tmax.radar }}', 'Diagrama Radial Multicriterio: Tmax', 'Polígono de habilidad en KGE, r, sesgo térmico, RMSE y MAE.')">
-                        <div class="h-56 bg-slate-100 overflow-hidden flex items-center justify-center">
-                            <img src="{{ fig_tmax.radar }}" alt="Radar Tmax" class="w-full h-full object-contain hover:scale-105 transition-transform duration-300" loading="lazy">
-                        </div>
-                        <div class="p-4">
-                            <div class="text-[11px] font-bold text-amber-700 uppercase">Figura 4 (Novedad)</div>
-                            <h4 class="text-sm font-bold text-slate-900 mt-0.5">Diagrama Radial Multicriterio</h4>
-                            <p class="text-xs text-slate-500 mt-1 line-clamp-2">Evaluación convexa de desempeño diurno multiobjetivo.</p>
-                        </div>
-                    </div>
-
-                    <div class="gallery-card bg-white rounded-xl border border-slate-200 overflow-hidden cursor-pointer shadow-sm"
-                         onclick="openLightbox('{{ fig_tmax.heatmap }}', 'Heatmap de Métricas: Tmax', 'Matriz de experimentos vs errores térmicos y correlación.')">
-                        <div class="h-56 bg-slate-100 overflow-hidden flex items-center justify-center">
-                            <img src="{{ fig_tmax.heatmap }}" alt="Heatmap Tmax" class="w-full h-full object-contain hover:scale-105 transition-transform duration-300" loading="lazy">
-                        </div>
-                        <div class="p-4">
-                            <div class="text-[11px] font-bold text-amber-700 uppercase">Figura 5 (Novedad)</div>
-                            <h4 class="text-sm font-bold text-slate-900 mt-0.5">Heatmap de Métricas Térmicas</h4>
-                            <p class="text-xs text-slate-500 mt-1 line-clamp-2">Ranking directo de RMSE, MAE, KGE y sesgo porcentual.</p>
-                        </div>
-                    </div>
+                <div class="plot-card">
+                    <h4 class="text-sm font-bold text-slate-900 mb-2">Ganancia de Eficiencia frente a Línea Base (Δ KGE)</h4>
+                    <div id="plot_delta_tmax" style="height: 320px;"></div>
                 </div>
             </section>
 
             <!-- Table of Experiments for Tmax -->
             <section class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                <h3 class="text-base font-bold text-slate-900 mb-4">📋 Leaderboard de Experimentos: Temperatura Máxima</h3>
+                <h3 class="text-sm font-bold text-slate-900 mb-4">Tabla de Evaluación Cuantitativa: Temperatura Máxima</h3>
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm text-left datatable-var display">
                         <thead class="bg-slate-100 text-slate-700 text-xs uppercase">
                             <tr>
-                                <th>Rank</th>
+                                <th>Rango</th>
                                 <th>ID Experimento</th>
                                 <th>GSS Score</th>
                                 <th>KGE</th>
@@ -1055,7 +1341,7 @@ HTML_DASHBOARD_TEMPLATE = """<!DOCTYPE html>
                         <tbody>
                             {% for row in rows_tmax %}
                             <tr class="hover:bg-slate-50 border-b border-slate-100 {% if row.is_winner %}bg-amber-50/60 font-semibold{% endif %}">
-                                <td class="text-center font-bold">{% if row.rank == 1 %}🥇 1{% elif row.rank == 2 %}🥈 2{% elif row.rank == 3 %}🥉 3{% else %}{{ row.rank }}{% endif %}</td>
+                                <td class="text-center font-bold">{{ row.rank }}</td>
                                 <td class="font-mono text-xs font-bold text-amber-900">{{ row.experiment_id }}</td>
                                 <td class="font-bold text-emerald-700">{{ "%.3f"|format(row.global_skill_score) }}</td>
                                 <td class="font-bold">{{ "%.3f"|format(row.kge) }}</td>
@@ -1081,118 +1367,104 @@ HTML_DASHBOARD_TEMPLATE = """<!DOCTYPE html>
         <div id="tab-content-tmin" class="tab-panel hidden space-y-8">
             
             {% if win_tmin %}
-            <div class="bg-gradient-to-r from-indigo-950 via-purple-900 to-indigo-800 text-white rounded-2xl p-6 shadow-xl relative overflow-hidden">
+            <div class="bg-slate-900 border border-slate-800 text-white rounded-xl p-6 shadow-md">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
-                        <div class="inline-flex items-center space-x-2 bg-purple-500/30 text-purple-200 text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full mb-2">
-                            <span>🏆 Candidato Ganador Recomendado para Publicación</span>
-                        </div>
-                        <h2 class="text-3xl font-black text-white">{{ win_tmin.experiment_id }}</h2>
-                        <p class="text-sm text-purple-100 max-w-2xl mt-1">{{ win_tmin.description }}</p>
+                        <div class="text-xs text-purple-400 font-semibold uppercase tracking-wider mb-1">Configuración con Mayor Desempeño Global</div>
+                        <h2 class="text-2xl font-black text-white">{{ win_tmin.experiment_id }}</h2>
+                        <p class="text-xs text-slate-300 max-w-2xl mt-1">{{ win_tmin.description }}</p>
                     </div>
-                    <div class="grid grid-cols-4 gap-3 bg-black/25 backdrop-blur-md rounded-xl p-4 border border-white/10 text-center">
+                    <div class="grid grid-cols-4 gap-3 bg-slate-800/80 rounded-lg p-3 border border-slate-700 text-center">
                         <div>
-                            <div class="text-[10px] uppercase text-purple-200 font-semibold">GSS Skill</div>
-                            <div class="text-lg font-black text-emerald-300">{{ "%.3f"|format(win_tmin.global_skill_score) }}</div>
+                            <div class="text-[10px] uppercase text-slate-400">GSS</div>
+                            <div class="text-base font-bold text-purple-400">{{ "%.3f"|format(win_tmin.global_skill_score) }}</div>
                         </div>
                         <div>
-                            <div class="text-[10px] uppercase text-purple-200 font-semibold">KGE</div>
-                            <div class="text-lg font-black">{{ "%.3f"|format(win_tmin.kge) }}</div>
+                            <div class="text-[10px] uppercase text-slate-400">KGE</div>
+                            <div class="text-base font-bold text-white">{{ "%.3f"|format(win_tmin.kge) }}</div>
                         </div>
                         <div>
-                            <div class="text-[10px] uppercase text-purple-200 font-semibold">Corr (r)</div>
-                            <div class="text-lg font-black">{{ "%.3f"|format(win_tmin.r) }}</div>
+                            <div class="text-[10px] uppercase text-slate-400">Corr (r)</div>
+                            <div class="text-base font-bold text-white">{{ "%.3f"|format(win_tmin.r) }}</div>
                         </div>
                         <div>
-                            <div class="text-[10px] uppercase text-purple-200 font-semibold">RMSE</div>
-                            <div class="text-lg font-black">{{ "%.2f °C"|format(win_tmin.rmse) }}</div>
+                            <div class="text-[10px] uppercase text-slate-400">RMSE</div>
+                            <div class="text-base font-bold text-white">{{ "%.2f °C"|format(win_tmin.rmse) }}</div>
                         </div>
                     </div>
                 </div>
             </div>
             {% endif %}
 
-            <!-- Figures Gallery for Tmin -->
-            <section>
-                <div class="flex justify-between items-end mb-4">
-                    <div>
-                        <h3 class="text-lg font-bold text-slate-900">📈 Galería de Figuras Diagnósticas de Alta Resolución (Tmin)</h3>
-                        <p class="text-xs text-slate-500">Evaluación de inversiones térmicas nocturnas y microclimas de fondo de valle.</p>
-                    </div>
-                    <span class="text-xs font-semibold px-2.5 py-1 bg-purple-100 text-purple-800 rounded">5 Figuras de Diagnóstico</span>
+            <!-- Interactive Diagnostic Suite: Tmin -->
+            <section class="space-y-6">
+                <div>
+                    <h3 class="text-base font-bold text-slate-900">Gráficos Diagnósticos Interactivos: Temperatura Mínima</h3>
+                    <p class="text-xs text-slate-500">Evaluación de inversiones térmicas nocturnas y microclimas de fondo de valle.</p>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <div class="gallery-card bg-white rounded-xl border border-slate-200 overflow-hidden cursor-pointer shadow-sm"
-                         onclick="openLightbox('{{ fig_tmin.taylor }}', 'Diagrama Polar de Taylor: Tmin', 'Variabilidad nocturna modelada vs estaciones holdout.')">
-                        <div class="h-56 bg-slate-100 overflow-hidden flex items-center justify-center">
-                            <img src="{{ fig_tmin.taylor }}" alt="Taylor Tmin" class="w-full h-full object-contain hover:scale-105 transition-transform duration-300" loading="lazy">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="plot-card">
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="text-sm font-bold text-slate-900">Diagrama Polar de Taylor</h4>
+                            {% if fig_tmin.taylor %}<a href="{{ fig_tmin.taylor }}" target="_blank" class="text-[11px] text-blue-600 hover:underline">Descargar PNG (300 DPI)</a>{% endif %}
                         </div>
-                        <div class="p-4">
-                            <div class="text-[11px] font-bold text-purple-700 uppercase">Figura 1</div>
-                            <h4 class="text-sm font-bold text-slate-900 mt-0.5">Diagrama Polar de Taylor</h4>
-                            <p class="text-xs text-slate-500 mt-1 line-clamp-2">Evaluación armónica de correlación, varianza relativa y error RMS de temperatura nocturna.</p>
-                        </div>
+                        <div id="plot_taylor_tmin" style="height: 380px;"></div>
                     </div>
+                    <div class="plot-card">
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="text-sm font-bold text-slate-900">Diagrama Radial Multicriterio</h4>
+                            {% if fig_tmin.radar %}<a href="{{ fig_tmin.radar }}" target="_blank" class="text-[11px] text-blue-600 hover:underline">Descargar PNG (300 DPI)</a>{% endif %}
+                        </div>
+                        <div id="plot_radar_tmin" style="height: 380px;"></div>
+                    </div>
+                </div>
 
-                    <div class="gallery-card bg-white rounded-xl border border-slate-200 overflow-hidden cursor-pointer shadow-sm"
-                         onclick="openLightbox('{{ fig_tmin.kge_boxplots }}', 'Distribución Espacial de KGE: Tmin', 'Distribución estadística de eficiencia en régimen nocturno.')">
-                        <div class="h-56 bg-slate-100 overflow-hidden flex items-center justify-center">
-                            <img src="{{ fig_tmin.kge_boxplots }}" alt="KGE Boxplots Tmin" class="w-full h-full object-contain hover:scale-105 transition-transform duration-300" loading="lazy">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="plot-card">
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="text-sm font-bold text-slate-900">Distribución Espacial de Eficiencia (KGE Boxplots)</h4>
+                            {% if fig_tmin.kge_boxplots %}<a href="{{ fig_tmin.kge_boxplots }}" target="_blank" class="text-[11px] text-blue-600 hover:underline">Descargar PNG (300 DPI)</a>{% endif %}
                         </div>
-                        <div class="p-4">
-                            <div class="text-[11px] font-bold text-purple-700 uppercase">Figura 2</div>
-                            <h4 class="text-sm font-bold text-slate-900 mt-0.5">Boxplots de Eficiencia (KGE)</h4>
-                            <p class="text-xs text-slate-500 mt-1 line-clamp-2">Comportamiento en valles intramontanos y zonas de inversión térmica.</p>
-                        </div>
+                        <div id="plot_box_tmin" style="height: 380px;"></div>
                     </div>
+                    <div class="plot-card">
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="text-sm font-bold text-slate-900">Rendimiento por Estratos Topográficos</h4>
+                            {% if fig_tmin.strata %}<a href="{{ fig_tmin.strata }}" target="_blank" class="text-[11px] text-blue-600 hover:underline">Descargar PNG (300 DPI)</a>{% endif %}
+                        </div>
+                        <div id="plot_strata_tmin" style="height: 380px;"></div>
+                    </div>
+                </div>
 
-                    <div class="gallery-card bg-white rounded-xl border border-slate-200 overflow-hidden cursor-pointer shadow-sm"
-                         onclick="openLightbox('{{ fig_tmin.strata }}', 'Rendimiento por Estratos Altitudinales: Tmin', 'Comportamiento térmico nocturno según estratos de altitud.')">
-                        <div class="h-56 bg-slate-100 overflow-hidden flex items-center justify-center">
-                            <img src="{{ fig_tmin.strata }}" alt="Strata Tmin" class="w-full h-full object-contain hover:scale-105 transition-transform duration-300" loading="lazy">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="plot-card">
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="text-sm font-bold text-slate-900">Matriz Diagnóstica de Métricas (Heatmap)</h4>
+                            {% if fig_tmin.heatmap %}<a href="{{ fig_tmin.heatmap }}" target="_blank" class="text-[11px] text-blue-600 hover:underline">Descargar PNG (300 DPI)</a>{% endif %}
                         </div>
-                        <div class="p-4">
-                            <div class="text-[11px] font-bold text-purple-700 uppercase">Figura 3</div>
-                            <h4 class="text-sm font-bold text-slate-900 mt-0.5">Rendimiento por Estratos de Relieve</h4>
-                            <p class="text-xs text-slate-500 mt-1 line-clamp-2">Impacto de la topografía DEM en el drenaje de aire frío nocturno.</p>
-                        </div>
+                        <div id="plot_heatmap_tmin" style="height: 380px;"></div>
                     </div>
+                    <div class="plot-card">
+                        <h4 class="text-sm font-bold text-slate-900 mb-2">Dispersión: Precisión vs Error (KGE vs RMSE)</h4>
+                        <div id="plot_scatter_tmin" style="height: 380px;"></div>
+                    </div>
+                </div>
 
-                    <div class="gallery-card bg-white rounded-xl border border-slate-200 overflow-hidden cursor-pointer shadow-sm"
-                         onclick="openLightbox('{{ fig_tmin.radar }}', 'Diagrama Radial Multicriterio: Tmin', 'Polígono de habilidad en KGE, r, sesgo térmico, RMSE y MAE nocturno.')">
-                        <div class="h-56 bg-slate-100 overflow-hidden flex items-center justify-center">
-                            <img src="{{ fig_tmin.radar }}" alt="Radar Tmin" class="w-full h-full object-contain hover:scale-105 transition-transform duration-300" loading="lazy">
-                        </div>
-                        <div class="p-4">
-                            <div class="text-[11px] font-bold text-purple-700 uppercase">Figura 4 (Novedad)</div>
-                            <h4 class="text-sm font-bold text-slate-900 mt-0.5">Diagrama Radial Multicriterio</h4>
-                            <p class="text-xs text-slate-500 mt-1 line-clamp-2">Evaluación convexa multiobjetivo para el régimen nocturno.</p>
-                        </div>
-                    </div>
-
-                    <div class="gallery-card bg-white rounded-xl border border-slate-200 overflow-hidden cursor-pointer shadow-sm"
-                         onclick="openLightbox('{{ fig_tmin.heatmap }}', 'Heatmap de Métricas: Tmin', 'Matriz de experimentos vs errores térmicos nocturnos.')">
-                        <div class="h-56 bg-slate-100 overflow-hidden flex items-center justify-center">
-                            <img src="{{ fig_tmin.heatmap }}" alt="Heatmap Tmin" class="w-full h-full object-contain hover:scale-105 transition-transform duration-300" loading="lazy">
-                        </div>
-                        <div class="p-4">
-                            <div class="text-[11px] font-bold text-purple-700 uppercase">Figura 5 (Novedad)</div>
-                            <h4 class="text-sm font-bold text-slate-900 mt-0.5">Heatmap de Métricas Térmicas</h4>
-                            <p class="text-xs text-slate-500 mt-1 line-clamp-2">Ranking directo de métricas cuantitativas para Tmin.</p>
-                        </div>
-                    </div>
+                <div class="plot-card">
+                    <h4 class="text-sm font-bold text-slate-900 mb-2">Ganancia de Eficiencia frente a Línea Base (Δ KGE)</h4>
+                    <div id="plot_delta_tmin" style="height: 320px;"></div>
                 </div>
             </section>
 
             <!-- Table of Experiments for Tmin -->
             <section class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                <h3 class="text-base font-bold text-slate-900 mb-4">📋 Leaderboard de Experimentos: Temperatura Mínima</h3>
+                <h3 class="text-sm font-bold text-slate-900 mb-4">Tabla de Evaluación Cuantitativa: Temperatura Mínima</h3>
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm text-left datatable-var display">
                         <thead class="bg-slate-100 text-slate-700 text-xs uppercase">
                             <tr>
-                                <th>Rank</th>
+                                <th>Rango</th>
                                 <th>ID Experimento</th>
                                 <th>GSS Score</th>
                                 <th>KGE</th>
@@ -1206,7 +1478,7 @@ HTML_DASHBOARD_TEMPLATE = """<!DOCTYPE html>
                         <tbody>
                             {% for row in rows_tmin %}
                             <tr class="hover:bg-slate-50 border-b border-slate-100 {% if row.is_winner %}bg-purple-50/60 font-semibold{% endif %}">
-                                <td class="text-center font-bold">{% if row.rank == 1 %}🥇 1{% elif row.rank == 2 %}🥈 2{% elif row.rank == 3 %}🥉 3{% else %}{{ row.rank }}{% endif %}</td>
+                                <td class="text-center font-bold">{{ row.rank }}</td>
                                 <td class="font-mono text-xs font-bold text-purple-900">{{ row.experiment_id }}</td>
                                 <td class="font-bold text-emerald-700">{{ "%.3f"|format(row.global_skill_score) }}</td>
                                 <td class="font-bold">{{ "%.3f"|format(row.kge) }}</td>
@@ -1231,53 +1503,49 @@ HTML_DASHBOARD_TEMPLATE = """<!DOCTYPE html>
         <!-- ========================================================================= -->
         <div id="tab-content-consolidated" class="tab-panel hidden space-y-8">
             
-            <!-- Triple Winners Row -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <!-- Rain Winner -->
-                <div class="bg-gradient-to-br from-blue-900 to-sky-700 text-white rounded-xl p-5 shadow-lg">
-                    <div class="text-[10px] font-bold uppercase tracking-wider text-sky-200">Precipitación (CHIRPS)</div>
-                    <div class="text-2xl font-black mt-1">{{ win_rain.experiment_id if win_rain else 'N/A' }}</div>
-                    <div class="text-xs text-sky-100 mt-1 line-clamp-2">{{ win_rain.description if win_rain else '-' }}</div>
-                    <div class="mt-4 pt-3 border-t border-sky-400/30 flex justify-between text-xs">
-                        <div>KGE: <b>{{ "%.3f"|format(win_rain.kge) if win_rain else '-' }}</b></div>
-                        <div>r: <b>{{ "%.3f"|format(win_rain.r) if win_rain else '-' }}</b></div>
-                        <div>ETS: <b>{{ "%.3f"|format(win_rain.ets) if win_rain and win_rain.ets else '-' }}</b></div>
+                <div class="bg-slate-900 text-white rounded-xl p-5 border border-slate-800 shadow-sm">
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-sky-400">Precipitación (CHIRPS)</div>
+                    <div class="text-xl font-black mt-1">{{ win_rain.experiment_id if win_rain else 'N/A' }}</div>
+                    <div class="text-xs text-slate-300 mt-1 line-clamp-2">{{ win_rain.description if win_rain else '-' }}</div>
+                    <div class="mt-4 pt-3 border-t border-slate-800 flex justify-between text-xs text-slate-300">
+                        <div>KGE: <b class="text-white">{{ "%.3f"|format(win_rain.kge) if win_rain else '-' }}</b></div>
+                        <div>r: <b class="text-white">{{ "%.3f"|format(win_rain.r) if win_rain else '-' }}</b></div>
+                        <div>ETS: <b class="text-white">{{ "%.3f"|format(win_rain.ets) if win_rain and win_rain.ets else '-' }}</b></div>
                     </div>
                 </div>
 
-                <!-- Tmax Winner -->
-                <div class="bg-gradient-to-br from-amber-900 to-orange-700 text-white rounded-xl p-5 shadow-lg">
-                    <div class="text-[10px] font-bold uppercase tracking-wider text-amber-200">Temp. Máxima (Tmax)</div>
-                    <div class="text-2xl font-black mt-1">{{ win_tmax.experiment_id if win_tmax else 'N/A' }}</div>
-                    <div class="text-xs text-amber-100 mt-1 line-clamp-2">{{ win_tmax.description if win_tmax else '-' }}</div>
-                    <div class="mt-4 pt-3 border-t border-amber-400/30 flex justify-between text-xs">
-                        <div>KGE: <b>{{ "%.3f"|format(win_tmax.kge) if win_tmax else '-' }}</b></div>
-                        <div>r: <b>{{ "%.3f"|format(win_tmax.r) if win_tmax else '-' }}</b></div>
-                        <div>RMSE: <b>{{ "%.2f °C"|format(win_tmax.rmse) if win_tmax else '-' }}</b></div>
+                <div class="bg-slate-900 text-white rounded-xl p-5 border border-slate-800 shadow-sm">
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-amber-400">Temp. Máxima (Tmax)</div>
+                    <div class="text-xl font-black mt-1">{{ win_tmax.experiment_id if win_tmax else 'N/A' }}</div>
+                    <div class="text-xs text-slate-300 mt-1 line-clamp-2">{{ win_tmax.description if win_tmax else '-' }}</div>
+                    <div class="mt-4 pt-3 border-t border-slate-800 flex justify-between text-xs text-slate-300">
+                        <div>KGE: <b class="text-white">{{ "%.3f"|format(win_tmax.kge) if win_tmax else '-' }}</b></div>
+                        <div>r: <b class="text-white">{{ "%.3f"|format(win_tmax.r) if win_tmax else '-' }}</b></div>
+                        <div>RMSE: <b class="text-white">{{ "%.2f °C"|format(win_tmax.rmse) if win_tmax else '-' }}</b></div>
                     </div>
                 </div>
 
-                <!-- Tmin Winner -->
-                <div class="bg-gradient-to-br from-indigo-950 to-purple-800 text-white rounded-xl p-5 shadow-lg">
-                    <div class="text-[10px] font-bold uppercase tracking-wider text-purple-200">Temp. Mínima (Tmin)</div>
-                    <div class="text-2xl font-black mt-1">{{ win_tmin.experiment_id if win_tmin else 'N/A' }}</div>
-                    <div class="text-xs text-purple-100 mt-1 line-clamp-2">{{ win_tmin.description if win_tmin else '-' }}</div>
-                    <div class="mt-4 pt-3 border-t border-purple-400/30 flex justify-between text-xs">
-                        <div>KGE: <b>{{ "%.3f"|format(win_tmin.kge) if win_tmin else '-' }}</b></div>
-                        <div>r: <b>{{ "%.3f"|format(win_tmin.r) if win_tmin else '-' }}</b></div>
-                        <div>RMSE: <b>{{ "%.2f °C"|format(win_tmin.rmse) if win_tmin else '-' }}</b></div>
+                <div class="bg-slate-900 text-white rounded-xl p-5 border border-slate-800 shadow-sm">
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-purple-400">Temp. Mínima (Tmin)</div>
+                    <div class="text-xl font-black mt-1">{{ win_tmin.experiment_id if win_tmin else 'N/A' }}</div>
+                    <div class="text-xs text-slate-300 mt-1 line-clamp-2">{{ win_tmin.description if win_tmin else '-' }}</div>
+                    <div class="mt-4 pt-3 border-t border-slate-800 flex justify-between text-xs text-slate-300">
+                        <div>KGE: <b class="text-white">{{ "%.3f"|format(win_tmin.kge) if win_tmin else '-' }}</b></div>
+                        <div>r: <b class="text-white">{{ "%.3f"|format(win_tmin.r) if win_tmin else '-' }}</b></div>
+                        <div>RMSE: <b class="text-white">{{ "%.2f °C"|format(win_tmin.rmse) if win_tmin else '-' }}</b></div>
                     </div>
                 </div>
             </div>
 
             <!-- Master Table Across All Variables -->
             <section class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                <h3 class="text-base font-bold text-slate-900 mb-4">📊 Matriz Consolidada de Todos los Experimentos</h3>
+                <h3 class="text-sm font-bold text-slate-900 mb-4">Tabla General Consolidada de Experimentos</h3>
                 <div class="overflow-x-auto">
                     <table id="masterConsolidatedTable" class="w-full text-sm text-left display">
                         <thead class="bg-slate-100 text-slate-700 text-xs uppercase">
                             <tr>
-                                <th>Rank</th>
+                                <th>Rango</th>
                                 <th>ID Experimento</th>
                                 <th>Variable</th>
                                 <th>GSS Score</th>
@@ -1290,8 +1558,8 @@ HTML_DASHBOARD_TEMPLATE = """<!DOCTYPE html>
                         </thead>
                         <tbody>
                             {% for row in rows_all %}
-                            <tr class="hover:bg-slate-50 border-b border-slate-100 {% if row.is_winner %}bg-blue-50/50 font-medium{% endif %}">
-                                <td class="text-center font-bold">{% if row.rank == 1 %}🥇 1{% elif row.rank == 2 %}🥈 2{% elif row.rank == 3 %}🥉 3{% else %}{{ row.rank }}{% endif %}</td>
+                            <tr class="hover:bg-slate-50 border-b border-slate-100 {% if row.is_winner %}bg-slate-50 font-medium{% endif %}">
+                                <td class="text-center font-bold">{{ row.rank }}</td>
                                 <td class="font-mono text-xs font-bold text-slate-900">{{ row.experiment_id }}</td>
                                 <td><span class="px-2 py-0.5 rounded text-[11px] font-semibold uppercase {% if row.variable == 'rainfall' %}bg-sky-100 text-sky-800{% elif row.variable == 'tmax' %}bg-amber-100 text-amber-800{% else %}bg-purple-100 text-purple-800{% endif %}">{{ row.variable }}</span></td>
                                 <td class="font-bold text-emerald-700">{{ "%.3f"|format(row.global_skill_score) }}</td>
@@ -1309,53 +1577,29 @@ HTML_DASHBOARD_TEMPLATE = """<!DOCTYPE html>
                 </div>
             </section>
 
-            <!-- Comparative Scatter Plots -->
+            <!-- Comparative Global Scatter Plots -->
             <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                    <h3 class="text-base font-bold text-slate-900 mb-2">Dispersión KGE vs RMSE (Todas las Variables)</h3>
+                <div class="plot-card">
+                    <h3 class="text-sm font-bold text-slate-900 mb-2">Dispersión KGE vs RMSE (Todas las Variables)</h3>
                     <div id="scatterPlotAll" style="height: 380px;"></div>
                 </div>
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                    <h3 class="text-base font-bold text-slate-900 mb-2">Ganancia de Eficiencia vs Línea Base (Δ KGE)</h3>
+                <div class="plot-card">
+                    <h3 class="text-sm font-bold text-slate-900 mb-2">Ganancia de Eficiencia vs Línea Base (Δ KGE)</h3>
                     <div id="deltaBarPlotAll" style="height: 380px;"></div>
                 </div>
             </section>
 
             <!-- Scientific Synthesis -->
             <section class="bg-slate-900 text-slate-200 rounded-xl p-6 border border-slate-800">
-                <h3 class="text-base font-bold text-white mb-3 flex items-center space-x-2">
-                    <span>📝 Justificación Metodológica Regional y Síntesis Científica</span>
-                </h3>
+                <h3 class="text-sm font-bold text-white mb-2">Síntesis Metodológica y Regional</h3>
                 <p class="text-xs leading-relaxed text-slate-300">
-                    La evaluación independiente mediante validación cruzada espacial (Holdout por CSV) confirma que el ajuste no lineal mediante <b>Mapeo de Cuantiles (QM)</b> o ajuste multiplicativo acoplado a <b>Regression Kriging (RK)</b> con covariables fisiográficas (DEM, pendiente y orientación) maximiza simultáneamente la correlación de Pearson y la eficiencia de Kling-Gupta (KGE), al tiempo que minimiza la tasa de falsa alarma en precipitación y preserva el gradiente adiabático regional investigado por Hastenrath (1967, 1991).
+                    La evaluación independiente mediante validación cruzada espacial (Holdout por CSV) confirma que el ajuste no lineal mediante <b>Mapeo de Cuantiles (QM)</b> o ajuste multiplicativo acoplado a <b>Regression Kriging (RK)</b> con covariables fisiográficas (DEM, pendiente y orientación) optimiza simultáneamente la correlación de Pearson y la eficiencia de Kling-Gupta (KGE), al tiempo que minimiza la tasa de falsa alarma en precipitación y preserva el gradiente adiabático regional investigado por Hastenrath (1967, 1991).
                 </p>
             </section>
 
         </div>
 
     </main>
-
-    <!-- Fullscreen Lightbox Modal -->
-    <div id="lightboxModal" class="fixed inset-0 bg-slate-950/85 z-50 flex items-center justify-center p-4 backdrop-blur-sm hidden" onclick="closeLightbox()">
-        <div class="bg-white rounded-2xl max-w-5xl w-full max-h-[92vh] overflow-hidden shadow-2xl flex flex-col border border-slate-200" onclick="event.stopPropagation()">
-            <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
-                <div>
-                    <h3 id="modalTitle" class="text-base font-bold text-slate-900">Título de la Figura</h3>
-                    <p id="modalDesc" class="text-xs text-slate-500 mt-0.5">Descripción científica y metodología.</p>
-                </div>
-                <button onclick="closeLightbox()" class="text-slate-400 hover:text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 rounded-full w-8 h-8 flex items-center justify-center font-bold text-base transition-colors">
-                    ✕
-                </button>
-            </div>
-            <div class="p-4 bg-slate-100 flex-1 overflow-auto flex items-center justify-center">
-                <img id="modalImg" src="" alt="Diagnostic Preview" class="max-w-full max-h-[72vh] object-contain rounded-lg shadow-sm">
-            </div>
-            <div class="p-3 bg-slate-50 border-t border-slate-200 flex justify-between items-center text-xs text-slate-500">
-                <span>Resolución: <b>300 DPI (Apto para Publicación Científica)</b></span>
-                <span class="text-[11px] text-slate-400">Presione ESC o haga clic fuera para cerrar</span>
-            </div>
-        </div>
-    </div>
 
     <script>
         function switchTab(tabId) {
@@ -1371,25 +1615,12 @@ HTML_DASHBOARD_TEMPLATE = """<!DOCTYPE html>
                 panel.classList.remove('hidden');
                 btn.classList.add('active', 'text-white');
                 btn.classList.remove('text-slate-300');
+                // Resize Plotly plots when tab becomes visible
+                setTimeout(function() {
+                    window.dispatchEvent(new Event('resize'));
+                }, 50);
             }
         }
-
-        function openLightbox(src, title, desc) {
-            document.getElementById('modalImg').src = src;
-            document.getElementById('modalTitle').innerText = title;
-            document.getElementById('modalDesc').innerText = desc;
-            document.getElementById('lightboxModal').classList.remove('hidden');
-        }
-
-        function closeLightbox() {
-            document.getElementById('lightboxModal').classList.add('hidden');
-        }
-
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                closeLightbox();
-            }
-        });
 
         $(document).ready(function() {
             $('.datatable-var').DataTable({
@@ -1406,7 +1637,38 @@ HTML_DASHBOARD_TEMPLATE = """<!DOCTYPE html>
                 order: [[3, 'desc']]
             });
 
-            // Scatter Plot Consolidated
+            // Initialize Plotly Interactive Charts for Rainfall
+            var p_rain = {{ payloads_rain | safe }};
+            if (p_rain.taylor) Plotly.newPlot('plot_taylor_rainfall', p_rain.taylor.data, p_rain.taylor.layout, {responsive: true});
+            if (p_rain.radar) Plotly.newPlot('plot_radar_rainfall', p_rain.radar.data, p_rain.radar.layout, {responsive: true});
+            if (p_rain.boxplots) Plotly.newPlot('plot_box_rainfall', p_rain.boxplots.data, p_rain.boxplots.layout, {responsive: true});
+            if (p_rain.strata) Plotly.newPlot('plot_strata_rainfall', p_rain.strata.data, p_rain.strata.layout, {responsive: true});
+            if (p_rain.heatmap) Plotly.newPlot('plot_heatmap_rainfall', p_rain.heatmap.data, p_rain.heatmap.layout, {responsive: true});
+            if (p_rain.roc) Plotly.newPlot('plot_roc_rainfall', p_rain.roc.data, p_rain.roc.layout, {responsive: true});
+            if (p_rain.scatter_kge_rmse) Plotly.newPlot('plot_scatter_rainfall', p_rain.scatter_kge_rmse.data, p_rain.scatter_kge_rmse.layout, {responsive: true});
+            if (p_rain.delta_kge) Plotly.newPlot('plot_delta_rainfall', p_rain.delta_kge.data, p_rain.delta_kge.layout, {responsive: true});
+
+            // Initialize Plotly Interactive Charts for Tmax
+            var p_tmax = {{ payloads_tmax | safe }};
+            if (p_tmax.taylor) Plotly.newPlot('plot_taylor_tmax', p_tmax.taylor.data, p_tmax.taylor.layout, {responsive: true});
+            if (p_tmax.radar) Plotly.newPlot('plot_radar_tmax', p_tmax.radar.data, p_tmax.radar.layout, {responsive: true});
+            if (p_tmax.boxplots) Plotly.newPlot('plot_box_tmax', p_tmax.boxplots.data, p_tmax.boxplots.layout, {responsive: true});
+            if (p_tmax.strata) Plotly.newPlot('plot_strata_tmax', p_tmax.strata.data, p_tmax.strata.layout, {responsive: true});
+            if (p_tmax.heatmap) Plotly.newPlot('plot_heatmap_tmax', p_tmax.heatmap.data, p_tmax.heatmap.layout, {responsive: true});
+            if (p_tmax.scatter_kge_rmse) Plotly.newPlot('plot_scatter_tmax', p_tmax.scatter_kge_rmse.data, p_tmax.scatter_kge_rmse.layout, {responsive: true});
+            if (p_tmax.delta_kge) Plotly.newPlot('plot_delta_tmax', p_tmax.delta_kge.data, p_tmax.delta_kge.layout, {responsive: true});
+
+            // Initialize Plotly Interactive Charts for Tmin
+            var p_tmin = {{ payloads_tmin | safe }};
+            if (p_tmin.taylor) Plotly.newPlot('plot_taylor_tmin', p_tmin.taylor.data, p_tmin.taylor.layout, {responsive: true});
+            if (p_tmin.radar) Plotly.newPlot('plot_radar_tmin', p_tmin.radar.data, p_tmin.radar.layout, {responsive: true});
+            if (p_tmin.boxplots) Plotly.newPlot('plot_box_tmin', p_tmin.boxplots.data, p_tmin.boxplots.layout, {responsive: true});
+            if (p_tmin.strata) Plotly.newPlot('plot_strata_tmin', p_tmin.strata.data, p_tmin.strata.layout, {responsive: true});
+            if (p_tmin.heatmap) Plotly.newPlot('plot_heatmap_tmin', p_tmin.heatmap.data, p_tmin.heatmap.layout, {responsive: true});
+            if (p_tmin.scatter_kge_rmse) Plotly.newPlot('plot_scatter_tmin', p_tmin.scatter_kge_rmse.data, p_tmin.scatter_kge_rmse.layout, {responsive: true});
+            if (p_tmin.delta_kge) Plotly.newPlot('plot_delta_tmin', p_tmin.delta_kge.data, p_tmin.delta_kge.layout, {responsive: true});
+
+            // Global Consolidated Plots
             var scatterData = [{
                 x: {{ scatter_rmse | safe }},
                 y: {{ scatter_kge | safe }},
@@ -1427,7 +1689,6 @@ HTML_DASHBOARD_TEMPLATE = """<!DOCTYPE html>
             };
             Plotly.newPlot('scatterPlotAll', scatterData, scatterLayout, {responsive: true});
 
-            // Delta KGE Bar Chart
             var barData = [{
                 x: {{ bar_labels | safe }},
                 y: {{ bar_deltas | safe }},
@@ -1450,15 +1711,15 @@ HTML_DASHBOARD_TEMPLATE = """<!DOCTYPE html>
 def generate_interactive_html_dashboard(
     df_ranked: pd.DataFrame,
     figures_map: Dict[str, Dict[str, str]],
-    output_html_path: Path | str
+    output_html_path: Path | str,
+    df_stations: Optional[pd.DataFrame] = None
 ):
-    """Compiles the interactive benchmark dashboard with segregated variable tabs and image galleries."""
+    """Compiles the interactive benchmark dashboard with segregated variable tabs, Plotly charts, and neutral styling."""
     from jinja2 import Template
 
     if df_ranked.empty:
         return
 
-    # Extract winners per variable
     def get_winner(var_name: str) -> Optional[Dict[str, Any]]:
         sub = df_ranked[df_ranked["variable"] == var_name]
         if not sub.empty:
@@ -1474,7 +1735,12 @@ def generate_interactive_html_dashboard(
     rows_tmin = df_ranked[df_ranked["variable"] == "tmin"].to_dict(orient="records")
     rows_all = df_ranked.to_dict(orient="records")
 
-    # Prepare data arrays for Plotly charts
+    # Generate interactive payloads for each variable
+    payloads_rain = build_interactive_chart_payloads(df_ranked, df_stations, "rainfall")
+    payloads_tmax = build_interactive_chart_payloads(df_ranked, df_stations, "tmax")
+    payloads_tmin = build_interactive_chart_payloads(df_ranked, df_stations, "tmin")
+
+    # Consolidated data arrays
     scatter_rmse = df_ranked["rmse"].tolist()
     scatter_kge = df_ranked["kge"].tolist()
     scatter_labels = df_ranked["experiment_id"].tolist()
@@ -1500,6 +1766,9 @@ def generate_interactive_html_dashboard(
         rows_tmax=rows_tmax,
         rows_tmin=rows_tmin,
         rows_all=rows_all,
+        payloads_rain=json.dumps(payloads_rain),
+        payloads_tmax=json.dumps(payloads_tmax),
+        payloads_tmin=json.dumps(payloads_tmin),
         scatter_rmse=json.dumps(scatter_rmse),
         scatter_kge=json.dumps(scatter_kge),
         scatter_labels=json.dumps(scatter_labels),
@@ -1517,7 +1786,7 @@ def generate_interactive_html_dashboard(
 
 
 # =============================================================================
-# 5. FULL BENCHMARK SUITE ORCHESTRATION
+# 6. FULL BENCHMARK SUITE ORCHESTRATION
 # =============================================================================
 
 def run_full_benchmark_suite(
@@ -1552,7 +1821,7 @@ def run_full_benchmark_suite(
         json.dump(df_ranked.to_dict(orient="records"), jf, indent=2)
     print(f"  [CSV] Summary table saved: {csv_path}")
 
-    # 3. Generate scientific figures segregated by variable
+    # 3. Generate static figures segregated by variable
     figures_base = out_path / "figures"
     figures_map: Dict[str, Dict[str, str]] = {}
 
@@ -1580,7 +1849,6 @@ def run_full_benchmark_suite(
         if var in ("rainfall", "precip", "rain"):
             generate_roc_pod_vs_far(df_ranked, roc_path)
 
-        # Store relative paths for HTML dashboard
         figures_map[var] = {
             "taylor": f"figures/{var}/figure_1_taylor_diagram.png",
             "kge_boxplots": f"figures/{var}/figure_2_kge_boxplots_by_station.png",
@@ -1590,16 +1858,16 @@ def run_full_benchmark_suite(
             "roc": f"figures/{var}/figure_6_roc_pod_vs_far.png" if var in ("rainfall", "precip", "rain") else "",
         }
 
-    # 4. Generate Interactive HTML Dashboard with Tabs and Lightbox Gallery
+    # 4. Generate Interactive HTML Dashboard with Plotly
     html_path = out_path / "benchmark_report.html"
-    generate_interactive_html_dashboard(df_ranked, figures_map, html_path)
+    generate_interactive_html_dashboard(df_ranked, figures_map, html_path, df_stations=df_stations)
 
     # 5. Print Leaderboard in Console
     print("\n" + "-" * 80)
     print("  LEADERBOARD RANKING (TOP CANDIDATES)")
     print("-" * 80)
     for _, r in df_ranked.iterrows():
-        star = "* [WINNER]" if r.get("is_winner") else " "
+        star = "* [MEJOR]" if r.get("is_winner") else " "
         print(f"  #{r['rank']:02d} | {r['variable'].upper():8s} | {r['experiment_id']:30s} | GSS: {r['global_skill_score']:.3f} | KGE: {r['kge']:.3f} | r: {r['r']:.3f} | RMSE: {r['rmse']:.2f} {star}")
     print("-" * 80 + "\n")
 

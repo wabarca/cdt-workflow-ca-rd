@@ -272,7 +272,7 @@ class TestBenchmarkReporter(unittest.TestCase):
             # Check that tabs, lightbox modal, and experiment IDs are inside the rendered HTML
             html_text = html_out.read_text(encoding="utf-8")
             self.assertIn("tab-btn-rainfall", html_text)
-            self.assertIn("lightboxModal", html_text)
+            self.assertIn("plot_taylor_rainfall", html_text)
             self.assertIn("EXP_R15_QM_RK_Coviables", html_text)
 from launcher.data_preprocessor import validate_project_inputs, check_data_readiness
 
