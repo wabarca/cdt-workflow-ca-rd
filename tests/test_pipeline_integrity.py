@@ -23,6 +23,8 @@ from launcher.benchmark_reporter import (
     generate_radar_skill_chart,
     generate_metrics_heatmap,
     generate_roc_pod_vs_far,
+    generate_kge_boxplots,
+    generate_strata_performance_chart,
     generate_interactive_html_dashboard,
 )
 from launcher.generate_pdf import generate_experiments_pdf
@@ -239,20 +241,33 @@ class TestBenchmarkReporter(unittest.TestCase):
             ])
             df_ranked = compute_leaderboard_ranking(df_summaries)
 
+            df_stations = pd.DataFrame([
+                {"experiment_id": "EXP_R01_Control", "variable": "rainfall", "station_id": "CR_E100633", "kge": 0.52, "elev": 200},
+                {"experiment_id": "EXP_R01_Control", "variable": "rainfall", "station_id": "CR_E69677", "kge": 0.58, "elev": 800},
+                {"experiment_id": "EXP_R15_QM_RK_Coviables", "variable": "rainfall", "station_id": "CR_E100633", "kge": 0.85, "elev": 200},
+                {"experiment_id": "EXP_R15_QM_RK_Coviables", "variable": "rainfall", "station_id": "CR_E69677", "kge": 0.91, "elev": 800},
+            ])
+
             taylor_png = figures_rain / "fig_taylor.png"
             radar_png = figures_rain / "fig_radar.png"
             heatmap_png = figures_rain / "fig_heatmap.png"
             roc_png = figures_rain / "fig_roc.png"
+            kge_box_png = figures_rain / "fig_kge_box.png"
+            strata_png = figures_rain / "fig_strata.png"
 
             generate_taylor_diagram(df_ranked, taylor_png, var_type="rainfall")
             generate_radar_skill_chart(df_ranked, radar_png, var_type="rainfall")
             generate_metrics_heatmap(df_ranked, heatmap_png, var_type="rainfall")
             generate_roc_pod_vs_far(df_ranked, roc_png)
+            generate_kge_boxplots(df_stations, kge_box_png, var_type="rainfall")
+            generate_strata_performance_chart(df_stations, strata_png, var_type="rainfall")
 
             self.assertTrue(taylor_png.exists() and taylor_png.stat().st_size > 0)
             self.assertTrue(radar_png.exists() and radar_png.stat().st_size > 0)
             self.assertTrue(heatmap_png.exists() and heatmap_png.stat().st_size > 0)
             self.assertTrue(roc_png.exists() and roc_png.stat().st_size > 0)
+            self.assertTrue(kge_box_png.exists() and kge_box_png.stat().st_size > 0)
+            self.assertTrue(strata_png.exists() and strata_png.stat().st_size > 0)
 
             # Test HTML dashboard generation
             fig_map = {
@@ -266,7 +281,7 @@ class TestBenchmarkReporter(unittest.TestCase):
                 }
             }
             html_out = temp_dir / "benchmark_report.html"
-            generate_interactive_html_dashboard(df_ranked, fig_map, html_out)
+            generate_interactive_html_dashboard(df_ranked, fig_map, html_out, df_stations=df_stations)
             self.assertTrue(html_out.exists() and html_out.stat().st_size > 0)
 
             # Check that tabs, lightbox modal, and experiment IDs are inside the rendered HTML

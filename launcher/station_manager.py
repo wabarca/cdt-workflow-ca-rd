@@ -275,6 +275,7 @@ def evaluate_netcdf_against_stations(
     station_ids = meta["id"]
     lons = meta["lon"]
     lats = meta["lat"]
+    elevs = meta.get("elev", [np.nan] * len(station_ids))
 
     # Open NetCDF using xarray
     ds = xr.open_dataset(nc_path)
@@ -303,7 +304,7 @@ def evaluate_netcdf_against_stations(
 
     results_per_stn: List[Dict[str, Any]] = []
 
-    for stn_id, stn_lon, stn_lat in zip(station_ids, lons, lats):
+    for stn_id, stn_lon, stn_lat, stn_elev in zip(station_ids, lons, lats, elevs):
         # Extract nearest grid cell
         try:
             point_series = da.sel(
@@ -337,6 +338,7 @@ def evaluate_netcdf_against_stations(
             "station_id": stn_id,
             "lon": stn_lon,
             "lat": stn_lat,
+            "elev": stn_elev,
             "n_samples": cont_m["n_samples"],
             "r": cont_m["r"],
             "r2": cont_m["r2"],

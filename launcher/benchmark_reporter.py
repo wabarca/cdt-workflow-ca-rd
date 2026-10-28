@@ -32,6 +32,40 @@ import seaborn as sns
 # 1. METRICS HARVESTER & DATA CONSOLIDATION
 # =============================================================================
 
+def enrich_stations_with_elevation(df_stations: pd.DataFrame) -> pd.DataFrame:
+    """Enriches df_stations with elevation (elev) by cross-referencing station files or DEM."""
+    if df_stations.empty:
+        return df_stations
+
+    df = df_stations.copy()
+    need_elev = "elev" not in df.columns or df["elev"].isna().all()
+    if not need_elev:
+        return df
+
+    elev_map: Dict[str, float] = {}
+    station_dir = Path("data/stations")
+    if station_dir.exists():
+        for csv_f in station_dir.glob("*.csv"):
+            if "holdout" in csv_f.name.lower():
+                continue
+            try:
+                from launcher.station_manager import parse_cdt_station_file
+                _, meta, _ = parse_cdt_station_file(csv_f)
+                if meta.get("has_elev", False):
+                    for sid, el in zip(meta["id"], meta["elev"]):
+                        if pd.notna(el) and sid not in elev_map:
+                            elev_map[sid] = float(el)
+            except Exception:
+                pass
+
+    if "elev" not in df.columns:
+        df["elev"] = df["station_id"].map(elev_map)
+    else:
+        df["elev"] = df["elev"].fillna(df["station_id"].map(elev_map))
+
+    return df
+
+
 def harvest_experiment_metrics(experiments_root: Path | str) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Collects validation summaries and station-level metrics from all experiment outputs.
 
@@ -107,6 +141,8 @@ def harvest_experiment_metrics(experiments_root: Path | str) -> Tuple[pd.DataFra
 
     df_summaries = pd.DataFrame(summary_rows)
     df_stations = pd.concat(station_rows, ignore_index=True) if station_rows else pd.DataFrame()
+    if not df_stations.empty:
+        df_stations = enrich_stations_with_elevation(df_stations)
     return df_summaries, df_stations
 
 
@@ -347,11 +383,16 @@ def generate_strata_performance_chart(
     title: Optional[str] = None
 ):
     """Evaluates how top experiments behave across relief strata (<500m, 500-1500m, >1500m)."""
-    if df_stations.empty or "elev" not in df_stations.columns or "kge" not in df_stations.columns:
+    if df_stations.empty or "kge" not in df_stations.columns:
         return
 
-    df_var = df_stations[df_stations["variable"] == var_type].copy()
-    if df_var.empty:
+    df_enriched = enrich_stations_with_elevation(df_stations)
+    if "elev" not in df_enriched.columns or df_enriched["elev"].dropna().empty:
+        print(f"  [Fig] Aviso: No se encontraron cotas de elevación válidas para estratificar {var_type}.")
+        return
+
+    df_var = df_enriched[df_enriched["variable"] == var_type].copy()
+    if df_var.empty or df_var["elev"].dropna().empty:
         return
 
     bins = [-np.inf, 500, 1500, np.inf]
@@ -761,9 +802,10 @@ def build_interactive_chart_payloads(
 
     # 3. Strata Performance
     strata_traces = []
-    if df_stations is not None and not df_stations.empty and "elev" in df_stations.columns and "kge" in df_stations.columns:
-        st_var = df_stations[df_stations["variable"] == var_type].copy()
-        if not st_var.empty:
+    if df_stations is not None and not df_stations.empty and "kge" in df_stations.columns:
+        df_st_enriched = enrich_stations_with_elevation(df_stations)
+        st_var = df_st_enriched[df_st_enriched["variable"] == var_type].copy()
+        if not st_var.empty and "elev" in st_var.columns and not st_var["elev"].dropna().empty:
             bins = [-np.inf, 500, 1500, np.inf]
             labels = ["Tierras Bajas (<500 m)", "Transición (500–1500 m)", "Tierras Altas (>1500 m)"]
             st_var["stratum"] = pd.cut(st_var["elev"], bins=bins, labels=labels)
