@@ -560,11 +560,14 @@ class ExperimentRunner:
                 except Exception:
                     pass
 
-            # Fault Tolerance: If force is requested, wipe previous files to restart clean
-            if force:
-                for f in out_dir.glob("*.nc"):
+            # Fault Tolerance: If force is requested, wipe previous files and directories to restart clean
+            if force and out_dir.exists():
+                for item in list(out_dir.iterdir()):
                     try:
-                        f.unlink()
+                        if item.is_dir():
+                            shutil.rmtree(item)
+                        else:
+                            item.unlink()
                     except Exception:
                         pass
 

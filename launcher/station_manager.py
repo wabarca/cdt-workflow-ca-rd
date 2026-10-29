@@ -227,7 +227,7 @@ def split_cdt_station_file(
             # Data rows
             sub_df = df_data[subset_ids]
             for date_val, row_vals in sub_df.iterrows():
-                formatted_vals = [f"{v:.2f}" if not np.isnan(v) else "-99.0" for v in row_vals]
+                formatted_vals = [f"{v:.2f}" if not np.isnan(v) else "-99" for v in row_vals]
                 writer.writerow([date_val] + formatted_vals)
 
     train_file = out_path / "stations_training.csv"
