@@ -161,6 +161,7 @@ def assemble_daily_netcdfs_to_cf18(
             main_var.units = "mm"
             main_var.coordinates = "time latitude longitude"
             main_var.cell_methods = "time: sum"
+            main_var.missing_value = np.float32(fill_val)
         else:
             main_var = ds.createVariable(
                 variable_name, "f4", ("time", "latitude", "longitude"),
@@ -172,6 +173,7 @@ def assemble_daily_netcdfs_to_cf18(
             main_var.units = "degC"
             main_var.coordinates = "time latitude longitude"
             main_var.cell_methods = "time: mean"
+            main_var.missing_value = np.float32(fill_val)
 
         # 4. Fill Data Layer by Layer (Iterate through daily files)
         for idx, (dt, fpath) in enumerate(zip(dates, file_paths)):

@@ -38,6 +38,39 @@ def _to_r_val(val: Any) -> str:
         return f'"{str(val)}"'
 
 
+def detect_dem_varid(dem_file: Optional[Union[str, Path]]) -> str:
+    """Dynamically detects the elevation variable name from a DEM NetCDF file."""
+    if not dem_file:
+        return "elevation"
+    p = Path(dem_file)
+    if not p.exists():
+        return "elevation"
+    try:
+        import xarray as xr
+        with xr.open_dataset(p) as ds:
+            for cand in ["elevation", "dem", "z", "elev", "height", "topo", "band1"]:
+                if cand in ds.data_vars:
+                    return cand
+            data_vars = [v for v in ds.data_vars if ds[v].ndim >= 2]
+            if data_vars:
+                return data_vars[0]
+    except Exception:
+        try:
+            import netCDF4 as nc
+            with nc.Dataset(str(p), "r") as ds:
+                for cand in ["elevation", "dem", "z", "elev", "height", "topo", "band1"]:
+                    if cand in ds.variables:
+                        return cand
+                data_vars = [v for v, var in ds.variables.items() if len(var.dimensions) >= 2]
+                if data_vars:
+                    return data_vars[0]
+        except Exception:
+            pass
+    if "dem" in p.name.lower() and "gebco" not in p.name.lower() and "continental" not in p.name.lower() and "land" not in p.name.lower():
+        return "dem"
+    return "elevation"
+
+
 class CDTBridge:
     """High-level Python bridge for Climate Data Tools (CDT) R routines."""
 
@@ -823,7 +856,7 @@ class CDTBridge:
             auxvar_dict = {"dem": False, "slope": False, "aspect": False, "lon": False, "lat": False}
 
         dem_exists = dem_file is not None and bool(dem_file) and Path(dem_file).exists()
-        dem_varid = "elevation" if (dem_exists and "gebco" in str(dem_file).lower()) else "dem"
+        dem_varid = detect_dem_varid(dem_file) if dem_exists else "elevation"
         dem_dict = {
             "file": str(dem_file).replace("\\", "/") if dem_exists else "",
             "varid": dem_varid,
@@ -947,7 +980,7 @@ class CDTBridge:
             auxvar_dict = {"dem": True, "slope": True, "aspect": False, "lon": True, "lat": True}
 
         dem_exists = dem_file is not None and bool(dem_file) and Path(dem_file).exists()
-        dem_varid = "elevation" if (dem_exists and "gebco" in str(dem_file).lower()) else "dem"
+        dem_varid = detect_dem_varid(dem_file) if dem_exists else "elevation"
         dem_dict = {
             "file": str(dem_file).replace("\\", "/") if dem_exists else "",
             "varid": dem_varid,

@@ -319,13 +319,44 @@ def evaluate_netcdf_against_stations(
             ilon = np.abs(lons_arr - stn_lon).argmin()
             point_series = da.isel({lat_name: ilat, lon_name: ilon}).values
 
+        # If nearest point has only missing/ocean data, search 3x3 local neighborhood (e.g. coastal stations)
+        def _is_invalid_series(s):
+            v = s[np.isfinite(s)]
+            return len(v) == 0 or np.all(v <= -50.0) or np.all(v == -99.0)
+
+        if _is_invalid_series(point_series):
+            lats_arr = da[lat_name].values
+            lons_arr = da[lon_name].values
+            ilat = int(np.abs(lats_arr - stn_lat).argmin())
+            ilon = int(np.abs(lons_arr - stn_lon).argmin())
+            for dlat in (-1, 0, 1):
+                found_valid = False
+                for dlon in (-1, 0, 1):
+                    nlat, nlon = ilat + dlat, ilon + dlon
+                    if 0 <= nlat < len(lats_arr) and 0 <= nlon < len(lons_arr):
+                        cand_s = da.isel({lat_name: nlat, lon_name: nlon}).values
+                        if not _is_invalid_series(cand_s):
+                            point_series = cand_s
+                            found_valid = True
+                            break
+                if found_valid:
+                    break
+
         df_sim = pd.Series(point_series, index=nc_times, name="sim")
+        # Mask out fill values, ocean flags or missing data (-99, -999, <= -50.0)
+        df_sim = df_sim.replace([-99.0, -999.0, -9999.0], np.nan)
+        df_sim[df_sim <= -50.0] = np.nan
+        if var_type in ("rainfall", "rain", "precip"):
+            df_sim[df_sim < 0.0] = np.nan
+
         obs_series = df_obs[stn_id].dropna()
+        if var_type in ("rainfall", "rain", "precip"):
+            obs_series = obs_series[obs_series >= 0.0]
 
         # Inner join on matching dates
         df_matched = pd.concat([obs_series.rename("obs"), df_sim], axis=1, join="inner").dropna()
 
-        if len(df_matched) < 5:
+        if len(df_matched) < 10:
             continue
 
         o_vals = df_matched["obs"].values

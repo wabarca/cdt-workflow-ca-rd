@@ -302,7 +302,7 @@ def sanitize_dem_for_temperature(
         da_clean.attrs["standard_name"] = "surface_altitude"
 
         ds_out = xr.Dataset(
-            data_vars={"elevation": da_clean},
+            data_vars={"elevation": da_clean, "dem": da_clean},
             coords={
                 lon_name: da[lon_name],
                 lat_name: da[lat_name],
@@ -316,8 +316,17 @@ def sanitize_dem_for_temperature(
         )
 
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        encoding = {"elevation": {"zlib": True, "complevel": 4, "dtype": "float32"}}
-        ds_out.to_netcdf(out_path, encoding=encoding)
+        encoding = {
+            "elevation": {"zlib": True, "complevel": 4, "dtype": "float32"},
+            "dem": {"zlib": True, "complevel": 4, "dtype": "float32"},
+        }
+        temp_out = out_path.with_name(f"{out_path.stem}_tmp.nc")
+        ds_out.to_netcdf(temp_out, encoding=encoding)
+    if temp_out.exists():
+        import shutil
+        if out_path.exists():
+            out_path.unlink()
+        shutil.move(str(temp_out), str(out_path))
 
     if verbose:
         print(f"[OK] DEM sanitizado generado: {out_path} ({out_path.stat().st_size / (1024*1024):.2f} MB)")
@@ -537,7 +546,8 @@ def validate_project_inputs(
                     clean_cand = dem_path.parent / "dem_ca_continental_land.nc"
                     if clean_cand.exists() and clean_cand != dem_path:
                         with xr.open_dataset(clean_cand) as ds_clean:
-                            c_vals = ds_clean["elevation"].values
+                            c_var = "elevation" if "elevation" in ds_clean.data_vars else list(ds_clean.data_vars)[0]
+                            c_vals = ds_clean[c_var].values
                             c_valid = c_vals[np.isfinite(c_vals)]
                             c_min = float(np.min(c_valid)) if len(c_valid) > 0 else 0.0
                             c_max = float(np.max(c_valid)) if len(c_valid) > 0 else 0.0

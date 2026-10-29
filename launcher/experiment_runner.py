@@ -1301,11 +1301,11 @@ def main() -> None:
         with open(base_path, "r", encoding="utf-8") as f:
             cfg = yaml.safe_load(f)
         paths = cfg.get("paths", {})
-        raw_dem = paths.get("dem_file", "data/topography/gebco_2026.nc")
+        raw_dem = paths.get("dem_raw_file") or paths.get("dem_file", "data/topography/gebco_2026.nc")
         raw_p = (PROJECT_ROOT / raw_dem).resolve()
         if not raw_p.exists():
             topo_dir = PROJECT_ROOT / "data" / "topography"
-            cands = list(topo_dir.glob("*.nc"))
+            cands = [f for f in topo_dir.glob("*.nc") if "land" not in f.name.lower()]
             raw_p = cands[0].resolve() if cands else raw_p
         out_p = PROJECT_ROOT / "data" / "topography" / "dem_ca_continental_land.nc"
         bbox = (-93.0, 6.8, -76.8, 19.0) if args.region in ("ca", "centroamerica") else None
