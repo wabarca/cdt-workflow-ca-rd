@@ -47,6 +47,13 @@ Esta carpeta contiene la documentación técnica, matemática y metodológica pa
 12. [**12. Diagnóstico Científico de Fase 1 y Diseño/Resultados de Fase 2 (Precipitación)**](file:///d:/Workspace/CDT-8.0/docs/12_diagnostico_fase1_y_diseno_fase2_precipitacion.md)
     - Diagnóstico de los 10 experimentos de la Fase 1, diseño de los 5 experimentos de la Fase 2, y análisis exhaustivo del **tablero de liderazgo consolidado de los 15 experimentos** evaluados sobre las 29 estaciones de validación ciega independiente (*holdout*), donde **EXP_R15_Shepard_RnoR_Smooth** se corona como el modelo ganador absoluto ($KGE = 0.3791$, $Skill = 0.5007$, $PBIAS = -4.39\%$, $POD = 69.22\%$, $ETS = 0.3287$).
 
+
+13. [**13. Influencia del DEM, Batimetría y Orografía en el Desescalado y Corrección de Temperatura**](file:///d:/Workspace/CDT-8.0/docs/13_influencia_dem_batimetria_desescalado_temperatura.md)
+    - Fundamento físico del gradiente adiabático (*lapse rate*), cuantificación de la brecha altimétrica (Δz ≈ 1,820 m) y error térmico inducido (> 10 °C).
+    - Análisis comparativo: DEM continental terrestre (z >= 0) vs. modelos con batimetría (GEBCO, -8,390 m a +5,611 m) y mecanismos de fallo numérico en regresiones lineales.
+    - Justificación de la secuencia de 5 pasos en CDT: por qué el desescalado orográfico es indispensable antes del ajuste de sesgo cuantitativo (*Quantile Mapping*).
+    - Lección metodológica y blindaje del sistema ante valores centinela faltantes ('-99' vs '-99.0').
+
 ---
 
 ## Estructura de Configuraciones y Suites Experimentales
