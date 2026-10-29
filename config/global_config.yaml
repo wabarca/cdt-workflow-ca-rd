@@ -63,7 +63,8 @@ paths:
   holdout_temperature_file: "data/stations/validation_holdout_stations_temperature.csv"# Estaciones omitidas para Temperatura (Tmax/Tmin)
 
   # --- Covariables Físicas y Cartografía Espacial (Suministradas por el Usuario) ---
-  dem_file: "data/topography/gebco_2026_n21.0_s6.0_w-94.0_e-67.0.nc"                       # DEM SRTM regional (elevación en msnm)
+  dem_file: "data/topography/dem_ca_continental_land.nc"                       # DEM regional saneado para temperatura y lluvia (z >= 0 msnm)
+  dem_raw_file: "data/topography/gebco_2026.nc"                                # DEM crudo con batimetría (archivo de origen)
   shapefile_path: "data/gis/Buffer_15km_todo_AC.shp"       # Máscara de recorte vectorial (con buffer 10 km)
 
   # --- Directorios de Salida y Auditoría ---
@@ -83,7 +84,8 @@ regions:
     stations_tmin_file: "data/stations/tmin_stations_ca.csv"
     holdout_rainfall_file: "data/stations/validation_holdout_stations_rainfall.csv"
     holdout_temperature_file: "data/stations/validation_holdout_stations_temperature.csv"
-    dem_file: "data/topography/gebco_2026_n21.0_s6.0_w-94.0_e-67.0.nc"
+    dem_file: "data/topography/dem_ca_continental_land.nc"
+    dem_raw_file: "data/topography/gebco_2026.nc"
     shapefile_path: "data/gis/Buffer_15km_todo_AC.shp"
     output_root: "output/experiments_ca"
     log_root: "logs/experiments_ca"

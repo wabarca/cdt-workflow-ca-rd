@@ -214,6 +214,23 @@ Configurados en [`config/experiments_tmin/`](file:///d:/Workspace/CDT-8.0/config
 
 ---
 
+### 5.5 Requisito Fisiográfico Crítico del DEM en Suites Térmicas (Tratamiento de Batimetría y Protección Insular)
+
+La temperatura superficial responde de forma directa a la altitud mediante el gradiente térmico vertical ambiental (*lapse rate*, $\Gamma pprox -6.5\ ^\circ	ext{C}/	ext{km}$). En la arquitectura de CDT, el DEM interviene en el cálculo de coeficientes de desescalado mensual (GLM en Paso 2), en la reducción de escala de las grillas de reanálisis/satélite (Paso 3) y como covariable determinística principal en la fusión espacial por *Regression Kriging* (Paso 5 o 6).
+
+> [!CAUTION]
+> **Vulnerabilidad de Batimetría Oceánica Negativa:**
+> Si el archivo NetCDF del DEM contiene cotas submarinas negativas ( < 0	ext{ msnm}$, como las profundidades de hasta $-8390	ext{ m}$ en fosas abisales de productos globales tipo GEBCO), el modelo lineal mensual de CDT invierte el signo del gradiente altimétrico ($eta_{	ext{elv}} > 0$). Esto desencadena una sobre-compensación artificial catastrófica al reinyectar la topografía en la malla continental fina ($+1000	ext{ m}$ a $+3500	ext{ m}$), desplomando las temperaturas a valores irreales ( > 25\ ^\circ	ext{C}$,  < -60\%$,  < -10$).
+
+**Norma Metodológica Obligatoria para Temperatura:**
+1. **Clampeo a Nivel del Mar ($	ext{DEM} = \max(	ext{DEM}, 0.0)$):** La frontera termodinámica inferior de la atmósfera descansa sobre el espejo de agua a 	ext{ msnm}$. Toda cota marina negativa debe fijarse en cero.
+2. **Protección Integral de Islas:** No debe aplicarse recorte vectorial continental estricto con máscaras de polígono, ya que el desajuste de malla elimina islas, cayos y archipiélagos habitados con estaciones meteorológicas (ej. Roatán, Guanaja, Utila en Honduras, Coiba y Perlas en Panamá, Ometepe en Nicaragua). El clampeo a cero preserva intacta la elevación positiva de todas las islas.
+3. **Continuidad Numérica en Costas:** Al convertir el océano en una superficie plana continua a 	ext{ msnm}$, las funciones geoestadísticas (defSpatialPixels, Kriging e IDW) interpolan suavemente a lo largo del litoral sin producir bordes con valores NA ni errores de singularidad matricial.
+
+Para los fundamentos matemáticos y la derivación de variables topográficas secundarias (pendiente, orientación/insolación, y $\Delta z$ vertical en NN-3D), consultar el módulo técnico [05_merging_temperatura_dem.md](file:///d:/Workspace/CDT-8.0/docs/05_merging_temperatura_dem.md).
+
+---
+
 ## 6. Esquema de Validación Cruzada Independiente (Holdout por CSV) y Métricas Cuantitativas
 
 ### 6.1 Mecanismo de Evaluación de CDT y Partición Ciega (Holdout Validation)

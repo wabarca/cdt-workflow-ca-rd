@@ -418,6 +418,63 @@ class ExperimentRunner:
         merged["experiment_id"] = exp_id
         return merged
 
+
+    def _ensure_sanitized_dem_for_temperature(self, dem_path_str: Optional[str]) -> Optional[str]:
+        """Verify DEM and guarantee it is physically sanitized (z >= 0 m, islands preserved)."""
+        if not dem_path_str:
+            return dem_path_str
+
+        dem_p = Path(dem_path_str).resolve()
+        topo_dir = PROJECT_ROOT / "data" / "topography"
+        clean_target = topo_dir / "dem_ca_continental_land.nc"
+
+        if not dem_p.exists():
+            if clean_target.exists():
+                return str(clean_target)
+            raw_cands = list(topo_dir.glob("*.nc"))
+            if raw_cands:
+                dem_p = raw_cands[0].resolve()
+            else:
+                return dem_path_str
+
+        if "continental_land" in dem_p.name or "sanitized" in dem_p.name:
+            return str(dem_p)
+
+        if clean_target.exists():
+            return str(clean_target)
+
+        try:
+            import xarray as xr
+            import numpy as np
+            from launcher.data_preprocessor import sanitize_dem_for_temperature
+
+            with xr.open_dataset(dem_p) as ds:
+                meta_vars = {"crs", "spatial_ref", "grid_mapping"}
+                cands = [v for v in ds.data_vars if v.lower() not in meta_vars and np.issubdtype(ds[v].dtype, np.number)]
+                v_name = "elevation" if "elevation" in cands else (cands[0] if cands else list(ds.data_vars)[0])
+                da = ds[v_name]
+                vals = da.values
+                valid_vals = vals[np.isfinite(vals)]
+                min_val = float(np.min(valid_vals)) if len(valid_vals) > 0 else 0.0
+
+            if min_val < 0.0:
+                print(f"  --> [Auditoria DEM] '{dem_p.name}' contiene cotas batimetricas negativas ({min_val:.0f} m).")
+                print(f"      [Auto-Sanitizacion] Generando DEM para suites termicas (clampeo z >= 0 m, proteccion insular)...")
+                bbox = (-93.0, 6.8, -76.8, 19.0) if self.region in ("ca", "centroamerica") else None
+                clean_path = sanitize_dem_for_temperature(
+                    input_dem_path=dem_p,
+                    output_dem_path=clean_target,
+                    crop_bbox=bbox,
+                    clamp_min_zero=True,
+                    verbose=False,
+                )
+                print(f"      [OK] DEM sanitizado listo: {clean_path.name}")
+                return str(clean_path)
+        except Exception as e:
+            print(f"  [!] Advertencia al auditar DEM: {e}")
+
+        return str(dem_p)
+
     def run_all_experiments(self, force: bool = False) -> List[Dict[str, Any]]:
         """Iterate over all loaded experiments and execute them."""
         experiments = self.load_configs()
@@ -882,6 +939,7 @@ class ExperimentRunner:
         var_prefix = "tmin" if ("tmin" in var_type or "tn" in var_type or "min" in var_type) else "tmax"
         eff_var_id = paths.get("var_id", "temp")
         dem_file = paths.get("dem_file")
+        dem_file = self._ensure_sanitized_dem_for_temperature(dem_file)
         total_time = 0.0
 
         # 5-Step Canonical CDT Pipeline for Temperature:
@@ -1202,6 +1260,11 @@ def main() -> None:
         help="Verifica exhaustivamente la presencia, formato y completitud de todos los datos e insumos (estaciones, DEM, shapefile, grillas diarias 1991-2020).",
     )
     parser.add_argument(
+        "--sanitize-dem",
+        action="store_true",
+        help="Sanea el DEM configurado fijando cotas negativas batimétricas a 0 msnm (nivel del mar) y preservando islas.",
+    )
+    parser.add_argument(
         "--benchmark", "--generate-report",
         action="store_true",
         help="Genera el reporte de benchmark, ranking multicriterio (leaderboard), gráficos de Taylor/boxplots y dashboard HTML interactivo.",
@@ -1229,6 +1292,26 @@ def main() -> None:
     # 2. Para el resto de operaciones, verificar que las dependencias de Python estén instaladas
     if not _check_python_requirements():
         sys.exit(1)
+
+    # 2.5 Modo Sanitización de DEM (--sanitize-dem)
+    if args.sanitize_dem:
+        from launcher.data_preprocessor import sanitize_dem_for_temperature
+        import yaml
+        base_path = Path(args.base_config) if args.base_config else PROJECT_ROOT / "config" / "global_config.yaml"
+        with open(base_path, "r", encoding="utf-8") as f:
+            cfg = yaml.safe_load(f)
+        paths = cfg.get("paths", {})
+        raw_dem = paths.get("dem_file", "data/topography/gebco_2026.nc")
+        raw_p = (PROJECT_ROOT / raw_dem).resolve()
+        if not raw_p.exists():
+            topo_dir = PROJECT_ROOT / "data" / "topography"
+            cands = list(topo_dir.glob("*.nc"))
+            raw_p = cands[0].resolve() if cands else raw_p
+        out_p = PROJECT_ROOT / "data" / "topography" / "dem_ca_continental_land.nc"
+        bbox = (-93.0, 6.8, -76.8, 19.0) if args.region in ("ca", "centroamerica") else None
+        res_p = sanitize_dem_for_temperature(raw_p, out_p, crop_bbox=bbox, clamp_min_zero=True, verbose=True)
+        print(f"[OK] Sanitización completada: {res_p}")
+        sys.exit(0)
 
     # 3. Modo Verificación de Datos e Insumos (--check-data / --validate-inputs)
     if args.check_data:

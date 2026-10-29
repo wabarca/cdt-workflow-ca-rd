@@ -35,6 +35,10 @@ flowchart TD
 
 - **Salida generada:** Archivos `STN_DEM_GLM_COEF.txt` y `STN_DEM_GLM_COEF.rds` con la matriz de 12 filas (una por mes) y los coeficientes ajustados $\beta$.
 
+> [!IMPORTANT]
+> **Requisito Físico del DEM (Filtro Anti-Batimetría y Clampeo a Cero):**
+> Para que el GLM estime gradientes adiabáticos coherentes ($\beta_{\text{elv}} \approx -0.0055\text{ a } -0.0065\ ^\circ\text{C}/\text{m}$), el archivo NetCDF del DEM **no debe contener cotas batimétricas oceánicas negativas** (como las fosas abisales de hasta $-8390\text{ m}$ en productos globales como GEBCO). Toda elevación menor a cero debe clampearse a nivel medio del mar ($\text{DEM} = \max(\text{DEM}, 0.0)$). Esto preserva el $100\%$ de las islas (Roatán, Guanaja, Coiba, Ometepe) con su cota topográfica real y evita la inversión espuria del gradiente térmico a valores positivos ($\beta > 0$). Para un análisis exhaustivo de la influencia del DEM, consultar [05_merging_temperatura_dem.md](file:///d:/Workspace/CDT-8.0/docs/05_merging_temperatura_dem.md).
+
 ---
 
 ### Paso 3: Gridding > Downscaling Reanalysis > Downscaling Data
@@ -161,4 +165,3 @@ flowchart LR
     C --> F
     F --> G["Métricas Estadísticas:<br>RMSE, MAE, R², Bias, Kling-Gupta Efficiency (KGE)"]
 ```
-

@@ -219,6 +219,111 @@ def split_3d_netcdf_to_daily_parallel(
 split_3d_netcdf_to_daily_files = split_3d_netcdf_to_daily_parallel
 
 
+
+def sanitize_dem_for_temperature(
+    input_dem_path: Union[str, Path],
+    output_dem_path: Optional[Union[str, Path]] = None,
+    crop_bbox: Optional[Tuple[float, float, float, float]] = None,
+    clamp_min_zero: bool = True,
+    var_name: Optional[str] = None,
+    verbose: bool = True,
+) -> Path:
+    """Sanitiza un Modelo Digital de Elevacion (DEM) para coherencia fisica en temperatura con CDT.
+
+    1. Fija todas las cotas negativas batimetricas a 0.0 msnm (nivel del mar), asegurando
+       que la frontera termodinamica inferior sea uniforme sin distorsionar la elevacion
+       positiva real de islas y archipielagos (Roatan, Guanaja, Ometepe, Coiba, Perlas).
+    2. Recorta opcionalmente a un bounding box regional (ej. Centroamerica: [-93.0, 6.8, -76.8, 19.0]).
+    3. Asegura compatibilidad con convenciones CF-1.8 y compresion zlib.
+
+    Returns:
+        Path al archivo NetCDF sanitizado.
+    """
+    in_path = Path(input_dem_path).resolve()
+    if not in_path.exists():
+        raise FileNotFoundError(f"Archivo DEM de entrada no encontrado: {in_path}")
+
+    if output_dem_path is None:
+        out_path = in_path.parent / "dem_ca_continental_land.nc"
+    else:
+        out_path = Path(output_dem_path).resolve()
+
+    if verbose:
+        print(f"[*] Sanitizando DEM: {in_path.name} -> {out_path.name}...")
+
+    with xr.open_dataset(in_path) as ds:
+        # Coordenadas lon y lat
+        lon_name = next((c for c in ds.coords if c.lower() in ("lon", "longitude", "x")), None)
+        lat_name = next((c for c in ds.coords if c.lower() in ("lat", "latitude", "y")), None)
+        if not lon_name or not lat_name:
+            lon_name = next((v for v in ds.variables if v.lower() in ("lon", "longitude", "x")), "lon")
+            lat_name = next((v for v in ds.variables if v.lower() in ("lat", "latitude", "y")), "lat")
+
+        # Variable de elevacion
+        meta_vars = {"crs", "spatial_ref", "grid_mapping", "transverse_mercator", "lambert_conformal_conic"}
+        if var_name and var_name in ds.data_vars:
+            elev_var = var_name
+        else:
+            candidates = [v for v in ds.data_vars if v.lower() not in meta_vars and np.issubdtype(ds[v].dtype, np.number)]
+            preferred = ["elevation", "z", "dem", "elev", "height", "band1", "topo"]
+            elev_var = None
+            for pref in preferred:
+                match = next((v for v in candidates if v.lower() == pref), None)
+                if match:
+                    elev_var = match
+                    break
+            if not elev_var:
+                elev_var = candidates[0] if candidates else list(ds.data_vars)[0]
+
+        da = ds[elev_var]
+
+        # Recorte espacial opcional
+        if crop_bbox and lon_name in ds.coords and lat_name in ds.coords:
+            min_lon, min_lat, max_lon, max_lat = crop_bbox
+            lat_vals = ds[lat_name].values
+            lat_slice = slice(max_lat, min_lat) if lat_vals[0] > lat_vals[-1] else slice(min_lat, max_lat)
+            lon_vals = ds[lon_name].values
+            lon_slice = slice(max_lon, min_lon) if lon_vals[0] > lon_vals[-1] else slice(min_lon, max_lon)
+            da = da.sel({lat_name: lat_slice, lon_name: lon_slice})
+
+        vals = da.values.copy()
+        vals = np.where(np.isnan(vals), 0.0, vals)
+        if clamp_min_zero:
+            vals = np.maximum(vals, 0.0).astype(np.float32)
+
+        da_clean = xr.DataArray(
+            vals,
+            coords={lat_name: da[lat_name], lon_name: da[lon_name]},
+            dims=da.dims,
+            attrs=da.attrs,
+        )
+        da_clean.attrs["units"] = "m"
+        da_clean.attrs["long_name"] = "Elevation above sea level (bathymetry clamped to 0m)"
+        da_clean.attrs["standard_name"] = "surface_altitude"
+
+        ds_out = xr.Dataset(
+            data_vars={"elevation": da_clean},
+            coords={
+                lon_name: da[lon_name],
+                lat_name: da[lat_name],
+            },
+            attrs={
+                "title": "Sanitized Digital Elevation Model for Climate Downscaling",
+                "history": f"Sanitized on {datetime.datetime.now().isoformat()} via CDT Python Launcher",
+                "source": f"Processed from {in_path.name} with sea level clamp (z >= 0 m) and island protection",
+                "Conventions": "CF-1.8",
+            }
+        )
+
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        encoding = {"elevation": {"zlib": True, "complevel": 4, "dtype": "float32"}}
+        ds_out.to_netcdf(out_path, encoding=encoding)
+
+    if verbose:
+        print(f"[OK] DEM sanitizado generado: {out_path} ({out_path.stat().st_size / (1024*1024):.2f} MB)")
+    return out_path
+
+
 def validate_project_inputs(
     config_path_or_dict: Union[Path, str, Dict[str, Any]],
     region: Optional[str] = None,
@@ -369,14 +474,21 @@ def validate_project_inputs(
         if cand.exists():
             dem_path = cand.resolve()
         else:
-            cand_gen = Path("data/topography/dem_srtm_90m.nc")
-            if cand_gen.exists():
-                dem_path = cand_gen.resolve()
-                warnings.append(f"Topografía DEM: Usando DEM regional general '{cand_gen.name}'")
+            # Check candidate files in data/topography
+            topo_dir = Path("data/topography")
+            clean_pref = topo_dir / "dem_ca_continental_land.nc"
+            if clean_pref.exists():
+                dem_path = clean_pref.resolve()
+                warnings.append(f"Topografía DEM: Usando DEM sanitizado '{clean_pref.name}'")
+            elif topo_dir.exists():
+                nc_cands = list(topo_dir.glob("*.nc"))
+                if nc_cands:
+                    dem_path = nc_cands[0].resolve()
+                    warnings.append(f"Topografía DEM: Usando archivo topográfico '{dem_path.name}'")
 
     if not dem_path.exists():
         errors.append(f"Topografía DEM: Archivo no encontrado en '{dem_path_str}'")
-        report_rows.append(("Topografía DEM SRTM", "NO ENCONTRADO", str(dem_path_str), "Colocar NetCDF del DEM (ej. dem_srtm_90m.nc)"))
+        report_rows.append(("Topografía DEM SRTM/GEBCO", "NO ENCONTRADO", str(dem_path_str), "Colocar NetCDF del DEM (ej. dem_ca_continental_land.nc o gebco_2026.nc)"))
     else:
         try:
             with xr.open_dataset(dem_path) as ds_dem:
@@ -417,9 +529,32 @@ def validate_project_inputs(
                     "var_name": var_name,
                     "dims": dict(da_dem.sizes),
                     "elev_range": [elev_min, elev_max],
+                    "has_bathymetry": elev_min < 0.0,
                 }
-                status_desc = f"Var '{var_name}' ({dims_str}) | Cotas: {elev_min:.0f}m a {elev_max:.0f}m"
-                report_rows.append(("Topografía DEM SRTM/GEBCO", "LISTO [OK]", dem_path.name, status_desc))
+
+                # Auditoría física para suites de temperatura
+                if elev_min < 0.0:
+                    clean_cand = dem_path.parent / "dem_ca_continental_land.nc"
+                    if clean_cand.exists() and clean_cand != dem_path:
+                        with xr.open_dataset(clean_cand) as ds_clean:
+                            c_vals = ds_clean["elevation"].values
+                            c_valid = c_vals[np.isfinite(c_vals)]
+                            c_min = float(np.min(c_valid)) if len(c_valid) > 0 else 0.0
+                            c_max = float(np.max(c_valid)) if len(c_valid) > 0 else 0.0
+                        details["dem"]["sanitized_dem"] = str(clean_cand)
+                        report_rows.append(("Topografía DEM Crudo", "BATIMETRÍA", dem_path.name, f"Cotas: {elev_min:.0f}m a {elev_max:.0f}m (No apto Tmax/Tmin)"))
+                        report_rows.append(("Topografía DEM Sanitizado", "LISTO [OK]", clean_cand.name, f"Cotas: {c_min:.0f}m a {c_max:.0f}m (Apto Temperatura y Lluvia)"))
+                    else:
+                        warnings.append(
+                            f"Topografía DEM: '{dem_path.name}' contiene cotas batimétricas negativas ({elev_min:.0f}m). "
+                            f"CRÍTICO: No debe usarse directamente para suites térmicas (Tmax/Tmin) porque invertirá el gradiente térmico (Lapse Rate). "
+                            f"Ejecute 'python launcher/experiment_runner.py --sanitize-dem' o el lanzador lo sanitizará automáticamente al ejecutar suites de temperatura."
+                        )
+                        status_desc = f"Var '{var_name}' ({dims_str}) | Cotas: {elev_min:.0f}m a {elev_max:.0f}m (REQUIERE CLAMPEO A 0m)"
+                        report_rows.append(("Topografía DEM SRTM/GEBCO", "ADVERTENCIA [BATIMETRÍA]", dem_path.name, status_desc))
+                else:
+                    status_desc = f"Var '{var_name}' ({dims_str}) | Cotas: {elev_min:.0f}m a {elev_max:.0f}m (Apto Temp y Lluvia)"
+                    report_rows.append(("Topografía DEM SRTM/GEBCO", "LISTO [OK]", dem_path.name, status_desc))
         except Exception as e:
             errors.append(f"Topografía DEM: Error al abrir NetCDF: {e}")
             report_rows.append(("Topografía DEM SRTM/GEBCO", "ERROR", dem_path.name, str(e)))
