@@ -512,7 +512,39 @@ class ExperimentRunner:
                     with open(manifest_file, "r", encoding="utf-8") as pf:
                         prev_m = json.load(pf)
                     if prev_m.get("status") == "SUCCESS":
-                        print(f"[*] Experimento {exp_id} ya completado previamente con exito. Saltando (usar --force para reejecutar).")
+                        val_sum = prev_m.get("validation", {}).get("summary_results", {})
+                        p_rmse = float(val_sum.get("mean_rmse", 0.0) or 0.0)
+                        v_target = (
+                            paths.get("holdout_stations_file")
+                            or paths.get("omitted_stations_file")
+                            or exp.get("validation", {}).get("holdout_stations_file")
+                            or paths.get("stations_file")
+                        )
+                        if p_rmse > 15.0 and v_target and Path(v_target).exists():
+                            print(f"[*] Experimento {exp_id} ya completado en CDT. Actualizando metricas de validacion con mascara saneada...")
+                            from launcher.station_manager import evaluate_netcdf_against_stations
+                            eff_cf_var = "precip" if var_type in ("rainfall", "rain", "precip") else ("tmin" if "tmin" in var_type or "tn" in var_type else "tmax")
+                            df_metrics, new_val_summary = evaluate_netcdf_against_stations(
+                                netcdf_path=assembled_nc_path,
+                                station_file=v_target,
+                                var_name=eff_cf_var,
+                                var_type=var_type,
+                            )
+                            metrics_csv_path = out_dir / "validation_metrics_by_station.csv"
+                            summary_json_path = out_dir / "validation_summary.json"
+                            df_metrics.to_csv(metrics_csv_path, index=False)
+                            with open(summary_json_path, "w", encoding="utf-8") as sf:
+                                json.dump(new_val_summary, sf, indent=2)
+                            prev_m["validation"] = {
+                                "metrics_by_station_csv": str(metrics_csv_path),
+                                "summary_json": str(summary_json_path),
+                                "summary_results": new_val_summary,
+                            }
+                            with open(manifest_file, "w", encoding="utf-8") as pf:
+                                json.dump(prev_m, pf, indent=2)
+                            print(f"      [Metricas Actualizadas] Evaluadas {new_val_summary.get('total_stations_evaluated', 0)} estaciones | KGE Medio: {new_val_summary.get('mean_kge', 0):.3f} | r: {new_val_summary.get('mean_r', 0):.3f} | RMSE: {new_val_summary.get('mean_rmse', 0):.2f}")
+                        else:
+                            print(f"[*] Experimento {exp_id} ya completado previamente con exito. Saltando (usar --force para reejecutar).")
                         self.results_summary.append({
                             "id": exp_id,
                             "variable": var_type,
