@@ -54,6 +54,13 @@ Esta carpeta contiene la documentación técnica, matemática y metodológica pa
     - Justificación de la secuencia de 5 pasos en CDT: por qué el desescalado orográfico es indispensable antes del ajuste de sesgo cuantitativo (*Quantile Mapping*).
     - Lección metodológica y blindaje del sistema ante valores centinela faltantes ('-99' vs '-99.0').
 
+
+14. [**14. Diagnóstico Científico de Fase 1 y Diseño Metodológico de Fase 2 (Temperatura Tmax y Tmin)**](file:///d:/Workspace/CDT-8.0/docs/14_diagnostico_fase1_y_diseno_fase2_temperatura.md)
+    - Análisis exhaustivo de los resultados de la Fase 1 (EXP_01 a EXP_08) evaluados contra las 29 estaciones de validación ciega independiente.
+    - Diagnóstico de la divergencia termodinámica entre forzamiento diurno (Tmax: r ≈ 0.79, KGE = 0.68) e inversiones nocturnas/drenaje catabático (Tmin: r ≈ 0.67, MAE = 1.76 °C con NN-3D).
+    - Explicación del colapso del Quantile Mapping teórico analítico (norm, gumbel, snorm) y formulación de la Fase 2 de optimización dirigida (EXP_T09 a EXP_T12).
+    - Incorporación de Shepard Modificado 3D, Quantile Mapping Empírico no paramétrico (qmecdf), híbridos Regression Kriging + Barnes y SBA IDW local multiescala.
+
 ---
 
 ## Estructura de Configuraciones y Suites Experimentales

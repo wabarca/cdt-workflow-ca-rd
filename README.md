@@ -459,5 +459,6 @@ Para fundamentos matemáticos profundos, justificaciones físicas, menús de CDT
 - [**Protocolo Metodológico Maestro y Matriz de 31 Experimentos**](docs/10_matriz_maestra_experimentos_y_guia_metodologica.md)
 - [**Diagnóstico Científico de Fase 1 y Diseño/Resultados de Fase 2 (Precipitación)**](docs/12_diagnostico_fase1_y_diseno_fase2_precipitacion.md)
 - [**Influencia del DEM, Batimetría y Orografía en el Desescalado de Temperatura**](docs/13_influencia_dem_batimetria_desescalado_temperatura.md)
+- [**Diagnóstico Científico de Fase 1 y Diseño Metodológico de Fase 2 (Temperatura)**](docs/14_diagnostico_fase1_y_diseno_fase2_temperatura.md)
 - [**Guía de Despliegue en Contenedores (Docker, Compose, Apptainer/Singularity)**](docs/11_guia_despliegue_contenedores_docker_apptainer.md)
 - [**Documento PDF Compilado**](docs/Matriz_Experimentos_CDT_Centroamerica_Dominicana.pdf)
