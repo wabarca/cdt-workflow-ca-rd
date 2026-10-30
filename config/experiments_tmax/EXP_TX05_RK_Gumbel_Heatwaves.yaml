@@ -19,12 +19,10 @@ bias_correction:
   method: "qmdist"
   distribution: "gumbel"
   interpolation:
-    method: "okr"
+    method: "idw"
     maxdist: 3.5
     nmin: 4
     nmax: 12
-    use_block: true
-    variogram_models: ["Sph", "Exp", "Gau", "Pen"]
 
 merging:
   method: "RK"
