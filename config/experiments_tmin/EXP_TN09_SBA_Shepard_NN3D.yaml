@@ -1,0 +1,36 @@
+# ==============================================================================
+# EXPERIMENTO EXP-TN09: Shepard Modificado con Aislamiento 3D Nocturno (FASE 2)
+# ==============================================================================
+# Justificación Física y Climatológica Regional (Fase 2):
+# El análogo térmico nocturno del modelo ganador en precipitación (EXP-R15).
+# Aplica ajuste de sesgo móvil (mbvar) con control altimétrico vertical estricto (NN-3D)
+# para aislar inversiones térmicas de fondo de valle y fusiona con Shepard multiescala.
+# ==============================================================================
+
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_TN09_SBA_Shepard_NN3D"
+variable_type: "tmin"
+var_id: "temp"
+description: "Fase 2: SBA con Shepard Modificado multiescala y sesgo móvil con aislamiento vertical NN-3D"
+
+downscaling:
+  method: "blin"
+
+bias_correction:
+  method: "mbvar"
+  interpolation:
+    method: "nn3d"
+    maxdist: 3.5
+    nmin: 4
+    nmax: 12
+
+merging:
+  method: "SBA"
+  nrun: 3
+  passes: [1.0, 0.67, 0.33]
+  interpolation:
+    method: "shepard"
+    maxdist: 2.0
+    nmin: 4
+    nmax: 12

@@ -1,0 +1,38 @@
+# ==============================================================================
+# EXPERIMENTO EXP-TX12: SBA IDW Multiescala Local con Aislamiento Vertical (FASE 2)
+# ==============================================================================
+# Justificación Física y Climatológica Regional (Fase 2):
+# Refinamiento del ganador de la Fase 1 (EXP-TX01).
+# Conserva la flexibilidad estacional de mbvar y la suavidad de IDW, pero
+# reduce los radios de búsqueda a una malla multiescala local (1.0° -> 0.25°)
+# e introduce control altimétrico vertical (NN-3D) para resolver el relieve
+# en cumbres montañosas y valles profundos.
+# ==============================================================================
+
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_TX12_SBA_IDW_Local_Relief"
+variable_type: "tmax"
+var_id: "temp"
+description: "Fase 2: SBA multiescala local con IDW de alta resolución y sesgo móvil con aislamiento NN-3D"
+
+downscaling:
+  method: "blin"
+
+bias_correction:
+  method: "mbvar"
+  interpolation:
+    method: "nn3d"
+    maxdist: 3.5
+    nmin: 4
+    nmax: 12
+
+merging:
+  method: "SBA"
+  nrun: 3
+  passes: [1.0, 0.50, 0.25]
+  interpolation:
+    method: "idw"
+    maxdist: 1.5
+    nmin: 4
+    nmax: 12

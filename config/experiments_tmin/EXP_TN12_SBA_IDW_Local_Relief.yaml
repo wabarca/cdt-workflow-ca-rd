@@ -1,0 +1,38 @@
+# ==============================================================================
+# EXPERIMENTO EXP-TN12: SBA IDW Multiescala Local Nocturno (FASE 2)
+# ==============================================================================
+# Justificación Física y Climatológica Regional (Fase 2):
+# Refinamiento del ganador de la Fase 1 (EXP-TN01).
+# Mantiene la flexibilidad de mbvar y la suavidad de IDW, pero utiliza un
+# radio multiescala local (1.0° -> 0.25°) e introduce aislamiento vertical
+# estricto (NN-3D con elevación DEM) para evitar que las llanuras templadas
+# calienten los valles altos fríos.
+# ==============================================================================
+
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_TN12_SBA_IDW_Local_Relief"
+variable_type: "tmin"
+var_id: "temp"
+description: "Fase 2: SBA multiescala local con IDW de alta resolución y sesgo móvil con aislamiento NN-3D"
+
+downscaling:
+  method: "blin"
+
+bias_correction:
+  method: "mbvar"
+  interpolation:
+    method: "nn3d"
+    maxdist: 3.5
+    nmin: 4
+    nmax: 12
+
+merging:
+  method: "SBA"
+  nrun: 3
+  passes: [1.0, 0.50, 0.25]
+  interpolation:
+    method: "idw"
+    maxdist: 1.5
+    nmin: 4
+    nmax: 12

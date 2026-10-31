@@ -1,0 +1,38 @@
+# ==============================================================================
+# EXPERIMENTO EXP-TX10: Quantile Mapping Empírico no paramétrico (FASE 2)
+# ==============================================================================
+# Justificación Física y Climatológica Regional (Fase 2):
+# Corrige el sesgo diurno celda por celda directamente sobre la función empírica
+# acumulada (ECDF) observada en estaciones, sin forzar distribuciones teóricas
+# analíticas rígidas (evitando el colapso de Gauss/Gumbel en Fase 1).
+# Acopla Regression Kriging multivariable con DEM y Pendiente.
+# ==============================================================================
+
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_TX10_QM_Empirical_ECDF"
+variable_type: "tmax"
+var_id: "temp"
+description: "Fase 2: Quantile Mapping Empírico (ECDF) con NN-3D y RK multivariable con DEM y Pendiente"
+
+downscaling:
+  method: "blin"
+
+bias_correction:
+  method: "qmecdf"
+  interpolation:
+    method: "nn3d"
+    maxdist: 3.5
+    nmin: 4
+    nmax: 12
+
+merging:
+  method: "RK"
+  nrun: 3
+  passes: [1.0, 0.75, 0.50]
+  covariables: ["dem", "slope"]
+  interpolation:
+    method: "idw"
+    maxdist: 2.0
+    nmin: 4
+    nmax: 12

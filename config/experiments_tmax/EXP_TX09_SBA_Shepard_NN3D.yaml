@@ -1,0 +1,37 @@
+# ==============================================================================
+# EXPERIMENTO EXP-TX09: Shepard Modificado con Aislamiento 3D (FASE 2)
+# ==============================================================================
+# Justificación Física y Climatológica Regional (Fase 2):
+# El análogo térmico del modelo ganador en precipitación (EXP-R15).
+# Aplica ajuste de sesgo móvil (mbvar) con control altimétrico vertical (NN-3D)
+# y fusiona los residuos con derivadas locales direccionales de Shepard, evitando
+# las rigideces y ojos de buey de Kriging en zonas montañosas escarpadas.
+# ==============================================================================
+
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_TX09_SBA_Shepard_NN3D"
+variable_type: "tmax"
+var_id: "temp"
+description: "Fase 2: SBA con Shepard Modificado multiescala y sesgo móvil con aislamiento vertical NN-3D"
+
+downscaling:
+  method: "blin"
+
+bias_correction:
+  method: "mbvar"
+  interpolation:
+    method: "nn3d"
+    maxdist: 3.5
+    nmin: 4
+    nmax: 12
+
+merging:
+  method: "SBA"
+  nrun: 3
+  passes: [1.0, 0.67, 0.33]
+  interpolation:
+    method: "shepard"
+    maxdist: 2.0
+    nmin: 4
+    nmax: 12

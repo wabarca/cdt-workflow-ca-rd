@@ -1,0 +1,37 @@
+# ==============================================================================
+# EXPERIMENTO EXP-TN10: Quantile Mapping Empírico no paramétrico Nocturno (FASE 2)
+# ==============================================================================
+# Justificación Física y Climatológica Regional (Fase 2):
+# Modela las colas frías y heladas nocturnas directamente sobre la distribución
+# empírica (ECDF) observada, eliminando sesgos sin distorsionar la mediana ni
+# asumir campanas gaussianas teóricas. Acopla RK multivariable con DEM y Pendiente.
+# ==============================================================================
+
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_TN10_QM_Empirical_ECDF"
+variable_type: "tmin"
+var_id: "temp"
+description: "Fase 2: Quantile Mapping Empírico (ECDF) con NN-3D y RK multivariable con DEM y Pendiente"
+
+downscaling:
+  method: "blin"
+
+bias_correction:
+  method: "qmecdf"
+  interpolation:
+    method: "nn3d"
+    maxdist: 3.5
+    nmin: 4
+    nmax: 12
+
+merging:
+  method: "RK"
+  nrun: 3
+  passes: [1.0, 0.75, 0.50]
+  covariables: ["dem", "slope"]
+  interpolation:
+    method: "idw"
+    maxdist: 2.0
+    nmin: 4
+    nmax: 12

@@ -1,0 +1,37 @@
+# ==============================================================================
+# EXPERIMENTO EXP-TN11: Híbrido Determinista-Gaussiano Nocturno (RK + Barnes) (FASE 2)
+# ==============================================================================
+# Justificación Física y Climatológica Regional (Fase 2):
+# Modela el drenaje de aire frío a macroescala mediante la cota del DEM y
+# filtra los residuos térmicos nocturnos con el análisis objetivo de Barnes
+# para suavizar las diferencias en llanuras aluviales y amortiguamiento costero.
+# ==============================================================================
+
+include: "config/global_config.yaml"
+
+experiment_id: "EXP_TN11_RK_Barnes_Hybrid"
+variable_type: "tmin"
+var_id: "temp"
+description: "Fase 2: Regression Kriging con tendencia DEM/Coords y análisis objetivo de Barnes en residuos"
+
+downscaling:
+  method: "blin"
+
+bias_correction:
+  method: "mbvar"
+  interpolation:
+    method: "idw"
+    maxdist: 3.5
+    nmin: 4
+    nmax: 12
+
+merging:
+  method: "RK"
+  nrun: 3
+  passes: [1.0, 0.75, 0.50]
+  covariables: ["dem", "lat", "lon"]
+  interpolation:
+    method: "barnes"
+    maxdist: 2.0
+    nmin: 4
+    nmax: 12
