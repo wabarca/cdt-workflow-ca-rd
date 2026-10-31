@@ -21,11 +21,14 @@ La Fase 1 evaluó 8 familias metodológicas teóricas tanto para temperatura má
 
 | ID Exp. | Variable | Familia Metodológica | Método Sesgo (Paso 3) | Fusión Merging (Paso 5) | GSS | KGE Medio | KGE Mediana | $r$ Pearson | RMSE ($^\circ\text{C}$) | MAE ($^\circ\text{C}$) | PBIAS (%) |
 | :---: | :---: | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **`EXP_TX01`** | **TMAX** | **Control Nulo / Baseline** | `mbvar` (IDW) | **SBA + IDW 1-pasada** | **0.734** | **0.679** | **0.692** | **0.787** | **1.90** | **1.52** | $+1.42\%$ |
+| **`EXP_TX01`** | **TMAX** | **Control Nulo / Baseline** | `mbvar` (IDW) | **SBA + IDW 1-pasada** | **0.735** | **0.679** | **0.692** | **0.787** | **1.90** | **1.52** | $+1.42\%$ |
 | **`EXP_TX06`** | **TMAX** | **Barnes Continuo Costero** | `mbvar` (IDW) | **Barnes (3 pasadas)** | **0.709** | **0.676** | **0.688** | **0.736** | **2.17** | 1.74 | $+2.05\%$ |
-| **`EXP_TX04`** | **TMAX** | **RK Topografía + NN-3D** | `mbvar` (NN-3D) | **RK (DEM, Slope, Aspect)** | **0.681** | **0.633** | 0.651 | **0.727** | **2.28** | 1.83 | $+3.12\%$ |
+| **`EXP_TX04`** | **TMAX** | **RK Topografía + NN-3D** | `mbvar` (NN-3D) | **RK (DEM, Slope, Aspect)** | **0.682** | **0.633** | 0.651 | **0.727** | **2.28** | 1.83 | $+3.12\%$ |
 | **`EXP_TX07`** | **TMAX** | Cressman Intermontano | `mbmon` (IDW) | Cressman (4 pasadas) | 0.674 | 0.626 | 0.640 | 0.707 | 2.36 | 1.88 | $+3.40\%$ |
-| **`EXP_TX02`** | **TMAX** | RK DEM + QM Normal | `qmdist` (Normal) | RK (DEM) | 0.353 | 0.031 | 0.542 | 0.686 | 4.09 | 3.48 | $-2.15\%$ |
+| **`EXP_TX05`** | **TMAX** | RK Olas de Calor Gumbel | `qmdist` (Gumbel-IDW) | RK (DEM, Lat, Lon) | 0.365 | 0.056 | 0.548 | 0.680 | 4.04 | 3.42 | $-1.95\%$ |
+| **`EXP_TX02`** | **TMAX** | RK DEM + QM Normal | `qmdist` (Normal-IDW) | RK (DEM) | 0.354 | 0.031 | 0.542 | 0.686 | 4.09 | 3.48 | $-2.15\%$ |
+| **`EXP_TX08`** | **TMAX** | RK Acoplamiento Total Aspect | `qmdist` (snorm-IDW) | RK (DEM, Slope, Aspect, Coords)| 0.349 | 0.026 | 0.539 | 0.678 | 4.11 | 3.51 | $-2.28\%$ |
+| **`EXP_TX03`** | **TMAX** | RK Asimetría Skew-Normal | `qmdist` (snorm-IDW) | RK (DEM, Slope, Coords) | 0.348 | 0.023 | 0.537 | 0.677 | 4.11 | 3.52 | $-2.31\%$ |
 | **`EXP_TN01`** | **TMIN** | **Control Nulo / Baseline** | `mbvar` (IDW) | **SBA + IDW 1-pasada** | **0.609** | **0.550** | **0.629** | **0.669** | **2.19** | 1.89 | $+3.47\%$ |
 | **`EXP_TN04`** | **TMIN** | **Inversiones Nocturnas NN-3D**| `mbvar` (NN-3D) | **RK (DEM, Slope, Lat/Lon)** | **0.571** | **0.509** | **0.542** | **0.613** | **2.18** | **1.76** | $+5.43\%$ |
 | **`EXP_TN08`** | **TMIN** | **RK Catabático Completo** | `qmdist` (snorm-NN3D)| **RK (DEM, Slope, Aspect)** | **0.558** | **0.487** | 0.537 | **0.604** | **2.29** | 1.85 | $+4.05\%$ |
