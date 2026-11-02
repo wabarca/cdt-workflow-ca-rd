@@ -1,7 +1,7 @@
-# 05. Secuencia de Procesamiento de Temperatura (CHIRTS) y Modelado Topográfico con DEM
+# 08. Secuencia de Procesamiento de Temperatura (CHIRTS) y Modelado Topográfico con DEM
 
 
-Este documento detalla exhaustivamente la cadena de procesamiento de **Temperatura** en CDT, desde la preparación de archivos NetCDF 3D multitemporales (1991–2020) hasta la fusión final, explicando el fundamento climatológico/estadístico de cada menú y la **matriz de experimentos parametrizables** para investigación y publicación científica.
+Este documento detalla exhaustivamente la cadena de procesamiento de **Temperatura** en CDT, desde la preparación de archivos NetCDF 3D multitemporales (1991–2020) hasta la fusión final, explicando el fundamento climatológico/estadístico de cada menú y la **matriz de experimentos parametrizables** para investigación y documentación técnica y operativa.
 
 ---
 
@@ -32,13 +32,17 @@ flowchart TD
 - **Fundamento Climatológico:** La temperatura disminuye sistemáticamente con la altitud debido a la descompresión adiabática del aire (*Environmental Lapse Rate*, típicamente entre $-5.0\ ^\circ\text{C}$ y $-6.5\ ^\circ\text{C}$ por cada $1000\text{ m}$). Además, la insolación varía según la pendiente (*slope*) y la orientación de las laderas (*aspect*).
 - **Fundamento Estadístico:** Ajusta un Modelo Lineal Generalizado (GLM) para cada mes del año ($m = 1, \dots, 12$) correlacionando la temperatura observada en las estaciones con la topografía:
   
-  $$\text{Temp}_m(s) = \beta_{0,m} + \beta_{1,m} \cdot \text{DEM}(s) + \beta_{2,m} \cdot \text{Slope}(s) + \beta_{3,m} \cdot \text{Aspect}(s) + \text{Polinomio}(\text{Lon}, \text{Lat})$$
+  
+
+$$
+\text{Temp}_m(s) = \beta_{0,m} + \beta_{1,m} \cdot \text{DEM}(s) + \beta_{2,m} \cdot \text{Slope}(s) + \beta_{3,m} \cdot \text{Aspect}(s) + \text{Polinomio}(\text{Lon}, \text{Lat})
+$$
 
 - **Salida generada:** Archivos `STN_DEM_GLM_COEF.txt` y `STN_DEM_GLM_COEF.rds` con la matriz de 12 filas (una por mes) y los coeficientes ajustados $\beta$.
 
 > [!IMPORTANT]
 > **Requisito Físico del DEM (Filtro Anti-Batimetría y Clampeo a Cero):**
-> Para que el GLM estime gradientes adiabáticos coherentes ($\beta_{\text{elv}} \approx -0.0055\text{ a } -0.0065\ ^\circ\text{C}/\text{m}$), el archivo NetCDF del DEM **no debe contener cotas batimétricas oceánicas negativas** (como las fosas abisales de hasta $-8390\text{ m}$ en productos globales como GEBCO). Toda elevación menor a cero debe clampearse a nivel medio del mar ($\text{DEM} = \max(\text{DEM}, 0.0)$). Esto preserva el $100\%$ de las islas (Roatán, Guanaja, Coiba, Ometepe) con su cota topográfica real y evita la inversión espuria del gradiente térmico a valores positivos ($\beta > 0$). Para un análisis exhaustivo de la influencia del DEM, consultar [05_secuencia_temperatura_chirts_dem.md](05_secuencia_temperatura_chirts_dem.md).
+> Para que el GLM estime gradientes adiabáticos coherentes ($\beta_{\text{elv}} \approx -0.0055\text{ a } -0.0065\ ^\circ\text{C}/\text{m}$), el archivo NetCDF del DEM **no debe contener cotas batimétricas oceánicas negativas** (como las fosas abisales de hasta $-8390\text{ m}$ en productos globales como GEBCO). Toda elevación menor a cero debe clampearse a nivel medio del mar ($\text{DEM} = \max(\text{DEM}, 0.0)$). Esto preserva el $100\%$ de las islas (Roatán, Guanaja, Coiba, Ometepe) con su cota topográfica real y evita la inversión espuria del gradiente térmico a valores positivos ($\beta > 0$). Para un análisis exhaustivo de la influencia del DEM, consultar [08_secuencia_temperatura_chirts_dem.md](08_secuencia_temperatura_chirts_dem.md).
 
 ---
 
@@ -50,7 +54,11 @@ flowchart TD
   2. Predice la temperatura gruesa esperada por topografía: $\hat{T}_{\text{coarse}} = f_m(\text{DEM}_{\text{coarse}})$.
   3. Extrae la anomalía climática sinóptica / residual grueso:
 
-     $$R_{\text{coarse}} = T_{\text{reanalysis}} - \hat{T}_{\text{coarse}}$$
+     
+
+$$
+R_{\text{coarse}} = T_{\text{reanalysis}} - \hat{T}_{\text{coarse}}
+$$
 
   4. Interpola el residual $R_{\text{coarse}}$ a la cuadrícula fina mediante **Bilineal**, **IDW** o **Kriging**.
   5. Reconstruye la temperatura desescalada de alta resolución:
@@ -60,8 +68,6 @@ flowchart TD
 $$
 T_{\text{downscaled}}(s_{\text{fino}}) = f_m(\text{DEM}_{\text{fino}}) + \hat{R}_{\text{fino}}(s_{\text{fino}})
 $$
-
-
 
 - **Salida generada:** NetCDFs diarios de temperatura desescalada con la resolución del DEM.
 
@@ -94,8 +100,6 @@ $$
 \hat{T}_{\text{corrected}}(s) = F_{\text{stn}}^{-1}\left( F_{\text{proxy}}(T_{\text{downscaled}}(s)) \right)
 $$
 
-
-
 - **Salida generada:** NetCDFs diarios ajustados por sesgo, preservando la media y los cuantiles observados por las estaciones.
 
 ---
@@ -127,7 +131,7 @@ Para una investigación publicable, el objetivo es determinar qué combinación 
 | **Merging: Método** | `merge.method\$method` | `"SBA"`, `"RK"`, `"BSc"` (Barnes), `"CSc"` (Cressman) | Determina si la regresión espacial supera al ajuste aditivo simple. |
 | **Merging: Pasadas** | `nrun` y `pass` | - 1 pasada: `pass = c(1)`<br>- 2 pasadas: `pass = c(1, 0.5)`<br>- 3 pasadas: `pass = c(1, 0.75, 0.5)` | Refinamiento multiescala: regional vs local. |
 | **Merging: Radio Búsqueda** | `interp.method\$maxdist` | $1.5^\circ, 2.5^\circ, 3.5^\circ, 5.0^\circ$ | Rango de correlación espacial térmica. |
-| **Merging: Vecindad** | `nmin` / `nmax` | $(4, 12)$, $(8, 16)$, $(10, 30)$ | Densidad y suavidad en la interpolación de residuales. |
+| **Merging: Vecindad** | `nmin` / `nmax` | (4, 12), (8, 16), (10, 30) | Densidad y suavidad en la interpolación de residuales. |
 | **Merging: Kriging Variograma**| `vgm.model` | `"Sph"`, `"Exp"`, `"Gau"`, `"Pen"` | Forma de la autocorrelación espacial de residuales. |
 | **Merging: Soporte de Celda** | `use.block` | `TRUE` (Block Kriging) vs `FALSE` (Point Kriging) | Corrección del error de cambio de soporte espacial. |
 
@@ -219,7 +223,11 @@ flowchart TD
 
 ### 2.1. Gradiente Térmico Vertical Ambiental (*Environmental Lapse Rate*)
 En la troposfera tropical, la masa atmosférica disminuye exponencialmente con la altura, reduciendo la presión barométrica. Una parcela de aire que asciende se expande adiabáticamente y se enfría:
-$$\frac{\partial T}{\partial z} \approx -6.5\ ^\circ\text{C}/\text{km}$$
+
+$$
+\frac{\partial T}{\partial z} \approx -6.5\ ^\circ\text{C}/\text{km}
+$$
+
 Sin un DEM que proporcione la cota precisa $z$, cualquier interpolación espacial generaría manchas isotérmicas ficticias entre estaciones separadas por pocos kilómetros pero ubicadas en distintas altitudes (por ejemplo, una estación costera a $10\text{ msnm}$ con $32\ ^\circ\text{C}$ frente a una estación de montaña a $2000\text{ msnm}$ con $16\ ^\circ\text{C}$). El DEM permite descomponer el campo térmico en un componente determinístico altimétrico y un residuo estocástico sinóptico.
 
 ### 2.2. Efectos de Pendiente e Insolación (*Slope* y *Aspect*)
@@ -231,7 +239,11 @@ CDT deriva automáticamente `Slope` y `Aspect` a partir de la malla del DEM medi
 
 ### 2.3. Drenaje Catabático e Inversiones Térmicas Nocturnas
 Durante la noche, el enfriamiento radiativo superficial vuelve el aire en contacto con el suelo más denso que el aire libre. La gravedad hace que este flujo fluya ladera abajo (*drainage winds*) y se estanque en cuencas intramontanas cerradas. En estas condiciones:
-$$\frac{\partial T}{\partial z} > 0 \quad (\text{en la capa límite superficial del valle})$$
+
+$$
+\frac{\partial T}{\partial z} > 0 \quad (\text{en la capa limite superficial del valle})
+$$
+
 Para capturar este fenómeno en $T_{\min}$, el parámetro de distancia tridimensional (`NN-3D`) utiliza el DEM para penalizar la cercanía horizontal si existe un salto vertical sustancial ($\Delta z$), evitando que estaciones cálidas en valles bajos contaminen la interpolación de valles fríos de montaña.
 
 ---
@@ -259,7 +271,11 @@ flowchart LR
 
 ### Paso A: Modelado del Coeficiente de Desescalado (Lapse Rate Mensual)
 En `R/cdtTemp_DownscalingCoef_Procs.R`, CDT extrae la elevación del DEM en cada estación meteorológica y ajusta un modelo lineal mensual:
-$$\text{Temp}_m(s_i) = \beta_{0,m} + \beta_{\text{elv},m} \cdot \text{DEM}(s_i) + \sum \beta_{k,m} X_k(s_i) + \varepsilon(s_i)$$
+
+$$
+\text{Temp}_m(s_i) = \beta_{0,m} + \beta_{\text{elv},m} \cdot \text{DEM}(s_i) + \sum \beta_{k,m} X_k(s_i) + \varepsilon(s_i)
+$$
+
 El coeficiente $\beta_{\text{elv},m}$ debe ser **negativo** ($\approx -0.0055$ a $-0.0065\ ^\circ\text{C}/\text{m}$), reflejando que a mayor altitud, menor temperatura.
 
 ### Paso B: Reducción de Escala (Downscaling de Grillas a Resolución del DEM)
@@ -274,8 +290,6 @@ En `R/cdtTemp_DownscalingReanal_Procs.R`, CDT ejecuta:
 $$
 T_{\text{downscaled}}(s_{\text{fine}}) = \beta_0 + \beta_{\text{elv}} \cdot \text{DEM}_{\text{fine}}(s_{\text{fine}}) + \hat{R}_{\text{fine}}(s_{\text{fine}})
 $$
-
-
 
 > [!IMPORTANT]
 > Observa que si el valor de $\text{DEM}_{\text{fine}}$ o el coeficiente $\beta_{\text{elv}}$ están distorsionados, toda la temperatura de alta resolución colapsará inmediatamente antes de llegar a la fase de fusión.
@@ -310,7 +324,6 @@ $$
 T_{\text{downscaled}} = \beta_0 + \beta_{\text{elv}} \cdot \text{DEM}_{\text{fino}} + \hat{R}
 $$
 
-
    la topografía continental real positiva ($+1000$ a $+3000\text{ m}$) resta masivamente temperatura o sobre-corrige los residuales, desplomando las temperaturas en tierra a valores inverosímiles ($-10\ ^\circ\text{C}$ a $5\ ^\circ\text{C}$ en costas tropicales).
 4. **Consecuencia en Validación:** Las métricas se colapsan a $RMSE > 25\ ^\circ\text{C}$, $PBIAS < -60\%$ y $KGE < -10$, haciendo que los experimentos con DEM parezcan inferiores a un control nulo sin topografía (`EXP_TX01` / `EXP_TN01`).
 
@@ -337,7 +350,9 @@ graph TD
 
 Para solucionar este fenómeno, la mejor práctica climatológica y geoespacial consiste en aplicar un **clampeo de elevación al nivel del mar** combinado con un recorte (*bounding box*) regional:
 
-$$\text{DEM}_{\text{clean}}(x, y) = \max\left(\text{DEM}(x, y), \, 0.0\right)$$
+$$
+\text{DEM}_{\text{clean}}(x, y) = \max\left(\text{DEM}(x, y), \, 0.0\right)
+$$
 
 ### 5.1. ¿Por qué el Clampeo a Cero es Superior al Recorte Vectorial por Polígono de Tierra?
 
@@ -345,7 +360,7 @@ $$\text{DEM}_{\text{clean}}(x, y) = \max\left(\text{DEM}(x, y), \, 0.0\right)$$
 2. **Preservación Total de Islas y Cayos:**
    - En la región existen numerosas estaciones e intereses climatológicos en islas: por ejemplo `HO_Roatan` (Islas de la Bahía de Honduras, $14\text{ msnm}$), Isla de Guanaja, Utila, Isla de Ometepe (Nicaragua), Isla de Coiba y Archipiélago de las Perlas (Panamá), Cayos Miskitos y cayos litorales.
    - Si se intentara recortar (*mask*) el DEM con un shapefile vectorial continental estricto, las discrepancias de escala y resolución entre los vértices del polígono y la malla del ráster inevitablemente convertirían los píxeles insulares en valores ausentes (`NA`), descartando las estaciones insulares o impidiendo generar estimaciones sobre ellas.
-   - Al clampear $\text{elevación} = \max(\text{elevación}, 0.0)$, **todas las islas retienen su cota real positiva ($z > 0\text{ msnm}$)**, integrándose perfectamente en el modelo orográfico.
+   - Al clampear $\text{elevacion} = \max(\text{elevacion}, 0.0)$, **todas las islas retienen su cota real positiva ($z > 0\text{ msnm}$)**, integrándose perfectamente en el modelo orográfico.
 3. **Eliminación de Discontinuidades y Valores Faltantes en Bordes Costeros:**
    - Las rutinas de CDT (`defSpatialPixels`, `interp.surface.grid`, Ordinary Kriging e IDW) requieren matrices regulares continuas.
    - Si las celdas marinas fueran `NA`, las estaciones costeras situadas en el borde continental generarían fallas numéricas en el cálculo de variogramas y en la búsqueda de vecinos espaciales hacia el mar.
@@ -407,14 +422,20 @@ cdtMergingTempCMD(
 
 Para cada fecha diaria $t$, CDT ajusta un Modelo Lineal Generalizado de la familia Gaussiana con las estaciones disponibles:
 
-$$\text{Temp}(s_i) = \beta_0 + \beta_1 \cdot \text{Reanalysis}(s_i) + \beta_2 \cdot \text{DEM}(s_i) + \beta_3 \cdot \text{Slope}(s_i) + \beta_4 \cdot \text{Lon}(s_i) + \beta_5 \cdot \text{Lat}(s_i) + \varepsilon(s_i)$$
+$$
+\text{Temp}(s_i) = \beta_0 + \beta_1 \cdot \text{Reanalysis}(s_i) + \beta_2 \cdot \text{DEM}(s_i) + \beta_3 \cdot \text{Slope}(s_i) + \beta_4 \cdot \text{Lon}(s_i) + \beta_5 \cdot \text{Lat}(s_i) + \varepsilon(s_i)
+$$
 
 1. **Derivación topográfica automática:**
    Si `slope = TRUE` o `aspect = TRUE`, CDT calcula internamente las matrices de pendiente y orientación a partir del archivo NetCDF del DEM mediante la función interna `raster.slope.aspect()`.
 2. **Evaluación de la tendencia espacial:**
    Se evalúa la ecuación ajustada en toda la malla de alta resolución del DEM:
 
-   $$\text{Trend}(s) = \hat{\beta}_0 + \hat{\beta}_1 \text{Reanalysis}(s) + \hat{\beta}_2 \text{DEM}(s) + \hat{\beta}_3 \text{Slope}(s) + \hat{\beta}_4 \text{Lon}(s) + \hat{\beta}_5 \text{Lat}(s)$$
+   
+
+$$
+\text{Trend}(s) = \hat{\beta}_0 + \hat{\beta}_1 \text{Reanalysis}(s) + \hat{\beta}_2 \text{DEM}(s) + \hat{\beta}_3 \text{Slope}(s) + \hat{\beta}_4 \text{Lon}(s) + \hat{\beta}_5 \text{Lat}(s)
+$$
 
 3. **Interpolación de residuales térmicos:**
    Los residuales no explicados por la topografía ni por el reanálisis ($\varepsilon_i = \text{Obs}_i - \text{Trend}_i$) representan anomalías locales (inversiones térmicas en valles, brisas costeras, islas de calor urbano) y se interpolan hacia toda la malla con el método seleccionado (`idw` u `okr`).
@@ -429,3 +450,51 @@ $$\text{Temp}(s_i) = \beta_0 + \beta_1 \cdot \text{Reanalysis}(s_i) + \beta_2 \c
   - Presión Superficial (`"pres"`): $[700, 1100]\text{ hPa}$.
   - Presión a Nivel del Mar (`"prmsl"`): $[850, 1100]\text{ hPa}$.
   - Radiación (`"rad"`): $[0, 1300]\text{ W/m}^2$.
+
+
+## 5. Matriz Completa de Experimentos Térmicos: Fase 1 y Fase 2 ($T_{\max}$ y $T_{\min}$)
+
+La batería comprende **24 experimentos térmicos** (12 para $T_{\max}$ y 12 para $T_{\min}$) estructurados según las 5 etapas oficiales de CDT:
+
+### 5.1 Suite B: Temperatura Máxima Diurna ($T_{\max}$: 12 Experimentos)
+
+| ID Exp. | Fase | Desescalado Topográfico (Pasos 1-2) | Compute / Apply Bias (Pasos 3-4) | Merging de Residuales (Paso 5) | Hipótesis Física Diurna |
+| :---: | :---: | :--- | :--- | :--- | :--- |
+| **`EXP-TX01`** | F1 | Lineal plano sin DEM (0.05°) | `mbvar` (\pm 5 d) + IDW (3.5°) | SBA monocapa (1 pasada a 1.0°) | **Línea Base Control:** Ignora el relieve; sesgo artificial cálido en cumbres. |
+| **`EXP-TX02`** | F1 | Regresión estación–DEM SRTM | `qmdist` (Normal) + IDW | **RK** (DEM) + OKR por bloques | **Gradiente Adiabático:** Tasa vertical estándar (\approx -6.5 °C/km). |
+| **`EXP-TX03`** | F1 | Regresión DEM + Pendiente | `qmdist` (Skew-Normal) + OKR | **RK** (DEM + Pendiente + Coords) | **Asimetría por Laderas:** Captura pendientes térmicas en cordilleras. |
+| **`EXP-TX04`** | F1 | Desescalado orográfico 3D | `mbvar` (\pm 5 d) + **NN-3D (\Delta z)** | **RK** (DEM + Pendiente + Aspect) | **Insolación por Orientación:** Sol matutino al este vs vespertino al oeste. |
+| **`EXP-TX05`** | F1 | Regresión altimétrica DEM | `qmdist` (Gumbel) + OKR | **RK** (DEM + Coords) | **Olas de Calor:** Ajuste de colas extremas en valles áridos y depresiones. |
+| **`EXP-TX06`** | F1 | Regresión regional DEM | `mbvar` (\pm 5 d) + IDW | **Barnes (BSc)** 3 pasadas gaussianas | **Brisas y Llanuras Costeras:** Suavizado continuo sin saltos espaciales. |
+| **`EXP-TX07`** | F1 | Regresión altimétrica DEM | `mbmon` (mensual) + IDW | **Cressman (CSc)** 4 pasadas | **Guía Oficial CDT:** Radios decrecientes contra contaminación de valles cálidos. |
+| **`EXP-TX08`** | F1 | Multivariado DEM+Slope+Aspect | `qmdist` (Skew-Normal) + OKR | **RK Total** (DEM+Slope+Aspect+Coords) | **Máxima Complejidad Diurna:** Acoplamiento total de relieve e insolación. |
+| **`EXP-TX09`** | F2 | Bilineal con DEM SRTM | `mbvar` (\pm 5 d) + **NN-3D (\Delta z)** | **SBA** (1.0°, 0.67°, 0.33°) + Shepard | **Shepard Térmico NN-3D:** Derivadas direccionales locales en residuales. |
+| **`EXP-TX10`** | F2 | Bilineal con DEM SRTM | **QM Empírico (`qmecdf`)** + NN-3D | **RK** (DEM + Pendiente) + IDW | **QM Empírico Celda a Celda:** Modela olas de calor directamente sobre la curva observada. |
+| **`EXP-TX11`**<br>**(GANADOR)** | F2 | Bilineal con DEM SRTM | `mbvar` (\pm 5 d) + IDW (3.5°) | **RK (DEM + Lat + Lon)** + **Barnes Residuos (2.0°)** | **MODELO GANADOR TMAX:** Descompone el campo diurno en tendencia orográfica real y Barnes continuo. Máx KGE (0.690). |
+| **`EXP-TX12`** | F2 | Bilineal con DEM SRTM | `mbvar` (\pm 5 d) + NN-3D | **SBA Multiescala Local** (1.0°, 0.50°, 0.25°) | **SBA Local con NN-3D:** Confinamiento a 0.25° con control vertical de cota. |
+
+---
+
+### 5.2 Suite C: Temperatura Mínima Nocturna ($T_{\min}$: 12 Experimentos)
+
+| ID Exp. | Fase | Desescalado Topográfico (Pasos 1-2) | Compute / Apply Bias (Pasos 3-4) | Merging de Residuales (Paso 5) | Hipótesis Física Nocturna |
+| :---: | :---: | :--- | :--- | :--- | :--- |
+| **`EXP-TN01`** | F1 | Lineal plano sin DEM (0.05°) | `mbvar` (\pm 5 d) + IDW (3.5°) | SBA monocapa (1 pasada a 1.0°) | **Línea Base Control:** Ignora el enfriamiento nocturno y drenaje catabático. |
+| **`EXP-TN02`** | F1 | Regresión estación–DEM SRTM | `qmdist` (Normal) + IDW | **RK** (DEM) + OKR por bloques | **Gradiente Térmico Nocturno:** Tasa estándar en terreno abierto. |
+| **`EXP-TN03`** | F1 | Regresión DEM + Pendiente | `qmdist` (Skew-Normal) + OKR | **RK** (DEM + Pendiente + Coords) | **Frentes Fríos (*Nortes*):** Caídas térmicas asimétricas en invierno. |
+| **`EXP-TN04`** | F1 | Desescalado orográfico 3D | `mbvar` (\pm 5 d) + **NN-3D (\Delta z)** | **RK** (DEM + Pendiente + Coords) | **Inversiones Térmicas:** Aislamiento vertical estricto cima-valle. |
+| **`EXP-TN05`** | F1 | Regresión altimétrica DEM | `qmdist` (Gumbel) + OKR | **RK** (DEM + Coords) | **Heladas Agronómicas:** Ajuste de colas frías extremas (<0 °C). |
+| **`EXP-TN06`** | F1 | Regresión regional DEM | `mbvar` (\pm 5 d) + IDW | **Barnes (BSc)** 3 pasadas gaussianas | **Amortiguamiento Marino:** Regulación térmica nocturna en costas caribeñas. |
+| **`EXP-TN07`** | F1 | Regresión altimétrica DEM | `mbmon` (mensual) + IDW | **Cressman (CSc)** 4 pasadas | **Pozas Frías Confinadas:** Radios decrecientes contra dispersión espuria. |
+| **`EXP-TN08`** | F1 | Multivariado DEM+Slope+Aspect | `qmdist` (Skew-Normal) + NN-3D | **RK Total** (DEM+Slope+Aspect+Coords) | **Drenaje Catabático en Laderas:** Acoplamiento topográfico completo. |
+| **`EXP-TN09`** | F2 | Bilineal con DEM SRTM | `mbvar` (\pm 5 d) + **NN-3D (\Delta z)** | **SBA** (1.0°, 0.67°, 0.33°) + Shepard | **Shepard Térmico Nocturno:** Interpolación local no lineal en residuales. |
+| **`EXP-TN10`**<br>**(GANADOR)** | F2 | Bilineal con DEM SRTM | **QM Empírico (`qmecdf`)** + **NN-3D (\Delta z)** | **RK (DEM + Pendiente)** + IDW (2.0°) | **MODELO GANADOR ABSOLUTO TMIN:** Resuelve inversiones y pozas de aire frío (*cold-air pooling*). Menor RMSE (1.92 °C), menor MAE (1.57 °C) y GSS (0.613). |
+| **`EXP-TN11`** | F2 | Bilineal con DEM SRTM | `mbvar` (\pm 5 d) + IDW (3.5°) | **RK (DEM + Lat + Lon)** + Barnes (2.0°) | **Híbrido Determinista-Gaussiano:** Segundo mejor RMSE (2.07 °C). |
+| **`EXP-TN12`** | F2 | Bilineal con DEM SRTM | `mbvar` (\pm 5 d) + NN-3D | **SBA Multiescala Local** (1.0°, 0.50°, 0.25°) | **SBA Local con NN-3D:** Confinamiento local estricto para mínimas nocturnas. |
+
+### Ejecución de Suites desde Terminal:
+```bash
+# Ejecutar suites de 12 experimentos con 18 hilos:
+python launcher/experiment_runner.py --suite tmax --cores 18
+python launcher/experiment_runner.py --suite tmin --cores 18
+```

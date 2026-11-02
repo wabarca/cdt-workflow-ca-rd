@@ -1,4 +1,4 @@
-# 07. Diagnóstico Científico y Resultados del Benchmark de Temperatura (Tmax y Tmin)
+# 10. Diagnóstico Científico y Resultados del Benchmark de Temperatura (Tmax y Tmin)
 
 ---
 
@@ -53,7 +53,12 @@ Los resultados confirman cuantitativamente la diferencia en los forzamientos fí
 La Fase 1 arrojó una división polarizada entre métricas:
 - **`EXP_01` (Baseline SBA + IDW):** Logra el **mejor KGE y la mayor correlación general** ($KGE = 0.679$ en Tmax, $0.550$ en Tmin). Su éxito proviene de la flexibilidad del método `mbvar` (sesgo móvil $\pm 5$ días), que sigue la estacionalidad sin imponer distorsiones teóricas. Sin embargo, al usar IDW 2D en el Paso 5, aplana los microclimas de montaña.
 - **`EXP_04` (RK + Topografía + NN-3D):** Logra el **menor error absoluto de toda la suite ($MAE = 1.76\ ^\circ\text{C}$ y $RMSE = 2.18\ ^\circ\text{C}$ en Tmin)**. Al incorporar la distancia tridimensional:
-  $$d_{3D} = \sqrt{(x_1 - x_2)^2 + (y_1 - y_2)^2 + w_z \cdot (z_1 - z_2)^2}$$
+  
+
+$$
+d_{3D} = \sqrt{(x_1 - x_2)^2 + (y_1 - y_2)^2 + w_z \cdot (z_1 - z_2)^2}
+$$
+
   Evita que estaciones templadas costeras contaminen los valles fríos de montaña. Sin embargo, su KGE medio se ve penalizado porque en el Paso 5 se forzó Kriging Ordinario rígido sobre los residuos.
 
 ### 3.3. El Fracaso del Quantile Mapping Teórico Analítico (`norm`, `gumbel`, `snorm`)

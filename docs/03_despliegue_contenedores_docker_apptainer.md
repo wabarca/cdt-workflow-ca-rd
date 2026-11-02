@@ -130,5 +130,5 @@ El repositorio incluye la carpeta de configuración [`.devcontainer/`](file:///d
 | **Plataformas Soportadas** | Windows (Rtools), Linux nativo | Linux, Windows (WSL2), macOS | Clusters Linux (SLURM, PBS) |
 | **Instalación de R y GDAL** | Manual en el sistema anfitrión | **Cero (Preconfigurado en imagen)** | **Cero (Preconfigurado en `.sif`)** |
 | **Requiere Permisos Root** | Sí (para librerías de sistema) | Sí (al instalar Docker Engine) | **No (`rootless` en HPC)** |
-| **Persistencia de Datos** | Rutas locales directas | Volúmenes montados (`./data`, `./output`) | Bind mounts (`--bind $(pwd):/workspace`) |
+| **Persistencia de Datos** | Rutas locales directas | Volúmenes montados (`./data`, `./output`) | Bind mounts (`--bind \$(pwd):/workspace`) |
 | **Caso de Uso Recomendado** | Servidores locales con R preinstalado | Estaciones de trabajo y entornos Cloud | Supercómputo y servidores institucionales |

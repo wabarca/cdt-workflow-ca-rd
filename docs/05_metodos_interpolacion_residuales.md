@@ -1,4 +1,4 @@
-# 02. Métodos Geoestadísticos y Parámetros de Interpolación de Residuales
+# 05. Métodos Geoestadísticos y Parámetros de Interpolación de Residuales
 
 Cuando se utiliza el método de fusión **SBA** (*Simple Bias Adjustment*) o **RK** (*Regression Kriging*), los residuales calculados en las ubicaciones de las estaciones deben interpolarse a toda la cuadrícula geográfica.
 
@@ -23,7 +23,9 @@ interp.method = list(
 ### A. Inverse Distance Weighted (`"idw"`)
 Asigna pesos a las estaciones inversamente proporcionales a su distancia elevada a una potencia $p$:
 
-$$\hat{R}(s_0) = \frac{\sum_{i=1}^{n} w_i R(s_i)}{\sum_{i=1}^{n} w_i}, \quad w_i = \frac{1}{d(s_0, s_i)^p}$$
+$$
+\hat{R}(s_0) = \frac{\sum_{i=1}^{n} w_i R(s_i)}{\sum_{i=1}^{n} w_i}, \quad w_i = \frac{1}{d(s_0, s_i)^p}
+$$
 
 - **Ventajas:** Extremadamente rápido, determinista, no requiere ajuste de parámetros estocásticos y garantiza que el residual interpolado no superará los extremos observados.
 - **Potencia por defecto:** $p = 2.0$ (modificable con `merging.options(powerWeightIDW = ...)`).
@@ -33,7 +35,9 @@ $$\hat{R}(s_0) = \frac{\sum_{i=1}^{n} w_i R(s_i)}{\sum_{i=1}^{n} w_i}, \quad w_i
 ### B. Ordinary Kriging (`"okr"`)
 Considera tanto la distancia como la estructura de correlación espacial de los datos a través del **semivariograma**:
 
-$$\gamma(h) = \frac{1}{2 N(h)} \sum_{i=1}^{N(h)} \left[ R(s_i) - R(s_i + h) \right]^2$$
+$$
+\gamma(h) = \frac{1}{2 N(h)} \sum_{i=1}^{N(h)} \left[ R(s_i) - R(s_i + h) \right]^2
+$$
 
 1. **Ajuste automático de variograma (`fit.variogram`):**
    CDT ajusta un modelo teórico seleccionando el mejor ajuste entre:
@@ -45,7 +49,11 @@ $$\gamma(h) = \frac{1}{2 N(h)} \sum_{i=1}^{N(h)} \left[ R(s_i) - R(s_i + h) \rig
 2. **Block Kriging (`use.block = TRUE`):**
    En lugar de predecir el residual en un punto matemático sin dimensión, Kriging integra la predicción sobre el área espacial de la celda NetCDF:
 
-   $$\hat{R}(B) = \frac{1}{|B|} \int_{B} \hat{R}(s) ds$$
+   
+
+$$
+\hat{R}(B) = \frac{1}{|B|} \int_{B} \hat{R}(s) ds
+$$
 
    Esto reduce drásticamente el error de soporte espacial cuando se combina información puntual con celdas satelitales de $5\text{ km}$ o $25\text{ km}$.
    - Opciones en `merging.options()`: `blockType = "gaussian"` o `"userdefined"`.
@@ -55,7 +63,9 @@ $$\gamma(h) = \frac{1}{2 N(h)} \sum_{i=1}^{N(h)} \left[ R(s_i) - R(s_i + h) \rig
 ### C. Modified Shepard Interpolation (`"shepard"`)
 Es una variante local de IDW que utiliza una función de influencia suave y corrige la ponderación mediante derivadas directas de primer orden para evitar el efecto de "ojo de buey" (*bull's-eye*) característico del IDW clásico.
 
-$$\text{Peso base: } w_i = \left( \frac{\max(0, R_w - d_i)}{R_w \cdot d_i} \right)^p$$
+$$
+\text{Peso base: } w_i = \left( \frac{\max(0, R_w - d_i)}{R_w \cdot d_i} \right)^p
+$$
 
 - Potencia por defecto: `powerWeightShepard = 0.7`.
 - **Ventaja física:** Otorga transiciones graduales en cañones, valles intramontanos y zonas de transición costera, evitando singularidades en las proximidades inmediatas de las estaciones.
@@ -75,7 +85,7 @@ Esquema de análisis objetivo meteorológico clásico multiescala basado en corr
 $$
 W_i = \begin{cases} 
 \dfrac{R_c^2 - d_i^2}{R_c^2 + d_i^2}, & d_i < R_c \\
-0, & d_i \ge R_c 
+0, & d_i \geq R_c 
 \end{cases}
 $$
 
@@ -86,7 +96,9 @@ $$
 ### F. Barnes Objective Analysis (`"BSc"` / `"barnes"`)
 Análisis objetivo de dos o más pasadas con filtro de ponderación Gaussiano en el dominio espacial continuo:
 
-$$w_i = \exp\left( -\frac{d_i^2}{4 c_k} \right)$$
+$$
+w_i = \exp\left( -\frac{d_i^2}{4 c_k} \right)
+$$
 
 donde $c_k$ es el parámetro de escala espacial ($c_2 = \gamma c_1$, con $\gamma \in (0, 1)$, típicamente $\gamma = 0.35$ a $0.5$).
 - **Respuesta espectral:** Actúa como un filtro pasabajas riguroso con respuesta analítica conocida en el dominio de números de onda. Filtra ruidos instrumentales de alta frecuencia mientras retiene y reconstruye frentes térmicos, brisas marinas e inversiones térmicas sin oscilaciones numéricas espurias.
@@ -96,7 +108,9 @@ donde $c_k$ es el parámetro de escala espacial ($c_2 = \gamma c_1$, con $\gamma
 ### G. 3D Nearest Neighbor / Elevation-Weighted (`"nn3d"`)
 Esquema de interpolación tridimensional que acopla las coordenadas geográficas horizontales $(\lambda, \phi)$ con la cota topográfica vertical $z$ (DEM):
 
-$$d_{3D}(s_0, s_i) = \sqrt{\left(\frac{\Delta x}{s_x}\right)^2 + \left(\frac{\Delta y}{s_y}\right)^2 + \left(\frac{\Delta z}{s_z}\right)^2}$$
+$$
+d_{3D}(s_0, s_i) = \sqrt{\left(\frac{\Delta x}{s_x}\right)^2 + \left(\frac{\Delta y}{s_y}\right)^2 + \left(\frac{\Delta z}{s_z}\right)^2}
+$$
 
 - **Mapeo hipsométrico:** Implementado en CDT a través del motor `gstat::krige(bs ~ 1, locations = ~lon+lat+elv, data = locbs, newdata = interp.grid, nmax = 1)`.
 - **Ventaja en temperatura:** Permite que las estaciones montañosas proyecten su corrección a cotas similares a lo largo de cadenas montañosas (p. ej. Cordillera de Talamanca, Sierra de los Cuchumatanes, Cordillera Central de RD) en lugar de proyectarse indebidamente a estaciones de fondo de valle situadas a corta distancia horizontal.
@@ -106,7 +120,9 @@ $$d_{3D}(s_0, s_i) = \sqrt{\left(\frac{\Delta x}{s_x}\right)^2 + \left(\frac{\De
 ### H. Regression Kriging (`"RK"`)
 Descompone el campo térmico o de precipitación en una tendencia determinista explicada por covariables fisiográficas (DEM, pendiente, orientación/aspecto, latitud, longitud) y un residual estocástico interpolado espacialmente:
 
-$$\hat{Z}(s_0) = \sum_{k=0}^{P} \hat{\beta}_k q_k(s_0) + \sum_{i=1}^{n} w_i \left[ Z(s_i) - \sum_{k=0}^{P} \hat{\beta}_k q_k(s_i) \right]$$
+$$
+\hat{Z}(s_0) = \sum_{k=0}^{P} \hat{\beta}_k q_k(s_0) + \sum_{i=1}^{n} w_i \left[ Z(s_i) - \sum_{k=0}^{P} \hat{\beta}_k q_k(s_i) \right]
+$$
 
 donde $q_k(s_0)$ son los predictores en el punto no muestreado (elevación del DEM, pendiente, etc.) y los residuales se interpolan mediante Kriging Ordinario (`"okr"`) o esquemas deterministas según la matriz experimental.
 

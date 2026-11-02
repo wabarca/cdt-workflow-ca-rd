@@ -1,7 +1,7 @@
-# 04. Secuencia de Procesamiento de Precipitación (CHIRPS) y Máscara Rain-No-Rain
+# 07. Secuencia de Procesamiento de Precipitación (CHIRPS) y Máscara Rain-No-Rain
 
 
-Este documento detalla la cadena de procesamiento completa de **Precipitación** en CDT, desde la preparación de archivos NetCDF 3D (1991–2020) hasta la fusión final, explicando el fundamento climatológico/estadístico de cada menú y la **matriz de experimentos parametrizables** para investigación y publicación científica.
+Este documento detalla la cadena de procesamiento completa de **Precipitación** en CDT, desde la preparación de archivos NetCDF 3D (1991–2020) hasta la fusión final, explicando el fundamento climatológico/estadístico de cada menú y la **matriz de experimentos parametrizables** para investigación y documentación técnica y operativa.
 
 ---
 
@@ -47,7 +47,11 @@ Combina una distribución discreta de Bernoulli para la probabilidad de ocurrenc
 
 1. **Bernoulli-Gamma (`"berngamma"`):** Estándar climatológico para precipitación diaria.
 
-   $$f(x) = (1 - p)\delta(x) + p \cdot \frac{1}{\Gamma(\alpha)\beta^\alpha} x^{\alpha - 1} e^{-x/\beta}, \quad x > 0$$
+   
+
+$$
+f(x) = (1 - p)\delta(x) + p \cdot \frac{1}{\Gamma(\alpha)\beta^\alpha} x^{\alpha - 1} e^{-x/\beta}, \quad x > 0
+$$
 
    donde $p$ es la probabilidad de día lluvioso, $\alpha$ es el parámetro de forma y $\beta$ de escala.
 2. **Bernoulli-Weibull (`"bernweibull"`):** Excelente comportamiento en eventos de precipitación severa y colas pesadas.
@@ -62,7 +66,11 @@ Ajusta la curva acumulada empírica punto a punto sin parametrización analític
 ### Paso 3: Gridding > Bias Correction > Apply Bias Correction
 - **Fundamento Estadístico:** Mapea cada valor satelital diario $x$ a la probabilidad $P_{\text{sat}}(x)$ y halla el cuantil correspondiente en la distribución de las estaciones:
 
-  $$x_{\text{corregido}} = F_{\text{estación}}^{-1}\left( F_{\text{sat}}(x) \right)$$
+  
+
+$$
+x_{\text{corregido}} = F_{\text{stn}}^{-1}\left( F_{\text{sat}}(x) \right)
+$$
 
 - **Salida generada:** NetCDFs de CHIRPS corregidos por sesgo en volumen y distribución de frecuencias.
 
@@ -98,7 +106,7 @@ Para un estudio comparativo o artículo de investigación, la siguiente matriz r
 | **Merging: Covariables RK** | `auxvar` | - Solo DEM<br>- DEM + Slope + Aspect<br>- DEM + Coordenadas (Lon, Lat) | Impacto de la geometría del relieve y sombras de lluvia en la precipitación. |
 | **Merging: Pasadas** | `nrun` y `pass` | - 1 pasada: `pass = c(1)`<br>- 2 pasadas: `pass = c(1, 0.5)`<br>- 3 pasadas: `pass = c(1, 0.75, 0.5)` | Corrección multiescala de patrones convectivos vs estratiformes. |
 | **Merging: Radio Búsqueda** | `interp.method\$maxdist` | $0.75^\circ, 1.25^\circ, 1.75^\circ, 2.5^\circ$ | Rango de decorrelación espacial de tormentas en la cuenca. |
-| **Merging: Vecindad** | `nmin` / `nmax` | $(4, 12)$, $(6, 16)$, $(8, 24)$ | Densidad local requerida para no interpolar ruido. |
+| **Merging: Vecindad** | `nmin` / `nmax` | (4, 12), (6, 16), (8, 24) | Densidad local requerida para no interpolar ruido. |
 | **Merging: Kriging Variograma**| `vgm.model` | `"Sph"`, `"Exp"`, `"Gau"`, `"Pen"` | Estructura de covarianza espacial de los residuales pluviales. |
 | **Merging: Soporte de Celda** | `use.block` | `TRUE` (Block Kriging) vs `FALSE` | Ajuste de escala puntual ($0\text{ m}$) a pixel satelital ($5\text{ km}$). |
 | **RnoR: Modelo** | `RnoRModel` | `"logit"` (Regresión Logística) vs `"additive"` | Modelado probabilístico riguroso vs interpolación continua acotada. |
@@ -107,7 +115,7 @@ Para un estudio comparativo o artículo de investigación, la siguiente matriz r
 
 ---
 
-## 4. Métricas de Evaluación para la Publicación Científica
+## 4. Métricas de Evaluación Cuantitativa del Desempeño
 
 A diferencia de las variables continuas térmicas, la evaluación rigurosa de precipitación exige **dos categorías de métricas**:
 
@@ -130,159 +138,41 @@ Basadas en eventos observados vs estimados con umbral $\ge 1.0\text{ mm}$:
 
 ---
 
-## 5. Matriz de Experimentos Pluviales y Ejecución con Python Launcher
+## 5. Matriz Completa de Experimentos Pluviales: Fase 1 y Fase 2
 
-La suite completa de 10 experimentos de precipitación está implementada en [`config/experiments_rainfall/`](file:///d:/Workspace/CDT-8.0/config/experiments_rainfall) y se ejecuta con:
+La batería completa de **15 experimentos de precipitación** se organiza en dos fases analíticas ejecutadas sobre la serie histórica 1991–2020:
 
+### 5.1 Fase 1: Evaluación Exploratoria Preliminar (10 Experimentos)
+Aísla el efecto del método de corrección de sesgo, la máscara RnoR y los interpoladores geoestadísticos estándar:
+
+| ID Exp. | Método Bias (Paso 1) | Apply Bias (Paso 2) | Merging (Paso 3) | Hipótesis y Configuración |
+| :---: | :--- | :--- | :--- | :--- |
+| **`EXP-R01`** | `mbvar` (\pm 5 d) + IDW (1.5°) | Proporcional | SBA 1 pasada (1.0°) + IDW (1.5°) | **Línea Base Control:** Sin filtro RnoR; cuantifica la sobreestimación base de lloviznas (*drizzle*). |
+| **`EXP-R02`** | `mbvar` (\pm 5 d) + IDW (1.5°) | Proporcional | SBA 3 pasadas + IDW + **RnoR Logit (CutOff=3)** | **Impacto RnoR Duro:** Evalúa corte rígido a 0.5 mm en lloviznas espurias. |
+| **`EXP-R03`** | `qmdist` Bernoulli-Gamma + OKR | Mapeo cuantil | SBA 3 pasadas + OKR por bloques | **Distribución Gamma Estándar:** Ajuste paramétrico teórico estándar en meteorología tropical. |
+| **`EXP-R04`** | `qmdist` Bernoulli-Weibull + OKR | Mapeo cuantil | SBA 3 pasadas + OKR por bloques | **Extremos Ciclónicos:** Modela colas pesadas asociadas a huracanes y ondas del este. |
+| **`EXP-R05`** | `qmdist` Bernoulli-Weibull + OKR | Mapeo cuantil | **RK** (DEM + Slope + Coords) | **Modelo Orográfico Completo:** Covariables de relieve en la tendencia pluvial. |
+| **`EXP-R06`** | `mbvar` (\pm 5 d) + NN-3D | Proporcional | **Barnes (BSc)** 3 pasadas gaussianas | **Amortiguamiento Costero:** Filtrado continuo para llanuras litorales y brisas marinas. |
+| **`EXP-R07`** | `mbmon` (mensual) + IDW | Proporcional | **Cressman (CSc)** 4 pasadas decrecientes | **Configuración Guía Oficial CDT:** Radios decrecientes (1.0° a 0.25°) para captar mesoescala. |
+| **`EXP-R08`** | `mbvar` (\pm 5 d) + IDW | Proporcional | **Shepard Modificado** (radio 1.5°) | **Relieve Complejo:** Ponderación local con derivadas direccionales de Taylor. |
+| **`EXP-R09`** | `mbvar` (\pm 5 d) + IDW | Proporcional | **Spheremap** (Gran Círculo) | **Geometría Esférica:** Distancias geodésicas reales para evitar distorsiones longitudinales. |
+| **`EXP-R10`** | `qmdist` Bernoulli-Gamma + OKR | Mapeo cuantil | **RK Máxima Complejidad** (DEM+Slope+Aspect+Coords) | **Acoplamiento Topográfico Total:** Insolación y laderas barlovento/sotavento. |
+
+---
+
+### 5.2 Fase 2: Optimización Dirigida de Precipitación (5 Experimentos)
+Diseñada a partir de los hallazgos de la Fase 1, donde Shepard Modificado y Spheremap demostraron ser superiores al Kriging:
+
+| ID Exp. | Método Bias (Paso 1) | Apply Bias (Paso 2) | Merging (Paso 3) | Hipótesis y Configuración de Optimización |
+| :---: | :--- | :--- | :--- | :--- |
+| **`EXP-R11`** | `mbvar` (\pm 5 d) + **Mediana** + Grilla Gruesa (1.0°) | Proporcional | Shepard Modificado (radio 1.5°) + Grilla Gruesa | **Estabilidad Marina y Extremos:** Función mediana para neutralizar tormentas aisladas y amortiguamiento costero. |
+| **`EXP-R12`** | `mbvar` (\pm 5 d) + IDW (1.0°) | Proporcional | Shepard Confinado Local (radio 0.9°, 3 pasadas) | **Confinamiento Local:** Radios estrechos para evitar propagación de lluvia a través de divisorias continentales. |
+| **`EXP-R13`** | **QM Empírico (`qmecdf`)** + Shepard | Mapeo cuantil empírico | Shepard Modificado (radio 1.5°) | **No Paramétrico:** Calibra cuantiles directamente sobre la curva observada sin distribución teórica prefijada. |
+| **`EXP-R14`** | `mbvar` (\pm 5 d) + **Mediana** + Spheremap | Proporcional | Spheremap Gran Círculo (radio 1.5°) | **Esferoide con Mediana:** Combina distancias de gran círculo en el Caribe con estimación robusta de sesgo. |
+| **`EXP-R15`**<br>**(GANADOR)** | `mbvar` (\pm 5 d) + IDW (1.2°) | Proporcional | Shepard (radio 1.2°) + **RnoR Suave (`CutOff=2`, smooth=TRUE)** | **MODELO GANADOR OFICIAL:** Suprime lloviznas espurias (*drizzle*) sin cortes artificiales. Máximo GSS (0.501) y KGE (0.379). |
+
+### Ejecución de Suites desde Terminal:
 ```bash
-# Ejecutar suite completa de Precipitación (10 experimentos, ~6 horas)
-python launcher/experiment_runner.py --suite rainfall
-
-# Ejecutar un experimento individual (ej. Regression Kriging Orográfico + Weibull)
-python launcher/experiment_runner.py --config config/experiments_rainfall/EXP_R05_RK_Topography_BernoulliWeibull.yaml
+# Ejecutar la suite completa de 15 experimentos de precipitación con 18 hilos:
+python launcher/experiment_runner.py --suite rainfall --cores 18
 ```
-
-### Resumen de la Suite de Precipitación (10 Experimentos):
-1. **`EXP-R01`:** Línea Base Control (`mbvar` + IDW, SBA 1 pasada, sin RnoR).
-2. **`EXP-R02`:** Impacto RnoR en Zonas Semiáridas (`mbvar` + IDW, SBA 3 pasadas, RnoR Logit CutOff=3).
-3. **`EXP-R03`:** Distribución Estándar (QM Bernoulli-Gamma + OKR, SBA 3 pasadas).
-4. **`EXP-R04`:** Extremos Ciclónicos y Huracanes (QM Bernoulli-Weibull + OKR, SBA 3 pasadas).
-5. **`EXP-R05`:** Modelo Orográfico Completo (QM Bernoulli-Weibull + OKR, RK con DEM+Slp+Coords).
-6. **`EXP-R06`:** Costero e Insular (Barnes Scheme + NN-3D con DEM).
-7. **`EXP-R07`:** Convección Local de Mesoescala (Cressman Scheme en 4 pasadas).
-8. **`EXP-R08`:** Terreno Escarpado y Red Dispersa (Interpolación Local de Shepard).
-9. **`EXP-R09`:** Geometría Esférica Transfronteriza (Spheremap de Gran Círculo).
-10. **`EXP-R10`:** Máxima Complejidad Fisiográfica (RK con DEM + Slope + Aspect + Coordenadas).
-
-
-
----
-
-# Anexo Metodológico Detallado: Algoritmo y Opciones de la Máscara Rain-No-Rain (RnoR)
-
-
-## 1. Desafíos Físicos y Estadísticos de la Precipitación
-
-A diferencia de la temperatura o la presión atmosférica, la lluvia presenta propiedades estadísticas particulares:
-1. **Discontinuidad espacial:** Es un proceso mixto (campos continuos de lluvia intercalados con extensas áreas de precipitación cero).
-2. **Distribución altamente asimétrica:** Valores positivos con colas largas (distribución Gamma o Log-normal).
-3. **Generación de "lloviznas espurias":** La interpolación clásica de residuales aditivos puede provocar valores positivos pequeños ($0.1$ a $1.5\text{ mm}$) en zonas donde tanto el satélite como las estaciones indicaban día seco.
-
-Para solucionar este problema, CDT integra el módulo de **Máscara Rain-No-Rain (`RnoR`)**.
-
----
-
-## 2. Configuración del Módulo `RnoR`
-
-En la llamada a `cdtMergingPrecipCMD`:
-
-```r
-RnoR = list(
-  use = TRUE,     # Activar la máscara
-  wet = 1.0,      # Umbral para definir día lluvioso vs seco (en mm)
-  smooth = TRUE   # Aplicar filtro de suavizado espacial
-)
-```
-
-Y en `merging.options()`:
-
-```r
-merging.options(
-  RnoRModel = "logit",           # Modelo: "logit" o "additive"
-  RnoRCutOff = 3,                # Estrategia de corte: 1, 2 o 3
-  RnoRUseMerged = FALSE,         # Usar el producto recién fusionado (TRUE) o el satélite original (FALSE)
-  RnoRaddCoarse = FALSE,         # Incluir malla gruesa para estabilidad en bordes
-  RnoRSmoothingPixels = 2,       # Radio del filtro de suavizado
-  saveRnoR = FALSE,              # Guardar la máscara en formato .rds
-  dirRnoR = "D:/Salidas/Mascaras"
-)
-```
-
----
-
-## 3. Algoritmo Paso a Paso de la Máscara Rain-No-Rain
-
-```
-1. Binarización de Estaciones:
-   rnr_stn = 1 si Obs >= wet; 0 si Obs < wet
-
-2. Binarización de Campo Gridded:
-   rnr_grd = 1 si Proxy >= wet; 0 si Proxy < wet
-
-3. Estimación de Probabilidad Espacial de Lluvia (rnr_field):
-   - Si RnoRModel == "logit": Regresión Logística Espacial
-   - Si RnoRModel == "additive": Interpolación directa de discrepancias
-
-4. Aplicación de Frontera de Decisión (RnoRCutOff 1, 2 o 3) -> Mask(s)
-
-5. Suavizado Espacial (Opcional):
-   Mask_smooth = (2 * Mask + SmoothMatrix(Mask, pixels)) / 3
-
-6. Modulación Final:
-   Precip_Merged(s) = Precip_Calculada(s) * Mask_smooth(s)
-```
-
----
-
-## 4. Opciones de Modelado (`RnoRModel`)
-
-### A. Modelo Logístico (`"logit"`) - Predeterminado
-Ajusta un modelo de regresión logística para estimar la probabilidad posterior de que ocurra precipitación en la celda $s$:
-
-$$\ln\left(\frac{P(s)}{1 - P(s)}\right) = \alpha_0 + \alpha_1 \cdot \text{Proxy}(s) + \text{InterpResidualesLogit}(s)$$
-
-Garantiza probabilidades estrictamente acotadas en el intervalo $[0, 1]$.
-
-### B. Modelo Aditivo (`"additive"`)
-Trata la presencia/ausencia como un campo continuo $[0, 1]$ e interpola los residuales binarios linealmente.
-
----
-
-## 5. Estrategias de Frontera de Decisión (`RnoRCutOff`)
-
-CDT implementa tres funciones de transferencia para transformar la probabilidad $P(s)$ en el factor multiplicativo final:
-
-### Opción 1: Corte Binario Duro (*Hard Threshold*)
-
-$$
-\text{Mask}(s) = \begin{cases} 
-0 & \text{si } P(s) < 0.5 \\
-1 & \text{si } P(s) \geq 0.5 
-\end{cases}
-$$
-
-- *Comportamiento:* Genera límites muy definidos entre lluvia y no lluvia. Puede crear gradientes abruptos en los bordes de tormentas.
-
-### Opción 2: Supresión de Baja Probabilidad
-
-$$
-\text{Mask}(s) = \begin{cases} 
-0 & \text{si } P(s) < 0.1 \\
-P(s) & \text{si } P(s) \geq 0.1 
-\end{cases}
-$$
-
-- *Comportamiento:* Elimina lloviznas marginales por debajo del 10% de probabilidad, pero modula la intensidad de la precipitación con la probabilidad estimada.
-
-### Opción 3: Rampa Sigmoide Suave (*Smooth Ramp*) - **Recomendada**
-
-$$
-\text{Mask}(s) = \begin{cases} 
-0 & \text{si } P(s) < 0.25 \\
-P(s) & \text{si } 0.25 \le P(s) < 0.75 \\
-1 & \text{si } P(s) \geq 0.75 
-\end{cases}
-$$
-
-- *Comportamiento:* Ofrece el mejor equilibrio: anula con seguridad zonas secas ($< 25\%$), preserva al 100% las áreas de lluvia consolidada ($> 75\%$) y genera una transición espacial continua en el área perimetral.
-
----
-
-## 6. Control de Límites Físicos
-
-En el archivo [`R/cdtMerging_functions.R`](file:///d:/Workspace/CDT-8.0/R/cdtMerging_functions.R#L51-L59), CDT aplica límites estrictos tras la recomposición:
-
-- **Precipitación:** $\text{Límites} = [0, 5000]\text{ mm}$.
-  - Cualquier valor negativo resultante de la resta de residuales se trunca automáticamente a $0\text{ mm}$.
-  - Valores que superen $5000\text{ mm}$ se truncan al máximo físico.
-- Si una celda presenta valor no disponible (`NA`), se restituye el valor del NetCDF original para garantizar un producto sin huecos.

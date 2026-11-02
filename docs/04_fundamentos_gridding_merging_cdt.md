@@ -1,4 +1,4 @@
-# 01. Fundamentos del Proceso de Fusión (Merging) y Gridding en CDT
+# 04. Fundamentos del Proceso de Fusión (Merging) y Gridding en CDT
 
 ## 1. Justificación y Marco Conceptual
 
@@ -51,16 +51,28 @@ Es el método más directo y robusto cuando la densidad de estaciones es baja o 
 
 1. **Tendencia espacial:** Es directamente el campo del NetCDF original:
 
-   $$\text{Trend}(s) = G(s)$$
+   
+
+$$
+\text{Trend}(s) = G(s)
+$$
 
 2. **Residual en las estaciones:**
 
-   $$R(s_i) = S(s_i) - G(s_i)$$
+   
+
+$$
+R(s_i) = S(s_i) - G(s_i)
+$$
 
 3. **Interpolación:** Se interpola $R(s_i)$ sobre la malla para obtener $\hat{R}(s)$.
 4. **Campo fusionado:**
 
-   $$M(s) = G(s) + \hat{R}(s)$$
+   
+
+$$
+M(s) = G(s) + \hat{R}(s)
+$$
 
 ---
 
@@ -69,7 +81,11 @@ Combina un modelo de regresión lineal multivariado (mediante un Modelo Lineal G
 
 1. **Fórmula del GLM:**
 
-   $$S(s_i) = \beta_0 + \beta_1 G(s_i) + \sum_{k=1}^{p} \beta_{k+1} X_k(s_i) + \varepsilon(s_i)$$
+   
+
+$$
+S(s_i) = \beta_0 + \beta_1 G(s_i) + \sum_{k=1}^{p} \beta_{k+1} X_k(s_i) + \varepsilon(s_i)
+$$
 
    donde $X_k$ representa variables auxiliares:
    - `dem`: Elevación del Modelo Digital de Elevación (m).
@@ -80,17 +96,29 @@ Combina un modelo de regresión lineal multivariado (mediante un Modelo Lineal G
 
 2. **Tendencia en toda la malla:**
 
-   $$\text{Trend}(s) = \hat{\beta}_0 + \hat{\beta}_1 G(s) + \sum_{k=1}^{p} \hat{\beta}_{k+1} X_k(s)$$
+   
+
+$$
+\text{Trend}(s) = \hat{\beta}_0 + \hat{\beta}_1 G(s) + \sum_{k=1}^{p} \hat{\beta}_{k+1} X_k(s)
+$$
 
 3. **Residuales en las estaciones:**
 
-   $$R(s_i) = S(s_i) - \text{Trend}(s_i)$$
+   
+
+$$
+R(s_i) = S(s_i) - \text{Trend}(s_i)
+$$
 
 4. **Interpolación de residuales:** $\hat{R}(s)$ mediante Kriging Ordinario o IDW.
 
 5. **Campo fusionado final:**
 
-   $$M(s) = \text{Trend}(s) + \hat{R}(s)$$
+   
+
+$$
+M(s) = \text{Trend}(s) + \hat{R}(s)
+$$
 
 > [!IMPORTANT]
 > **Condiciones de Seguridad y Fallback en RK:**
@@ -108,7 +136,11 @@ Es un método de corrección sucesiva ampliamente usado en análisis objetivo me
 
 - En cada iteración $k$, el valor en cada celda $j$ se ajusta mediante una suma ponderada de las diferencias entre las estaciones y el campo base:
 
-  $$\Delta M_j = \frac{\sum_{i=1}^{N} W_{ij} \left(S_i - M_i^{(k-1)}\right)}{\sum_{i=1}^{N} W_{ij}}$$
+  
+
+$$
+\Delta M_j = \frac{\sum_{i=1}^{N} W_{ij} \left(S_i - M_i^{(k-1)}\right)}{\sum_{i=1}^{N} W_{ij}}
+$$
 
 - **Función de peso de Cressman:**
 
@@ -127,7 +159,11 @@ $$
 Similar a Cressman, pero utiliza una función de decaimiento gaussiana continua:
 - **Función de peso de Barnes:**
 
-  $$W_{ij} = \exp\left( - \frac{d_{ij}^2}{4 c} \right)$$
+  
+
+$$
+W_{ij} = \exp\left( - \frac{d_{ij}^2}{4 c} \right)
+$$
 
   donde $c$ es un parámetro de escala dependiente del radio de influencia y de la densidad media de estaciones. Ofrece transiciones espaciales más suaves que el esquema de Cressman.
 

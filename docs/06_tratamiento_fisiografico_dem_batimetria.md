@@ -1,4 +1,4 @@
-# 03. Tratamiento Fisiográfico del DEM, Batimetría Marina y Protección Insular
+# 06. Tratamiento Fisiográfico del DEM, Batimetría Marina y Protección Insular
 
 ---
 
@@ -7,10 +7,16 @@
 A diferencia de la precipitación (variable dinámica, discontinua y truncada en cero), la **temperatura del aire en superficie** ($T_{\max}$ y $T_{\min}$) está gobernada de forma preponderante por la **termodinámica hidrostática** y el **balance de radiación superficial**.
 
 Bajo la aproximación hidrostática de la atmósfera:
-$$\frac{dP}{dz} = -\rho g = -\frac{P M}{R^* T} g$$
+
+$$
+\frac{dP}{dz} = -\rho g = -\frac{P M}{R^* T} g
+$$
 
 Y considerando la primera ley de la termodinámica para una parcela de aire en ascenso adiabático:
-$$dQ = c_p dT - \frac{1}{\rho} dP = 0 \implies \frac{dT}{dz} = -\frac{g}{c_p} \equiv -\Gamma_d$$
+
+$$
+dQ = c_p dT - \frac{1}{\rho} dP = 0 \implies \frac{dT}{dz} = -\frac{g}{c_p} \equiv -\Gamma_d
+$$
 
 Donde:
 - **$\Gamma_d$ (Gradiente Adiabático Seco):** $\approx 9.8\ ^\circ\text{C} / \text{km}$ ($0.0098\ ^\circ\text{C}/\text{m}$).
@@ -18,7 +24,10 @@ Donde:
 - **$\Gamma_{\text{env}}$ (Gradiente Térmico Ambiental en Centroamérica):** oscila empíricamente entre **$-5.5\ ^\circ\text{C}$ y $-6.5\ ^\circ\text{C}$ por cada 1,000 metros de ascenso** (típicamente $-0.0055$ a $-0.0065\ ^\circ\text{C}/\text{m}$).
 
 Por consiguiente, el campo de temperatura superficial en terrenos de topografía compleja puede formularse como:
-$$T(x, y, z) = T_0(x, y) - \Gamma(x, y) \cdot z(x, y) + \varepsilon(x, y)$$
+
+$$
+T(x, y, z) = T_0(x, y) - \Gamma(x, y) \cdot z(x, y) + \varepsilon(x, y)
+$$
 
 Donde $T_0$ es la temperatura reducida al nivel del mar ($z = 0$), $\Gamma$ es la tasa de disminución adiabática, $z$ es la cota del terreno y $\varepsilon$ representa las perturbaciones locales no explicadas por la cota (efecto de masa continental, orientación de laderas, brisas marinas o inversiones térmicas por valles cerrados).
 
@@ -49,11 +58,17 @@ El istmo centroamericano presenta un relieve extremadamente abrupto a distancias
 - En la grilla de reanálisis de $0.05^\circ$ (~$5\text{ km}$), la celda que contiene estas cumbres promedia tanto las cimas como las estribaciones y valles adyacentes, arrojando una cota media del modelo de apenas $\approx 1,800$ a $2,200\text{ m}$.
 
 La brecha altimétrica resultante es:
-$$\Delta z = z_{\text{real}} - z_{\text{modelo}} \approx 3,820\text{ m} - 2,000\text{ m} = +1,820\text{ m}$$
+
+$$
+\Delta z = z_{\text{real}} - z_{\text{modelo}} \approx 3,820\text{ m} - 2,000\text{ m} = +1,820\text{ m}
+$$
 
 ### 2.2. Error Térmico Inducido por Falta de Desescalado
 Bajo un gradiente adiabático estándar de $\Gamma = 0.006\ ^\circ\text{C}/\text{m}$:
-$$\Delta T_{\text{error}} = -\Gamma \cdot \Delta z = -0.006 \times 1,820 \approx -10.92\ ^\circ\text{C}$$
+
+$$
+\Delta T_{\text{error}} = -\Gamma \cdot \Delta z = -0.006 \times 1,820 \approx -10.92\ ^\circ\text{C}
+$$
 
 > [!IMPORTANT]
 > Si el reanálisis satelital se introduce directamente a la fase de fusión o corrección de sesgo sin desescalar previamente, el modelo asignará a la estación de alta montaña una temperatura entre **$10^\circ\text{C}$ y $12^\circ\text{C}$ más cálida de la real**. De igual forma, en cañones estrechos y depresiones tectónicas (como la cuenca de Enriquillo en República Dominicana, con cotas bajo el nivel del mar, o el valle del Motagua en Guatemala), reportará un **sesgo frío artificial**.
@@ -90,18 +105,38 @@ flowchart TD
 
 1. **Extrapolación Térmica Marina Absurda:**
    El modelo de desescalado de CDT formula la regresión lineal:
-   $$T(x,y) = \beta_0 + \beta_{\text{elv}} \cdot z(x,y)$$
+   
+
+$$
+T(x,y) = \beta_0 + \beta_{\text{elv}} \cdot z(x,y)
+$$
+
    Con $\beta_0 \approx 28\ ^\circ\text{C}$ (temperatura costera) y $\beta_{\text{elv}} \approx -0.006\ ^\circ\text{C}/\text{m}$.
    Si la grilla abarca la Fosa Mesoamericana del Pacífico ($z = -4,000\text{ m}$):
-   $$T_{\text{mar}} = 28 - (-0.006) \cdot (-4,000) = 28 + 24 = 52\ ^\circ\text{C}!$$
+   
+
+$$
+T_{\text{mar}} = 28 - (-0.006) \cdot (-4,000) = 28 + 24 = 52\ ^\circ\text{C}!
+$$
+
    Esto genera campos térmicos con artefactos marinos disparados a más de $50$–$70\ ^\circ\text{C}$, provocando discontinuidades severas en la línea costera (*ringing effect*).
 
 2. **Colapso Numérico de la Pendiente ($\beta_{\text{elv}} \to 0$):**
    La Temperatura Superficial del Mar (SST) es espacialmente cuasi-uniforme ($27$ a $29\ ^\circ\text{C}$) tanto en la plataforma continental somera ($-20\text{ m}$) como en las fosas abisales ($-6,000\text{ m}$).
    Al calcular el estimador de mínimos cuadrados ordinarios:
-   $$\hat{\beta}_{\text{elv}} = \frac{\sum (z_i - \bar{z})(T_i - \bar{T})}{\sum (z_i - \bar{z})^2}$$
+   
+
+$$
+\hat{\beta}_{\text{elv}} = \frac{\sum (z_i - \bar{z})(T_i - \bar{T})}{\sum (z_i - \bar{z})^2}
+$$
+
    La enorme varianza de las profundidades marinas ($\operatorname{Var}(z) \gg 10^7\text{ m}^2$) asociada a temperaturas casi constantes ($T_i \approx \bar{T}$) arrastra el numerador hacia cero, forzando:
-   $$\hat{\beta}_{\text{elv}} \approx 0$$
+   
+
+$$
+\hat{\beta}_{\text{elv}} \approx 0
+$$
+
    Al colapsar el coeficiente altimétrico, el modelo **se vuelve incapaz de corregir la orografía real en las montañas continentales**.
 
 > [!TIP]
@@ -148,7 +183,12 @@ Si se omitiera el desescalado previo (Pasos 1 y 2) y se intentara aplicar direct
 ### 4.2. Beneficio de la Cadena Secuencial
 Al desescalar primero con el DEM de 1 km:
 - La grilla satelital es ajustada físicamente celda a celda según la diferencia de cota:
-  $$T_{\text{down}}(x,y) = T_{\text{sat}}(x,y) - \hat{\Gamma} \cdot [z_{\text{dem}}(x,y) - z_{\text{sat}}(x,y)]$$
+  
+
+$$
+T_{\text{down}}(x,y) = T_{\text{sat}}(x,y) - \hat{\Gamma} \cdot [z_{\text{dem}}(x,y) - z_{\text{sat}}(x,y)]
+$$
+
 - Al situar el satélite y las estaciones en la **misma cota topográfica**, cualquier desviación restante corresponde al **verdadero sesgo sistemático y radiativo** (albedo de superficie, nubes mal simuladas, aerosoles), el cual sí es apropiado corregir mediante distribuciones estadísticas en los Pasos 3 y 4.
 - En el Paso 5, los residuales interpolados corresponden a anomalías locales a pequeña escala, asegurando que la superficie final sea suave, físicamente consistente y sin artefactos de borde.
 

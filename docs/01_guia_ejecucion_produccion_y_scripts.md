@@ -1,7 +1,34 @@
-# 09. Guía de Ejecución desde Terminal (CLI / Headless) y Scripts de Producción
+# 01. Guía de Ejecución desde Terminal (CLI / Headless) y Scripts de Producción
 
+## 1. Ejecución Rápida y Procesamiento en Paralelo Habilitado
 
-## 1. Introducción
+Para entornos de producción y servidores de alto rendimiento, el flujo de ejecución no interactivo se gestiona mediante el orquestador en Python (`launcher/experiment_runner.py`), el cual cuenta con **procesamiento en paralelo habilitado** a nivel de procesos e hilos concurrentes.
+
+### Capacidad Multihilo Calibrada (--cores)
+El orquestador divide el periodo histórico de 30 años (**1991–2020**, 10,958 días continuos) en lotes diarios distribuidos entre los hilos del procesador. Por defecto, en la estación de trabajo calibrada se utilizan **18 hilos de procesamiento paralelo** (`--cores 18`), optimizando el rendimiento sin sobrecargar la memoria RAM (consumo menor al 15%, ~4.6 GB máx.).
+
+```bash
+# 1. Comprobación del entorno y paquetes R espaciales requeridos:
+python launcher/experiment_runner.py --check-env
+
+# 2. Ejecutar suites completas con procesamiento en paralelo (18 cores):
+python launcher/experiment_runner.py --suite rainfall --cores 18   # 15 Experimentos de Precipitación (~55.3 h)
+python launcher/experiment_runner.py --suite tmax     --cores 18   # 12 Experimentos de Tmax (~18.5 h)
+python launcher/experiment_runner.py --suite tmin     --cores 18   # 12 Experimentos de Tmin (~18.5 h)
+
+# 3. Ejecutar la batería completa de los 39 experimentos:
+python launcher/experiment_runner.py --suite all      --cores 18   # 39 Experimentos en lote continuo (~92.4 h)
+
+# 4. Ejecutar un experimento individual de producción:
+python launcher/experiment_runner.py --config config/experiments_rainfall/EXP_R15_Shepard_RnoR_Smooth.yaml --cores 18
+
+# 5. Generar el reporte consolidado de resultados en PDF:
+python launcher/generate_pdf.py
+```
+
+---
+
+## 2. Modo No Interactivo en CDT y Funciones Exportadas
 
 Tradicionalmente, **Climate Data Tools (CDT)** se inicia en modo interactivo a través de una interfaz gráfica (GUI) desarrollada sobre `Tcl/Tk` ejecutando en R:
 
@@ -14,7 +41,7 @@ Sin embargo, para entornos de producción, servidores Linux/Windows sin entorno 
 
 ---
 
-## 2. Funciones de Línea de Comandos Exportadas
+## 2. Funciones de Línea de Comandos Exportadas en CDT
 
 Las principales funciones programáticas disponibles en el espacio de nombres (`NAMESPACE`) de CDT son:
 
@@ -32,7 +59,7 @@ Todas estas funciones tienen un argumento común: **`GUI = FALSE`**. Al configur
 
 ---
 
-## 3. Configuración de Opciones Globales (`merging.options`)
+## 3. Configuración de Opciones Globales (`merging.options`) (`merging.options`)
 
 Antes de llamar a las funciones de fusión, es posible parametrizar el comportamiento interno de los algoritmos mediante la función `merging.options()` (`R/cdtMerging_Options_functions.R`):
 
@@ -220,7 +247,7 @@ En este documento se presentan scripts listos para ser adaptados y ejecutados en
 
 ---
 
-## 1. Script de Producción: Fusión de Precipitación Diaria (`pipeline_merging_precip.R`)
+## 1. Script de Producción: Fusión de Precipitación Diaria (`secuencia_merging_precip.R`)
 
 ```r
 #!/usr/bin/env Rscript
@@ -304,7 +331,7 @@ if (!is.null(status) && status == 0) {
 
 ---
 
-## 2. Script de Producción: Fusión de Temperatura Máxima Diaria con DEM (`pipeline_merging_temp.R`)
+## 2. Script de Producción: Fusión de Temperatura Máxima Diaria con DEM (`secuencia_merging_temp.R`)
 
 ```r
 #!/usr/bin/env Rscript
@@ -410,7 +437,7 @@ YESTERDAY=$(date -d "yesterday" +%Y%m%d)
 echo "[$(date)] Iniciando procesamiento de CDT para fecha: $YESTERDAY"
 
 # 1. Ejecutar script de R
-Rscript /opt/scripts/pipeline_merging_precip.R
+Rscript /opt/scripts/secuencia_merging_precip.R
 
 # 2. Validar código de salida
 if [ $? -eq 0 ]; then
@@ -432,9 +459,9 @@ Para entornos donde se requiere control de versiones de experimentos (YAML), par
 python launcher/experiment_runner.py --check-env
 
 # Ejecutar corridas de producción por suite:
-python launcher/experiment_runner.py --suite rainfall   # 10 Experimentos de Lluvia
-python launcher/experiment_runner.py --suite tmax       # 8 Experimentos de Tmax
-python launcher/experiment_runner.py --suite tmin       # 8 Experimentos de Tmin
+python launcher/experiment_runner.py --suite rainfall   # 15 Experimentos de Lluvia (Fase 1 + Fase 2)
+python launcher/experiment_runner.py --suite tmax       # 12 Experimentos de Tmax (Fase 1 + Fase 2)
+python launcher/experiment_runner.py --suite tmin       # 12 Experimentos de Tmin (Fase 1 + Fase 2)
 
 # Ejecutar corrida batch completa (26 Experimentos, 1991–2020)
 python launcher/experiment_runner.py --suite all
