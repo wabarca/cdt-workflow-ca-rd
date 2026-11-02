@@ -1,89 +1,80 @@
-# Documentación Técnica y Guía de Automatización: Climate Data Tools (CDT v8.0)
+# Documentación Técnica y Metodológica Oficial: Climate Data Tools (CDT v8.0)
 
-Esta carpeta contiene la documentación técnica, matemática y metodológica para el procesamiento automatizado, la experimentación científica y la reconstrucción climática con **Climate Data Tools (CDT)** utilizando series diarias del periodo climatológico estándar **1991–2020** (10,958 días) de **CHIRPS** (precipitación), **CHIRTS** (temperatura máxima y mínima), **DEM SRTM** (topografía), **Shapefiles** de recorte regional (Centroamérica y República Dominicana), **estaciones meteorológicas** de superficie y la suite de **orquestación en Python**.
+> **Proyecto:** “Escenarios de Cambio Climático de Alta Resolución en Centroamérica y el Caribe”  
+> **Grupo Oficial:** Grupo de Trabajo Regional de Escenarios de Cambio Climático de Centroamérica y el Caribe  
+> **Horizonte Climatológico:** Serie histórica estándar **1991–2020** (10,958 días continuos)  
+> **Bases de Reanálisis:** CHIRPS v2.0 ($0.05^\circ$), CHIRTS-daily ($0.05^\circ$), DEM SRTM (90 m / 1 km)
 
----
-
-## Índice de Módulos Técnicos Unificados
-
-1. [**01. Automatización y Ejecución desde Terminal (CLI / Headless)**](file:///d:/Workspace/CDT-8.0/docs/01_automatizacion_terminal_cli.md)
-   - Arquitectura sin GUI, funciones exportadas `*CMD`, ejecución mediante `Rscript`, control de logging y orquestación desde Python.
-
-2. [**02. Fundamentos del Proceso de Fusión (Merging)**](file:///d:/Workspace/CDT-8.0/docs/02_gridding_merging_fundamentos.md)
-   - Algoritmo paso a paso, métodos SBA, RK, Cressman, Barnes y esquema multi-pasada iterativo.
-
-3. [**03. Métodos y Parámetros de Interpolación de Residuales**](file:///d:/Workspace/CDT-8.0/docs/03_metodos_interpolacion_residuales.md)
-   - IDW, Ordinary Kriging (Block Kriging, modelos de variograma), Shepard, Spheremap, NN-3D y _fail-safes_.
-
-4. [**04. Fusión de Precipitación y Máscara Rain-No-Rain**](file:///d:/Workspace/CDT-8.0/docs/04_merging_precipitacion_rnor.md)
-   - Máscara probabilística RnoR (Logit vs Aditivo), funciones de corte (CutOff 1, 2, 3), suavizado espacial y límites físicos.
-
-5. [**05. Fusión de Temperatura y Modelado Topográfico**](file:///d:/Workspace/CDT-8.0/docs/05_merging_temperatura_dem.md)
-   - Gradiente térmico vertical (_lapse rate_), regresión GLM con covariables DEM, pendiente y aspecto/orientación.
-
-6. [**06. Plantillas y Scripts de Producción**](file:///d:/Workspace/CDT-8.0/docs/06_ejemplos_scripts_produccion.md)
-   - Scripts listos para ejecución en producción, servidores headless, tareas programadas (cron / Task Scheduler) y orquestadores Python.
-
-7. [**07. Flujo Completo de Temperatura (CHIRTS) y Diseño Experimental**](file:///d:/Workspace/CDT-8.0/docs/07_flujo_completo_temperatura_chirts.md)
-   - Cadena: _Split 3D NC → Downscaling Coef → Downscale Data → Bias Coef → Bias Correction → Merging → Concatenate 3D_.
-   - Justificación de dinámicas diurnas ($T_{max}$) vs nocturnas ($T_{min}$), inversiones térmicas y frentes fríos (_Nortes_).
-
-8. [**08. Flujo Completo de Precipitación (CHIRPS) y Diseño Experimental**](file:///d:/Workspace/CDT-8.0/docs/08_flujo_completo_precipitacion_chirps.md)
-   - Cadena: _Split 3D NC → Bias Coef → Bias Correction → Merging + RnoR → Concatenate 3D_.
-   - Modelado de variables mixtas cero-continuas (Bernoulli-Gamma, Bernoulli-Weibull) y métricas de validación.
-
-9. [**09. Arquitectura de Lanzadores en Python y Verificación de Dependencias**](file:///d:/Workspace/CDT-8.0/docs/09_arquitectura_lanzadores_python_y_dependencias.md)
-   - Diseño del orquestador híbrido en Python para ejecutar lotes de experimentos.
-   - Diagnóstico multiplataforma: comprobación de ejecutables `Rscript` (ej. R 4.4.3), librerías de sistema en Linux y Rtools en Windows.
-   - Guía de uso de la CLI, flags (`--suite`, `--config`, `--base-config`), partición automática de estaciones omitidas y ensamblado NetCDF 3D CF-1.8.
-
-10. [**10. Protocolo Metodológico Maestro y Matriz Completa de 31 Experimentos**](file:///d:/Workspace/CDT-8.0/docs/../docs-private/10_matriz_maestra_experimentos_y_guia_metodologica.md (privado/interno))
-    - **Módulo Técnico Unificado:** Integra la significancia estadística y climatológica profunda de la interpolación, la justificación fisiográfica regional (Pacífico, Caribe, Corredor Seco, Azua, Enriquillo, valles altos), las tablas comparativas de los **31 experimentos** (15 Lluvia: Fase 1 y 2, 8 $T_{max}$, 8 $T_{min}$) con justificación celda por celda, fórmulas de validación cruzada independiente ($KGE$, $RMSE$, $MAE$, $PBIAS$, $POD$, $FAR$, $ETS$, $HSS$), evaluación de hardware en estación Linux Ubuntu (Intel Core i9-10850K @ 3.60GHz, 32 GB RAM DDR4, SSD NVMe 400 GB) y 19 referencias bibliográficas científicas con DOIs verificados.
-
-
-11. [**11. Guía de Despliegue en Contenedores: Docker, Docker Compose y Apptainer / Singularity**](file:///d:/Workspace/CDT-8.0/docs/11_guia_despliegue_contenedores_docker_apptainer.md)
-    - Procedimientos de ejecución en contenedores inmutables: `Dockerfile`, `docker-compose.yml`, DevContainers y `Apptainer.def` para supercómputo HPC / SLURM.
-
-12. [**12. Diagnóstico Científico de Fase 1 y Diseño/Resultados de Fase 2 (Precipitación)**](file:///d:/Workspace/CDT-8.0/docs/12_diagnostico_fase1_y_diseno_fase2_precipitacion.md)
-    - Diagnóstico de los 10 experimentos de la Fase 1, diseño de los 5 experimentos de la Fase 2, y análisis exhaustivo del **tablero de liderazgo consolidado de los 15 experimentos** evaluados sobre las 29 estaciones de validación ciega independiente (*holdout*), donde **EXP_R15_Shepard_RnoR_Smooth** se corona como el modelo ganador absoluto ($KGE = 0.3791$, $Skill = 0.5007$, $PBIAS = -4.39\%$, $POD = 69.22\%$, $ETS = 0.3287$).
-
-
-13. [**13. Influencia del DEM, Batimetría y Orografía en el Desescalado y Corrección de Temperatura**](file:///d:/Workspace/CDT-8.0/docs/13_influencia_dem_batimetria_desescalado_temperatura.md)
-    - Fundamento físico del gradiente adiabático (*lapse rate*), cuantificación de la brecha altimétrica (Δz ≈ 1,820 m) y error térmico inducido (> 10 °C).
-    - Análisis comparativo: DEM continental terrestre (z >= 0) vs. modelos con batimetría (GEBCO, -8,390 m a +5,611 m) y mecanismos de fallo numérico en regresiones lineales.
-    - Justificación de la secuencia de 5 pasos en CDT: por qué el desescalado orográfico es indispensable antes del ajuste de sesgo cuantitativo (*Quantile Mapping*).
-    - Lección metodológica y blindaje del sistema ante valores centinela faltantes ('-99' vs '-99.0').
-
-
-14. [**14. Diagnóstico Científico de Fase 1 y Diseño Metodológico de Fase 2 (Temperatura Tmax y Tmin)**](file:///d:/Workspace/CDT-8.0/docs/14_diagnostico_fase1_y_diseno_fase2_temperatura.md)
-    - Análisis exhaustivo de los resultados de la Fase 1 (EXP_01 a EXP_08) evaluados contra las 29 estaciones de validación ciega independiente.
-    - Diagnóstico de la divergencia termodinámica entre forzamiento diurno (Tmax: r ≈ 0.79, KGE = 0.68) e inversiones nocturnas/drenaje catabático (Tmin: r ≈ 0.67, MAE = 1.76 °C con NN-3D).
-    - Explicación del colapso del Quantile Mapping teórico analítico (norm, gumbel, snorm) y formulación de la Fase 2 de optimización dirigida (EXP_T09 a EXP_T12).
-    - Incorporación de Shepard Modificado 3D, Quantile Mapping Empírico no paramétrico (qmecdf), híbridos Regression Kriging + Barnes y SBA IDW local multiescala.
+Esta carpeta contiene la documentación técnica, matemática, física y metodológica para la automatización, experimentación controlada y reconstrucción climática de alta resolución mediante **Climate Data Tools (CDT)** acoplado a la suite de orquestación en Python.
 
 ---
 
-## Estructura de Configuraciones y Suites Experimentales
+## Estructura Curricular y Mapa de Navegación de la Documentación
 
-- **Configuración Maestra Global:** [`config/global_config.yaml`](file:///d:/Workspace/CDT-8.0/config/global_config.yaml)
-- **Estaciones de Validación Independiente:** [`data/stations/validation_holdout_stations.csv`](file:///d:/Workspace/CDT-8.0/data/stations/validation_holdout_stations.csv)
-- **Suite de Precipitación (Fase 1: EXP_R01 a R10 | Fase 2: EXP_R11 a R15):** [`config/experiments_rainfall/`](file:///d:/Workspace/CDT-8.0/config/experiments_rainfall)
-- **Suite de Temperatura Máxima (8 Experimentos):** [`config/experiments_tmax/`](file:///d:/Workspace/CDT-8.0/config/experiments_tmax)
-- **Suite de Temperatura Mínima (8 Experimentos):** [`config/experiments_tmin/`](file:///d:/Workspace/CDT-8.0/config/experiments_tmin)
+La documentación se organiza en **4 bloques lógicos y 10 módulos secuenciales**:
+
+### Bloque I: Fundamentos Teóricos y Tratamiento Fisiográfico
+1. [**01. Fundamentos del Proceso de Fusión (Merging) y Gridding en CDT**](01_fundamentos_gridding_merging_cdt.md)
+   - Conceptos de soporte espacial, grilla continua satelital vs. observaciones puntuales in situ, formulación general de residuales y etapas del proceso.
+2. [**02. Métodos Geoestadísticos y Parámetros de Interpolación de Residuales**](02_metodos_interpolacion_residuales.md)
+   - Formulación matemática de SBA, Regression Kriging (RK), IDW, Kriging Ordinario por Bloques con semivariogramas teóricos, análisis objetivo de Barnes y Cressman, y método de Shepard Modificado.
+3. [**03. Tratamiento Fisiográfico del DEM, Batimetría Marina y Protección Insular**](03_tratamiento_fisiografico_dem_batimetria.md)
+   - Modelado del gradiente térmico vertical adiabático ($\\Gamma \approx -6.5\ ^\circ\text{C/km}$), clampeo obligatorio de cotas submarinas negativas a $0\text{ msnm}$, protección integral de islas habitadas y continuidad litoral.
+
+### Bloque II: Secuencias de Procesamiento Oficiales por Variable (Workflows)
+4. [**04. Secuencia de Procesamiento de Precipitación (CHIRPS) y Máscara Rain-No-Rain**](04_secuencia_precipitacion_chirps_rnor.md)
+   - Flujo de 3 pasos en CDT: cálculo de coeficientes de sesgo multiplicativo y distribucional (Bernoulli-Gamma/Weibull), aplicación a grillas diarias NetCDF de CHIRPS, y fusión geoestadística acoplada a la máscara probabilística Lluvia/No-Lluvia (RnoR).
+5. [**05. Secuencia de Procesamiento de Temperatura (CHIRTS) y Modelado Topográfico con DEM**](05_secuencia_temperatura_chirts_dem.md)
+   - Flujo de 5 pasos en CDT: cálculo de coeficientes de desescalado orográfico, reducción de escala a 1 km, cálculo de sesgo diurno ($T_{\max}$) y nocturno ($T_{\min}$), aplicación del ajuste y fusión espacial de residuales.
+
+### Bloque III: Diagnóstico Científico, Diseño Experimental y Benchmarks
+6. [**06. Diagnóstico Científico de Fase 1 y Resultados del Benchmark de Precipitación (Fase 2)**](06_diagnostico_y_benchmark_precipitacion.md)
+   - Evaluación exploratoria preliminar de los 10 experimentos de Fase 1, optimización dirigida en Fase 2 (5 experimentos), ranking consolidado de los 15 experimentos evaluados sobre 29 estaciones ciegas holdout y coronación del modelo ganador `EXP_R15_Shepard_RnoR_Smooth`.
+7. [**07. Diagnóstico Científico y Resultados del Benchmark de Temperatura (Tmax y Tmin)**](07_diagnostico_y_benchmark_temperatura.md)
+   - Análisis de 24 experimentos térmicos (12 $T_{\max}$ y 12 $T_{\min}$), diagnóstico de la divergencia termodinámica convectiva diurna vs. desacople e inversiones nocturnas, justificación de por qué la Línea Base se rechaza climatológicamente, y selección de ganadores oficiales (`EXP_TX11` y `EXP_TN10`).
+
+### Bloque IV: Arquitectura de Software, Automatización y Despliegue
+8. [**08. Arquitectura del Orquestador en Python, CLI y Ensamblado NetCDF (CF-1.8)**](08_arquitectura_lanzadores_python.md)
+   - Diseño del puente headless con CDT (`launcher/cdt_bridge.py`), orquestador paralelo multiproceso (`launcher/experiment_runner.py`), particionador de estaciones ciegas (`station_manager.py`), evaluador de métricas cuantitativas y ensamblado en archivos NetCDF 3D conformes al estándar CF-1.8.
+9. [**09. Guía de Ejecución desde Terminal (CLI / Headless) y Scripts de Producción**](09_guia_ejecucion_produccion_y_scripts.md)
+   - Guía práctica para lanzar simulaciones desde la terminal, banderas de comando CLI (`--suite`, `--config`, `--cores`), ejecución desatendida en segundo plano con `nohup`, reanudación automática ante fallos y plantillas de scripts para cron/programador de tareas.
+10. [**10. Guía de Despliegue en Contenedores: Docker, Docker Compose y Apptainer / Singularity**](10_despliegue_contenedores_docker_apptainer.md)
+    - Procedimientos para garantizar reproducibilidad exacta y portabilidad inmutable en servidores locales, clústeres de supercómputo HPC con SLURM y entornos en la nube.
 
 ---
 
-## Guía Rápida de Ejecución desde Python
+## Documentación Maestra Confidencial / Privada
+
+Para acceder al protocolo metodológico integral, la matriz maestra con justificación celda por celda de los 39 experimentos, la auditoría del hardware y los tableros de validación ciega holdout consolidados, consulte el documento maestro en la carpeta privada (fuera del repositorio Git):
+- **Documento Markdown Maestro:** `docs-private/reporte_maestro_benchmark_cdt.md`
+- **Documento PDF de Nivel de Publicación:** `docs-private/reporte_maestro_benchmark_cdt.pdf` (Generado automáticamente mediante `python launcher/generate_pdf.py`).
+
+---
+
+## Resumen de Modelos Ganadores Oficiales
+
+| Variable Climática | Configuración Ganadora Oficial | Familia Metodológica | Desempeño Cuantitativo (Holdout Ciego) | Justificación Físico-Climatológica |
+| :--- | :--- | :--- | :--- | :--- |
+| **Precipitación Diaria** | **`EXP_R15_Shepard_RnoR_Smooth`** | SBA Multiescala + Shepard Modificado + RnoR Suave (`CutOff = 2`) | **GSS:** 0.501 \| **KGE:** 0.379 \| **ETS:** 0.329 \| **RMSE:** 12.88 mm | Suprime lloviznas espurias (*drizzle*) en la Canícula sin discontinuidades y preserva gradientes en cañones y laderas escarpadas. |
+| **Temperatura Máxima ($T_{\max}$)** | **`EXP_TX11_RK_Barnes_Hybrid`** | RK (DEM + Lat + Lon) + Barnes Gaussiano Continuo | **GSS:** 0.719 \| **KGE:** **0.690** \| **$r$:** 0.743 \| **RMSE:** 2.06 $^\circ\text{C}$ | Forzamiento orográfico real con DEM en zonas sin estaciones y filtrado continuo de brisas marinas y transiciones litorales. |
+| **Temperatura Mínima ($T_{\min}$)** | **`EXP_TN10_QM_Empirical_ECDF`** | RK (DEM + Pendiente) + QM Empírico Celda a Celda (NN-3D) | **GSS:** **0.613** \| **KGE:** 0.543 \| **RMSE:** **1.92 $^\circ\text{C}$** \| **MAE:** 1.57 $^\circ\text{C}$ | Menor error absoluto y cuadrático del benchmark; captura inversiones nocturnas y pozas de aire frío (*cold-air pooling*) sin distorsionar colas frías. |
+
+---
+
+## Guía Rápida de Comandos CLI
 
 ```bash
-# 1. Comprobación del entorno de R y paquetes espaciales
+# Diagnóstico de dependencias R y paquetes espaciales
 python launcher/experiment_runner.py --check-env
 
-# 2. Ejecutar suites temáticas completas:
-python launcher/experiment_runner.py --suite rainfall   # 10 Experimentos de Lluvia (~6 h)
-python launcher/experiment_runner.py --suite tmax       # 8 Experimentos de Tmax (~11.5 h)
-python launcher/experiment_runner.py --suite tmin       # 8 Experimentos de Tmin (~11.5 h)
+# Ejecutar suites completas (Workstation con 18 hilos en paralelo):
+python launcher/experiment_runner.py --suite rainfall --cores 18   # 15 Experimentos de Precipitación (~55.3 h)
+python launcher/experiment_runner.py --suite tmax     --cores 18   # 12 Experimentos de Tmax (~18.5 h)
+python launcher/experiment_runner.py --suite tmin     --cores 18   # 12 Experimentos de Tmin (~18.5 h)
 
-# 3. Ejecutar corrida batch completa (26 Experimentos, ~28–31.5 h):
-python launcher/experiment_runner.py --suite all
+# Ejecutar corrida batch completa de los 39 experimentos:
+python launcher/experiment_runner.py --suite all      --cores 18   # 39 Experimentos (~92.4 h continuas)
+
+# Generar el documento PDF maestro de publicación (ReportLab):
+python launcher/generate_pdf.py
 ```

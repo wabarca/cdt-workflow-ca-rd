@@ -1,4 +1,4 @@
-# 03. Métodos y Parámetros de Interpolación de Residuales
+# 02. Métodos Geoestadísticos y Parámetros de Interpolación de Residuales
 
 Cuando se utiliza el método de fusión **SBA** (*Simple Bias Adjustment*) o **RK** (*Regression Kriging*), los residuales calculados en las ubicaciones de las estaciones deben interpolarse a toda la cuadrícula geográfica.
 

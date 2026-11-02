@@ -1,4 +1,4 @@
-# 14. Diagnóstico Científico de Fase 1 y Diseño Metodológico de Fase 2 (Temperatura Diaria Tmax y Tmin)
+# 07. Diagnóstico Científico y Resultados del Benchmark de Temperatura (Tmax y Tmin)
 
 ---
 

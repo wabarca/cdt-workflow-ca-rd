@@ -114,7 +114,7 @@ class NumberedCanvas(canvas.Canvas):
 
 def generate_experiments_pdf(
     output_path: Path | str = "docs-private/reporte_maestro_benchmark_cdt.pdf",
-    duplicate_path: Path | str = "docs-private/Matriz_Experimentos_CDT_Centroamerica_Dominicana.pdf",
+    duplicate_path: Path | str | None = None,
 ) -> Path:
     output_pdf = Path(output_path).resolve()
     output_pdf.parent.mkdir(parents=True, exist_ok=True)

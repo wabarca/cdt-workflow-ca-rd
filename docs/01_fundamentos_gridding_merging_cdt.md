@@ -1,4 +1,4 @@
-# 02. Fundamentos del Proceso de Fusión (Merging)
+# 01. Fundamentos del Proceso de Fusión (Merging) y Gridding en CDT
 
 ## 1. Justificación y Marco Conceptual
 

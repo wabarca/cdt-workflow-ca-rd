@@ -1,4 +1,4 @@
-# 09. Arquitectura de Lanzadores en Python y Verificación de Dependencias (Linux y Windows)
+# 08. Arquitectura del Orquestador en Python, CLI y Ensamblado NetCDF (CF-1.8)
 
 Este documento describe la arquitectura técnica, la implementación y la guía exhaustiva de uso para los **scripts lanzadores y orquestadores en Python** encargados de gestionar la ejecución de CDT, diagnosticar el entorno de software y hardware (versión de R, herramientas de compilación y librerías espaciales), particionar estaciones independientes de validación cruzada y ejecutar de forma automatizada las matrices de **26 experimentos** para **Precipitación (CHIRPS)**, **Temperatura Máxima (CHIRTS $T_{max}$)** y **Temperatura Mínima (CHIRTS $T_{min}$)** durante el periodo climatológico 1991–2020 (10,958 días).
 
