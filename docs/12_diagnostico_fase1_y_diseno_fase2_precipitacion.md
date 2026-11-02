@@ -11,7 +11,7 @@ Para garantizar máxima objetividad científica y evitar sobreajuste (*in-sample
 
 ---
 
-## 2. Resultados Consolidados de la Fase 1 (Cribado Exploratorio: EXP_R01 a EXP_R10)
+## 2. Resultados Consolidados de la Fase 1 (evaluación exploratoria preliminar: EXP_R01 a EXP_R10)
 
 La Fase 1 evaluó 10 familias metodológicas representativas del estado del arte en interpolación geoespacial y ajuste de sesgo satelital:
 
@@ -57,7 +57,7 @@ A primera vista, un KGE de 0.375 puede parecer moderado si se compara con variab
 Apoyándose en la victoria de Shepard y Spheremap, la Fase 2 formula **5 hipótesis de mejora dirigida** explotando parámetros avanzados de CDT 8.0:
 
 ```
-                      FASE 1: Cribado (Screening)
+                      FASE 1: evaluación preliminar (Screening)
                                   │
                   ┌───────────────┴───────────────┐
                   ▼                               ▼

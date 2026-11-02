@@ -13,7 +13,7 @@ Para evitar sobreajuste (*in-sample overfitting*) y garantizar objetividad cient
 
 ---
 
-## 2. Resultados Consolidados de la Fase 1: Cribado Exploratorio (EXP_01 a EXP_08)
+## 2. Resultados Consolidados de la Fase 1: evaluación exploratoria preliminar (EXP_01 a EXP_08)
 
 La Fase 1 evaluó 8 familias metodológicas teóricas tanto para temperatura máxima ($T_{\max}$, forzamiento solar diurno) como para temperatura mínima ($T_{\min}$, enfriamiento radiativo nocturno):
 

@@ -180,7 +180,7 @@ if (!is.null(status) && status == 0) {
 
 ## 3. Script de Automatización Bash / Cron
 
-Para ejecutar el pipeline diario de forma desatendida en un servidor Linux:
+Para ejecutar la secuencia de procesamiento diario de forma desatendida en un servidor Linux:
 
 ```bash
 #!/bin/bash

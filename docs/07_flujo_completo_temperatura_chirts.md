@@ -171,7 +171,7 @@ python launcher/experiment_runner.py --config config/experiments_tmin/EXP_TN04_R
 flowchart LR
     A["Estaciones Totales (100%)"] --> B["Entrenamiento (80-90% en CDT)"]
     A --> C["Validación Independiente (10-20% Omitidas)"]
-    B --> D["Pipeline CDT (Downscale + Bias + Merging)"]
+    B --> D["secuencia de procesamiento CDT (Downscale + Bias + Merging)"]
     D --> E["Malla Gridded 3D CF-1.8 Final"]
     E --> F["Extracción en Estaciones Omitidas (station_manager.py)"]
     C --> F

@@ -9,7 +9,7 @@ library(CDT)
 startCDT()
 ```
 
-Sin embargo, para entornos de producción, servidores Linux/Windows sin entorno gráfico (servidores *headless*), pipelines operativos diarios y ejecuciones masivas por lotes (*batch jobs*), CDT dispone de una API de comandos no interactivos que operan directamente desde scripts de R y se ejecutan vía terminal con `Rscript`.
+Sin embargo, para entornos de producción, servidores Linux/Windows sin entorno gráfico (servidores *headless*), secuencias de procesamiento operativos diarios y ejecuciones masivas por lotes (*batch jobs*), CDT dispone de una API de comandos no interactivos que operan directamente desde scripts de R y se ejecutan vía terminal con `Rscript`.
 
 ---
 
@@ -145,7 +145,7 @@ cdtMergingPrecipCMD(
 Para actualizar datos diariamente al descargar nuevos archivos satelitales:
 1. Un script de descarga (p. ej., Python o cURL) obtiene el archivo NetCDF del día.
 2. Un script de base de datos actualiza el archivo `.csv` de estaciones en formato CDT.
-3. Se invoca el script de CDT: `Rscript /opt/pipelines/run_cdt_merging.R`.
+3. Se invoca el script de CDT: `Rscript /opt/secuencias de procesamiento/run_cdt_merging.R`.
 4. El archivo de salida `log_file.txt` se revisa para verificar que la fusión finalizó exitosamente (código de retorno 0).
 
 ---

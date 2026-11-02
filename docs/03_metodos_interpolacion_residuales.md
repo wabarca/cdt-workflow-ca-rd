@@ -161,7 +161,7 @@ La respuesta rigurosa es **no; por el contrario, la preserva y la hace numérica
    * Por tanto, en los días donde se activa el fallback no se pierde resolución de patrones geoestadísticos, puesto que físicamente no existía ninguna estructura espacial que resolver.
 
 3. **Inviabilidad de Corridas sin Salvaguarda:**
-   * Si no existiera este mecanismo determinista de respaldo para días singulares, **ningún pipeline meteorológico en el mundo podría completar una corrida de 30 años de lluvia diaria**. Un único día seco causaría la falla catastrófica de toda la serie temporal.
+   * Si no existiera este mecanismo determinista de respaldo para días singulares, **ningún secuencia de procesamiento meteorológico en el mundo podría completar una corrida de 30 años de lluvia diaria**. Un único día seco causaría la falla catastrófica de toda la serie temporal.
 
 4. **Trazabilidad y Auditoría Científica:**
    * CDT documenta de forma transparente cada ocurrencia en la bitácora (`log.file`):

@@ -20,7 +20,7 @@ El proceso de **Merging** (Fusión de Datos) combina ambas fuentes para producir
 
 ## 2. Algoritmo General de Merging en CDT
 
-El pipeline de ejecución en `R/cdtMerging_functions.R` sigue una secuencia rigurosa:
+la secuencia de procesamiento de ejecución en `R/cdtMerging_functions.R` sigue una secuencia rigurosa:
 
 ```mermaid
 flowchart TD
