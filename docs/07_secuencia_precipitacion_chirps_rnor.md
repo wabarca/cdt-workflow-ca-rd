@@ -147,15 +147,15 @@ Aísla el efecto del método de corrección de sesgo, la máscara RnoR y los int
 
 | ID Exp. | Método Bias (Paso 1) | Apply Bias (Paso 2) | Merging (Paso 3) | Hipótesis y Configuración |
 | :---: | :--- | :--- | :--- | :--- |
-| **`EXP-R01`** | `mbvar` (\pm 5 d) + IDW (1.5°) | Proporcional | SBA 1 pasada (1.0°) + IDW (1.5°) | **Línea Base Control:** Sin filtro RnoR; cuantifica la sobreestimación base de lloviznas (*drizzle*). |
-| **`EXP-R02`** | `mbvar` (\pm 5 d) + IDW (1.5°) | Proporcional | SBA 3 pasadas + IDW + **RnoR Logit (CutOff=3)** | **Impacto RnoR Duro:** Evalúa corte rígido a 0.5 mm en lloviznas espurias. |
+| **`EXP-R01`** | `mbvar` ($\pm 5\text{ d}$) + IDW (1.5°) | Proporcional | SBA 1 pasada (1.0°) + IDW (1.5°) | **Línea Base Control:** Sin filtro RnoR; cuantifica la sobreestimación base de lloviznas (*drizzle*). |
+| **`EXP-R02`** | `mbvar` ($\pm 5\text{ d}$) + IDW (1.5°) | Proporcional | SBA 3 pasadas + IDW + **RnoR Logit (CutOff=3)** | **Impacto RnoR Duro:** Evalúa corte rígido a 0.5 mm en lloviznas espurias. |
 | **`EXP-R03`** | `qmdist` Bernoulli-Gamma + OKR | Mapeo cuantil | SBA 3 pasadas + OKR por bloques | **Distribución Gamma Estándar:** Ajuste paramétrico teórico estándar en meteorología tropical. |
 | **`EXP-R04`** | `qmdist` Bernoulli-Weibull + OKR | Mapeo cuantil | SBA 3 pasadas + OKR por bloques | **Extremos Ciclónicos:** Modela colas pesadas asociadas a huracanes y ondas del este. |
 | **`EXP-R05`** | `qmdist` Bernoulli-Weibull + OKR | Mapeo cuantil | **RK** (DEM + Slope + Coords) | **Modelo Orográfico Completo:** Covariables de relieve en la tendencia pluvial. |
-| **`EXP-R06`** | `mbvar` (\pm 5 d) + NN-3D | Proporcional | **Barnes (BSc)** 3 pasadas gaussianas | **Amortiguamiento Costero:** Filtrado continuo para llanuras litorales y brisas marinas. |
+| **`EXP-R06`** | `mbvar` ($\pm 5\text{ d}$) + NN-3D | Proporcional | **Barnes (BSc)** 3 pasadas gaussianas | **Amortiguamiento Costero:** Filtrado continuo para llanuras litorales y brisas marinas. |
 | **`EXP-R07`** | `mbmon` (mensual) + IDW | Proporcional | **Cressman (CSc)** 4 pasadas decrecientes | **Configuración Guía Oficial CDT:** Radios decrecientes (1.0° a 0.25°) para captar mesoescala. |
-| **`EXP-R08`** | `mbvar` (\pm 5 d) + IDW | Proporcional | **Shepard Modificado** (radio 1.5°) | **Relieve Complejo:** Ponderación local con derivadas direccionales de Taylor. |
-| **`EXP-R09`** | `mbvar` (\pm 5 d) + IDW | Proporcional | **Spheremap** (Gran Círculo) | **Geometría Esférica:** Distancias geodésicas reales para evitar distorsiones longitudinales. |
+| **`EXP-R08`** | `mbvar` ($\pm 5\text{ d}$) + IDW | Proporcional | **Shepard Modificado** (radio 1.5°) | **Relieve Complejo:** Ponderación local con derivadas direccionales de Taylor. |
+| **`EXP-R09`** | `mbvar` ($\pm 5\text{ d}$) + IDW | Proporcional | **Spheremap** (Gran Círculo) | **Geometría Esférica:** Distancias geodésicas reales para evitar distorsiones longitudinales. |
 | **`EXP-R10`** | `qmdist` Bernoulli-Gamma + OKR | Mapeo cuantil | **RK Máxima Complejidad** (DEM+Slope+Aspect+Coords) | **Acoplamiento Topográfico Total:** Insolación y laderas barlovento/sotavento. |
 
 ---
@@ -165,11 +165,11 @@ Diseñada a partir de los hallazgos de la Fase 1, donde Shepard Modificado y Sph
 
 | ID Exp. | Método Bias (Paso 1) | Apply Bias (Paso 2) | Merging (Paso 3) | Hipótesis y Configuración de Optimización |
 | :---: | :--- | :--- | :--- | :--- |
-| **`EXP-R11`** | `mbvar` (\pm 5 d) + **Mediana** + Grilla Gruesa (1.0°) | Proporcional | Shepard Modificado (radio 1.5°) + Grilla Gruesa | **Estabilidad Marina y Extremos:** Función mediana para neutralizar tormentas aisladas y amortiguamiento costero. |
-| **`EXP-R12`** | `mbvar` (\pm 5 d) + IDW (1.0°) | Proporcional | Shepard Confinado Local (radio 0.9°, 3 pasadas) | **Confinamiento Local:** Radios estrechos para evitar propagación de lluvia a través de divisorias continentales. |
+| **`EXP-R11`** | `mbvar` ($\pm 5\text{ d}$) + **Mediana** + Grilla Gruesa (1.0°) | Proporcional | Shepard Modificado (radio 1.5°) + Grilla Gruesa | **Estabilidad Marina y Extremos:** Función mediana para neutralizar tormentas aisladas y amortiguamiento costero. |
+| **`EXP-R12`** | `mbvar` ($\pm 5\text{ d}$) + IDW (1.0°) | Proporcional | Shepard Confinado Local (radio 0.9°, 3 pasadas) | **Confinamiento Local:** Radios estrechos para evitar propagación de lluvia a través de divisorias continentales. |
 | **`EXP-R13`** | **QM Empírico (`qmecdf`)** + Shepard | Mapeo cuantil empírico | Shepard Modificado (radio 1.5°) | **No Paramétrico:** Calibra cuantiles directamente sobre la curva observada sin distribución teórica prefijada. |
-| **`EXP-R14`** | `mbvar` (\pm 5 d) + **Mediana** + Spheremap | Proporcional | Spheremap Gran Círculo (radio 1.5°) | **Esferoide con Mediana:** Combina distancias de gran círculo en el Caribe con estimación robusta de sesgo. |
-| **`EXP-R15`**<br>**(GANADOR)** | `mbvar` (\pm 5 d) + IDW (1.2°) | Proporcional | Shepard (radio 1.2°) + **RnoR Suave (`CutOff=2`, smooth=TRUE)** | **MODELO GANADOR OFICIAL:** Suprime lloviznas espurias (*drizzle*) sin cortes artificiales. Máximo GSS (0.501) y KGE (0.379). |
+| **`EXP-R14`** | `mbvar` ($\pm 5\text{ d}$) + **Mediana** + Spheremap | Proporcional | Spheremap Gran Círculo (radio 1.5°) | **Esferoide con Mediana:** Combina distancias de gran círculo en el Caribe con estimación robusta de sesgo. |
+| **`EXP-R15`**<br>**(GANADOR)** | `mbvar` ($\pm 5\text{ d}$) + IDW (1.2°) | Proporcional | Shepard (radio 1.2°) + **RnoR Suave (`CutOff=2`, smooth=TRUE)** | **MODELO GANADOR OFICIAL:** Suprime lloviznas espurias (*drizzle*) sin cortes artificiales. Máximo GSS (0.501) y KGE (0.379). |
 
 ### Ejecución de Suites desde Terminal:
 ```bash

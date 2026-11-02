@@ -130,7 +130,7 @@ $$
 \hat{\beta}_{\text{elv}} = \frac{\sum (z_i - \bar{z})(T_i - \bar{T})}{\sum (z_i - \bar{z})^2}
 $$
 
-   La enorme varianza de las profundidades marinas ($\operatorname{Var}(z) \gg 10^7\text{ m}^2$) asociada a temperaturas casi constantes ($T_i \approx \bar{T}$) arrastra el numerador hacia cero, forzando:
+   La enorme varianza de las profundidades marinas ($\mathrm{Var}(z) \gg 10^7\text{ m}^2$) asociada a temperaturas casi constantes ($T_i \approx \bar{T}$) arrastra el numerador hacia cero, forzando:
    
 
 $$

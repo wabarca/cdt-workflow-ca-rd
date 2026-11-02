@@ -460,18 +460,18 @@ La batería comprende **24 experimentos térmicos** (12 para $T_{\max}$ y 12 par
 
 | ID Exp. | Fase | Desescalado Topográfico (Pasos 1-2) | Compute / Apply Bias (Pasos 3-4) | Merging de Residuales (Paso 5) | Hipótesis Física Diurna |
 | :---: | :---: | :--- | :--- | :--- | :--- |
-| **`EXP-TX01`** | F1 | Lineal plano sin DEM (0.05°) | `mbvar` (\pm 5 d) + IDW (3.5°) | SBA monocapa (1 pasada a 1.0°) | **Línea Base Control:** Ignora el relieve; sesgo artificial cálido en cumbres. |
+| **`EXP-TX01`** | F1 | Lineal plano sin DEM (0.05°) | `mbvar` ($\pm 5\text{ d}$) + IDW (3.5°) | SBA monocapa (1 pasada a 1.0°) | **Línea Base Control:** Ignora el relieve; sesgo artificial cálido en cumbres. |
 | **`EXP-TX02`** | F1 | Regresión estación–DEM SRTM | `qmdist` (Normal) + IDW | **RK** (DEM) + OKR por bloques | **Gradiente Adiabático:** Tasa vertical estándar (\approx -6.5 °C/km). |
 | **`EXP-TX03`** | F1 | Regresión DEM + Pendiente | `qmdist` (Skew-Normal) + OKR | **RK** (DEM + Pendiente + Coords) | **Asimetría por Laderas:** Captura pendientes térmicas en cordilleras. |
-| **`EXP-TX04`** | F1 | Desescalado orográfico 3D | `mbvar` (\pm 5 d) + **NN-3D (\Delta z)** | **RK** (DEM + Pendiente + Aspect) | **Insolación por Orientación:** Sol matutino al este vs vespertino al oeste. |
+| **`EXP-TX04`** | F1 | Desescalado orográfico 3D | `mbvar` ($\pm 5\text{ d}$) + **NN-3D ($\Delta z$)** | **RK** (DEM + Pendiente + Aspect) | **Insolación por Orientación:** Sol matutino al este vs vespertino al oeste. |
 | **`EXP-TX05`** | F1 | Regresión altimétrica DEM | `qmdist` (Gumbel) + OKR | **RK** (DEM + Coords) | **Olas de Calor:** Ajuste de colas extremas en valles áridos y depresiones. |
-| **`EXP-TX06`** | F1 | Regresión regional DEM | `mbvar` (\pm 5 d) + IDW | **Barnes (BSc)** 3 pasadas gaussianas | **Brisas y Llanuras Costeras:** Suavizado continuo sin saltos espaciales. |
+| **`EXP-TX06`** | F1 | Regresión regional DEM | `mbvar` ($\pm 5\text{ d}$) + IDW | **Barnes (BSc)** 3 pasadas gaussianas | **Brisas y Llanuras Costeras:** Suavizado continuo sin saltos espaciales. |
 | **`EXP-TX07`** | F1 | Regresión altimétrica DEM | `mbmon` (mensual) + IDW | **Cressman (CSc)** 4 pasadas | **Guía Oficial CDT:** Radios decrecientes contra contaminación de valles cálidos. |
 | **`EXP-TX08`** | F1 | Multivariado DEM+Slope+Aspect | `qmdist` (Skew-Normal) + OKR | **RK Total** (DEM+Slope+Aspect+Coords) | **Máxima Complejidad Diurna:** Acoplamiento total de relieve e insolación. |
-| **`EXP-TX09`** | F2 | Bilineal con DEM SRTM | `mbvar` (\pm 5 d) + **NN-3D (\Delta z)** | **SBA** (1.0°, 0.67°, 0.33°) + Shepard | **Shepard Térmico NN-3D:** Derivadas direccionales locales en residuales. |
+| **`EXP-TX09`** | F2 | Bilineal con DEM SRTM | `mbvar` ($\pm 5\text{ d}$) + **NN-3D ($\Delta z$)** | **SBA** (1.0°, 0.67°, 0.33°) + Shepard | **Shepard Térmico NN-3D:** Derivadas direccionales locales en residuales. |
 | **`EXP-TX10`** | F2 | Bilineal con DEM SRTM | **QM Empírico (`qmecdf`)** + NN-3D | **RK** (DEM + Pendiente) + IDW | **QM Empírico Celda a Celda:** Modela olas de calor directamente sobre la curva observada. |
-| **`EXP-TX11`**<br>**(GANADOR)** | F2 | Bilineal con DEM SRTM | `mbvar` (\pm 5 d) + IDW (3.5°) | **RK (DEM + Lat + Lon)** + **Barnes Residuos (2.0°)** | **MODELO GANADOR TMAX:** Descompone el campo diurno en tendencia orográfica real y Barnes continuo. Máx KGE (0.690). |
-| **`EXP-TX12`** | F2 | Bilineal con DEM SRTM | `mbvar` (\pm 5 d) + NN-3D | **SBA Multiescala Local** (1.0°, 0.50°, 0.25°) | **SBA Local con NN-3D:** Confinamiento a 0.25° con control vertical de cota. |
+| **`EXP-TX11`**<br>**(GANADOR)** | F2 | Bilineal con DEM SRTM | `mbvar` ($\pm 5\text{ d}$) + IDW (3.5°) | **RK (DEM + Lat + Lon)** + **Barnes Residuos (2.0°)** | **MODELO GANADOR TMAX:** Descompone el campo diurno en tendencia orográfica real y Barnes continuo. Máx KGE (0.690). |
+| **`EXP-TX12`** | F2 | Bilineal con DEM SRTM | `mbvar` ($\pm 5\text{ d}$) + NN-3D | **SBA Multiescala Local** (1.0°, 0.50°, 0.25°) | **SBA Local con NN-3D:** Confinamiento a 0.25° con control vertical de cota. |
 
 ---
 
@@ -479,18 +479,18 @@ La batería comprende **24 experimentos térmicos** (12 para $T_{\max}$ y 12 par
 
 | ID Exp. | Fase | Desescalado Topográfico (Pasos 1-2) | Compute / Apply Bias (Pasos 3-4) | Merging de Residuales (Paso 5) | Hipótesis Física Nocturna |
 | :---: | :---: | :--- | :--- | :--- | :--- |
-| **`EXP-TN01`** | F1 | Lineal plano sin DEM (0.05°) | `mbvar` (\pm 5 d) + IDW (3.5°) | SBA monocapa (1 pasada a 1.0°) | **Línea Base Control:** Ignora el enfriamiento nocturno y drenaje catabático. |
+| **`EXP-TN01`** | F1 | Lineal plano sin DEM (0.05°) | `mbvar` ($\pm 5\text{ d}$) + IDW (3.5°) | SBA monocapa (1 pasada a 1.0°) | **Línea Base Control:** Ignora el enfriamiento nocturno y drenaje catabático. |
 | **`EXP-TN02`** | F1 | Regresión estación–DEM SRTM | `qmdist` (Normal) + IDW | **RK** (DEM) + OKR por bloques | **Gradiente Térmico Nocturno:** Tasa estándar en terreno abierto. |
 | **`EXP-TN03`** | F1 | Regresión DEM + Pendiente | `qmdist` (Skew-Normal) + OKR | **RK** (DEM + Pendiente + Coords) | **Frentes Fríos (*Nortes*):** Caídas térmicas asimétricas en invierno. |
-| **`EXP-TN04`** | F1 | Desescalado orográfico 3D | `mbvar` (\pm 5 d) + **NN-3D (\Delta z)** | **RK** (DEM + Pendiente + Coords) | **Inversiones Térmicas:** Aislamiento vertical estricto cima-valle. |
+| **`EXP-TN04`** | F1 | Desescalado orográfico 3D | `mbvar` ($\pm 5\text{ d}$) + **NN-3D ($\Delta z$)** | **RK** (DEM + Pendiente + Coords) | **Inversiones Térmicas:** Aislamiento vertical estricto cima-valle. |
 | **`EXP-TN05`** | F1 | Regresión altimétrica DEM | `qmdist` (Gumbel) + OKR | **RK** (DEM + Coords) | **Heladas Agronómicas:** Ajuste de colas frías extremas (<0 °C). |
-| **`EXP-TN06`** | F1 | Regresión regional DEM | `mbvar` (\pm 5 d) + IDW | **Barnes (BSc)** 3 pasadas gaussianas | **Amortiguamiento Marino:** Regulación térmica nocturna en costas caribeñas. |
+| **`EXP-TN06`** | F1 | Regresión regional DEM | `mbvar` ($\pm 5\text{ d}$) + IDW | **Barnes (BSc)** 3 pasadas gaussianas | **Amortiguamiento Marino:** Regulación térmica nocturna en costas caribeñas. |
 | **`EXP-TN07`** | F1 | Regresión altimétrica DEM | `mbmon` (mensual) + IDW | **Cressman (CSc)** 4 pasadas | **Pozas Frías Confinadas:** Radios decrecientes contra dispersión espuria. |
 | **`EXP-TN08`** | F1 | Multivariado DEM+Slope+Aspect | `qmdist` (Skew-Normal) + NN-3D | **RK Total** (DEM+Slope+Aspect+Coords) | **Drenaje Catabático en Laderas:** Acoplamiento topográfico completo. |
-| **`EXP-TN09`** | F2 | Bilineal con DEM SRTM | `mbvar` (\pm 5 d) + **NN-3D (\Delta z)** | **SBA** (1.0°, 0.67°, 0.33°) + Shepard | **Shepard Térmico Nocturno:** Interpolación local no lineal en residuales. |
-| **`EXP-TN10`**<br>**(GANADOR)** | F2 | Bilineal con DEM SRTM | **QM Empírico (`qmecdf`)** + **NN-3D (\Delta z)** | **RK (DEM + Pendiente)** + IDW (2.0°) | **MODELO GANADOR ABSOLUTO TMIN:** Resuelve inversiones y pozas de aire frío (*cold-air pooling*). Menor RMSE (1.92 °C), menor MAE (1.57 °C) y GSS (0.613). |
-| **`EXP-TN11`** | F2 | Bilineal con DEM SRTM | `mbvar` (\pm 5 d) + IDW (3.5°) | **RK (DEM + Lat + Lon)** + Barnes (2.0°) | **Híbrido Determinista-Gaussiano:** Segundo mejor RMSE (2.07 °C). |
-| **`EXP-TN12`** | F2 | Bilineal con DEM SRTM | `mbvar` (\pm 5 d) + NN-3D | **SBA Multiescala Local** (1.0°, 0.50°, 0.25°) | **SBA Local con NN-3D:** Confinamiento local estricto para mínimas nocturnas. |
+| **`EXP-TN09`** | F2 | Bilineal con DEM SRTM | `mbvar` ($\pm 5\text{ d}$) + **NN-3D ($\Delta z$)** | **SBA** (1.0°, 0.67°, 0.33°) + Shepard | **Shepard Térmico Nocturno:** Interpolación local no lineal en residuales. |
+| **`EXP-TN10`**<br>**(GANADOR)** | F2 | Bilineal con DEM SRTM | **QM Empírico (`qmecdf`)** + **NN-3D ($\Delta z$)** | **RK (DEM + Pendiente)** + IDW (2.0°) | **MODELO GANADOR ABSOLUTO TMIN:** Resuelve inversiones y pozas de aire frío (*cold-air pooling*). Menor RMSE (1.92 °C), menor MAE (1.57 °C) y GSS (0.613). |
+| **`EXP-TN11`** | F2 | Bilineal con DEM SRTM | `mbvar` ($\pm 5\text{ d}$) + IDW (3.5°) | **RK (DEM + Lat + Lon)** + Barnes (2.0°) | **Híbrido Determinista-Gaussiano:** Segundo mejor RMSE (2.07 °C). |
+| **`EXP-TN12`** | F2 | Bilineal con DEM SRTM | `mbvar` ($\pm 5\text{ d}$) + NN-3D | **SBA Multiescala Local** (1.0°, 0.50°, 0.25°) | **SBA Local con NN-3D:** Confinamiento local estricto para mínimas nocturnas. |
 
 ### Ejecución de Suites desde Terminal:
 ```bash

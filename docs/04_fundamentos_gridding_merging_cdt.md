@@ -144,10 +144,10 @@ $$
 
 - **Función de peso de Cressman:**
 
-  $$
+$$
 W_{ij} = \begin{cases} 
-\dfrac{R^2 - d_{ij}^2}{R^2 + d_{ij}^2} & \text{si } d_{ij} < R \\
-0 & \text{si } d_{ij} \ge R 
+\dfrac{R^2 - d_{ij}^2}{R^2 + d_{ij}^2} & \text{si } d_{ij} < R \cr
+0 & \text{si } d_{ij} \geq R 
 \end{cases}
 $$
 

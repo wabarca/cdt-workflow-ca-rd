@@ -84,7 +84,7 @@ Esquema de análisis objetivo meteorológico clásico multiescala basado en corr
 
 $$
 W_i = \begin{cases} 
-\dfrac{R_c^2 - d_i^2}{R_c^2 + d_i^2}, & d_i < R_c \\
+\dfrac{R_c^2 - d_i^2}{R_c^2 + d_i^2}, & d_i < R_c \cr
 0, & d_i \geq R_c 
 \end{cases}
 $$
