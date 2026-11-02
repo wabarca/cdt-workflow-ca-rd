@@ -84,7 +84,13 @@ En `R/cdtTemp_DownscalingReanal_Procs.R`, CDT ejecuta:
 3. Extracción del residual sinóptico grueso: $R_{\text{coarse}} = T_{\text{sat}} - \hat{T}_{\text{coarse}}$.
 4. Interpolación espacial del residual a la malla fina del DEM: $\hat{R}_{\text{fine}}$.
 5. Reconstrucción física de alta resolución:
-   $$T_{\text{downscaled}}(s_{\text{fine}}) = \beta_0 + \beta_{\text{elv}} \cdot \text{DEM}_{\text{fine}}(s_{\text{fine}}) + \hat{R}_{\text{fine}}(s_{\text{fine}})$$
+   
+
+$$
+T_{\text{downscaled}}(s_{\text{fine}}) = \beta_0 + \beta_{\text{elv}} \cdot \text{DEM}_{\text{fine}}(s_{\text{fine}}) + \hat{R}_{\text{fine}}(s_{\text{fine}})
+$$
+
+
 
 > [!IMPORTANT]
 > Observa que si el valor de $\text{DEM}_{\text{fine}}$ o el coeficiente $\beta_{\text{elv}}$ están distorsionados, toda la temperatura de alta resolución colapsará inmediatamente antes de llegar a la fase de fusión.
@@ -113,7 +119,13 @@ Cuando CDT calcula el *Lapse Rate* (Paso 2) o la regresión espacial con un DEM 
 1. En la agregación gruesa ($\text{DEM}_{\text{coarse}}$), los píxeles costeros promedian la tierra ($+500\text{ m}$) con fosas abisales ($-3000\text{ m}$), resultando en elevaciones ficticias de $-1250\text{ m}$.
 2. En el GLM, la correlación entre la temperatura observada ($15$ a $32\ ^\circ\text{C}$) y elevaciones que varían entre $-8390\text{ m}$ y $+4000\text{ m}$ se distorsiona completamente, produciendo coeficientes **positivos** espurios ($\beta_{\text{elv}} \approx +0.017\ ^\circ\text{C}/\text{m}$) o interceptos absurdos ($\beta_0 \approx -10\ ^\circ\text{C}$).
 3. Al aplicar la reconstrucción:
-   $$T_{\text{downscaled}} = \beta_0 + \beta_{\text{elv}} \cdot \text{DEM}_{\text{fino}} + \hat{R}$$
+   
+
+$$
+T_{\text{downscaled}} = \beta_0 + \beta_{\text{elv}} \cdot \text{DEM}_{\text{fino}} + \hat{R}
+$$
+
+
    la topografía continental real positiva ($+1000$ a $+3000\text{ m}$) resta masivamente temperatura o sobre-corrige los residuales, desplomando las temperaturas en tierra a valores inverosímiles ($-10\ ^\circ\text{C}$ a $5\ ^\circ\text{C}$ en costas tropicales).
 4. **Consecuencia en Validación:** Las métricas se colapsan a $RMSE > 25\ ^\circ\text{C}$, $PBIAS < -60\%$ y $KGE < -10$, haciendo que los experimentos con DEM parezcan inferiores a un control nulo sin topografía (`EXP_TX01` / `EXP_TN01`).
 

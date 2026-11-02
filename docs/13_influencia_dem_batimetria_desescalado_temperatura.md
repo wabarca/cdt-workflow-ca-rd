@@ -33,8 +33,8 @@ graph LR
     subgraph Brecha_Topografica["Brecha Altimétrica (Δz)"]
         A["Orografía Real de Alta Resolución <br> (DEM 1 km / 30 arcsec)"]
         B["Orografía del Modelo Reanálisis <br> (Grilla Suavizada 5 km a 28 km)"]
-        A -.->|Picos: 3,820 m (Chirripó)| C["Δz = z_real - z_modelo <br> (hasta +1,800 m)"]
-        B -.->|Promedio de Celda: ~2,000 m| C
+        A -.->|"Picos: 3,820 m Chirripó"| C["Δz = z_real - z_modelo <br> (hasta +1,800 m)"]
+        B -.->|"Promedio de Celda: 2,000 m"| C
     end
 
     subgraph Error_Termico["Error Térmico Inducido (Sin Desescalar)"]
@@ -76,11 +76,11 @@ flowchart TD
     subgraph Dilema_Topografico["Impacto del Modelo de Elevación en Regresiones Térmicas"]
         DEM{"Selección de Modelo de Elevación"}
         
-        DEM -->|GEBCO con Batimetría Negativa <br> -8,390 m <= z <= +5,611 m| Bati["Inclusión de cotas submarinas en la regresión"]
+        DEM -->|"GEBCO con Batimetria Negativa (-8,390 m a +5,611 m)"| Bati["Inclusión de cotas submarinas en la regresión"]
         Bati --> Crash1["1. Extrapolación Hiper-Cálida Marina: <br> z = -4,000 m => T > 50 °C a 70 °C"]
         Bati --> Crash2["2. Colapso del Gradiente: <br> SST marina plana vs z variable => Cov(T,z)/Var(z) -> 0 <br> Pérdida de corrección en montañas"]
         
-        DEM -->|DEM Continental Terrestre <br> z >= 0.0 m (Nivel del mar / Máscara)| Cont["Física Confinada a la Troposfera Emergida"]
+        DEM -->|"DEM Continental Terrestre (z >= 0.0 m)"| Cont["Física Confinada a la Troposfera Emergida"]
         Cont --> OK1["Lapse Rate Estable y Robusto (~ -6.5 °C / 1000 m)"]
         Cont --> OK2["Condición de Borde Costero Continua (T0 a z = 0)"]
     end

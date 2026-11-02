@@ -112,7 +112,12 @@ Es un método de corrección sucesiva ampliamente usado en análisis objetivo me
 
 - **Función de peso de Cressman:**
 
-  $$W_{ij} = \begin{cases} \dfrac{R^2 - d_{ij}^2}{R^2 + d_{ij}^2} & \text{si } d_{ij} < R \\ 0 & \text{si } d_{ij} \ge R \end{cases}$$
+  $$
+W_{ij} = \begin{cases} 
+\dfrac{R^2 - d_{ij}^2}{R^2 + d_{ij}^2} & \text{si } d_{ij} < R \\
+0 & \text{si } d_{ij} \ge R 
+\end{cases}
+$$
 
   donde $d_{ij}$ es la distancia entre la estación $i$ y la celda $j$, y $R$ es el radio de influencia.
 

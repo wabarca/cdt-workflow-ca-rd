@@ -72,7 +72,12 @@ Diseñado para compensar el **agrupamiento espacial (*clustering*)** de estacion
 ### E. Cressman Objective Analysis (`"CSc"` / `"cressman"`)
 Esquema de análisis objetivo meteorológico clásico multiescala basado en correcciones sucesivas mediante factores de corrección empíricos proporcionales al radio de influencia:
 
-$$W_i = \begin{cases} \dfrac{R_c^2 - d_i^2}{R_c^2 + d_i^2}, & d_i < R_c \\ 0, & d_i \ge R_c \end{cases}$$
+$$
+W_i = \begin{cases} 
+\dfrac{R_c^2 - d_i^2}{R_c^2 + d_i^2}, & d_i < R_c \\
+0, & d_i \ge R_c 
+\end{cases}
+$$
 
 - **Mecanismo iterativo:** Se ejecuta en múltiples pasadas (típicamente 4 pasadas con radios decrecientes: $1.0 R_c, 0.75 R_c, 0.50 R_c, 0.25 R_c$), capturando primero anomalías de escala sinóptica y ajustando progresivamente las celdas convectivas o núcleos orográficos locales.
 

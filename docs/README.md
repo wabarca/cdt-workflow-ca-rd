@@ -37,7 +37,7 @@ Esta carpeta contiene la documentación técnica, matemática y metodológica pa
    - Diagnóstico multiplataforma: comprobación de ejecutables `Rscript` (ej. R 4.4.3), librerías de sistema en Linux y Rtools en Windows.
    - Guía de uso de la CLI, flags (`--suite`, `--config`, `--base-config`), partición automática de estaciones omitidas y ensamblado NetCDF 3D CF-1.8.
 
-10. [**10. Protocolo Metodológico Maestro y Matriz Completa de 31 Experimentos**](file:///d:/Workspace/CDT-8.0/docs/10_matriz_maestra_experimentos_y_guia_metodologica.md)
+10. [**10. Protocolo Metodológico Maestro y Matriz Completa de 31 Experimentos**](file:///d:/Workspace/CDT-8.0/docs/../docs-private/10_matriz_maestra_experimentos_y_guia_metodologica.md (privado/interno))
     - **Módulo Técnico Unificado:** Integra la significancia estadística y climatológica profunda de la interpolación, la justificación fisiográfica regional (Pacífico, Caribe, Corredor Seco, Azua, Enriquillo, valles altos), las tablas comparativas de los **31 experimentos** (15 Lluvia: Fase 1 y 2, 8 $T_{max}$, 8 $T_{min}$) con justificación celda por celda, fórmulas de validación cruzada independiente ($KGE$, $RMSE$, $MAE$, $PBIAS$, $POD$, $FAR$, $ETS$, $HSS$), evaluación de hardware en estación Linux Ubuntu (Intel Core i9-10850K @ 3.60GHz, 32 GB RAM DDR4, SSD NVMe 400 GB) y 19 referencias bibliográficas científicas con DOIs verificados.
 
 
