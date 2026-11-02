@@ -429,8 +429,8 @@ def generate_experiments_pdf(
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("GRID", (0, 0), (-1, -1), 0.5, BORDER_COLOR),
         ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_BG]),
-        ("TOPPADDING", (0, 0), (-1, -1), 2.0),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 2.0),
+        ("TOPPADDING", (0, 0), (-1, -1), 1.0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 1.0),
         ("LEFTPADDING", (0, 0), (-1, -1), 4.0),
         ("RIGHTPADDING", (0, 0), (-1, -1), 4.0),
     ]))
@@ -479,13 +479,13 @@ def generate_experiments_pdf(
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("GRID", (0, 0), (-1, -1), 0.5, BORDER_COLOR),
         ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_BG]),
-        ("TOPPADDING", (0, 0), (-1, -1), 2.2),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 2.2),
+        ("TOPPADDING", (0, 0), (-1, -1), 1.2),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 1.2),
         ("LEFTPADDING", (0, 0), (-1, -1), 3.5),
         ("RIGHTPADDING", (0, 0), (-1, -1), 3.5),
     ]))
     story.append(t_arch_r)
-    story.append(Spacer(1, 4))
+    story.append(PageBreak())
 
     story.append(Paragraph("3.2. Secuencia de Procesamiento para Temperatura (5 Etapas en CDT)", h2_style))
     story.append(Paragraph("<font size=7.5 color='#475569'><i>Ruta en CDT GUI: Gridding > Merging Climate Data > Temperatures Data</i></font>", body_style))
@@ -529,8 +529,8 @@ def generate_experiments_pdf(
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("GRID", (0, 0), (-1, -1), 0.5, BORDER_COLOR),
         ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_BG]),
-        ("TOPPADDING", (0, 0), (-1, -1), 2.0),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 2.0),
+        ("TOPPADDING", (0, 0), (-1, -1), 1.0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 1.0),
         ("LEFTPADDING", (0, 0), (-1, -1), 3.5),
         ("RIGHTPADDING", (0, 0), (-1, -1), 3.5),
     ]))
@@ -538,9 +538,139 @@ def generate_experiments_pdf(
     story.append(PageBreak())
 
     # =========================================================================
+    # PÁGINA 10: VALIDACIÓN CRUZADA INDEPENDIENTE Y MÉTRICAS CUANTITATIVAS
+    # =========================================================================
+    story.append(Paragraph("4. Protocolo de Evaluación: Validación Cruzada Independiente (Holdout), Estadísticos de Evaluación, Rangos y Significado", h1_style))
+    story.append(Paragraph(
+        "<b>Mecanismo de Evaluación de CDT y Partición Ciega (Holdout Validation):</b> Para garantizar una evaluación estrictamente independiente, ciega e insesgada (evitando el sobreajuste de calibrar y evaluar con las mismas estaciones), el orquestador (<code>launcher/station_manager.py</code>) desacopla la red observacional centroamericana en dos subconjuntos disjuntos: "
+        "<b>(1) Subconjunto de Entrenamiento (~80–90%)</b>, asimilado por CDT en el cálculo de coeficientes de sesgo y en la interpolación de residuales; y "
+        "<b>(2) Subconjunto de Validación Ciega (~10–20%, 29 estaciones retenidas)</b>, completamente invisible para CDT durante toda la corrida. "
+        "Tras generar las grillas diarias NetCDF 3D (CF-1.8), se extrae la serie modelada en el píxel de cada estación retenida y se evalúan las métricas cuantitativas:",
+        body_style,
+    ))
+    story.append(Spacer(1, 1))
+
+    story.append(Paragraph("4.1. Métricas Continuas (Magnitud, Dispersión y Balance del Error)", h2_style))
+    th_val_c = [
+        Paragraph("Métrica", th_val),
+        Paragraph("Ecuación Matemática", th_val),
+        Paragraph("Qué Cuantifica y Rango Óptimo", th_val),
+        Paragraph("Interpretación Física y Climatológica Regional", th_val),
+    ]
+    rows_val_c = [
+        [
+            Paragraph("<b>KGE</b><br/><i>Kling-Gupta Efficiency</i><br/>(Gupta et al., 2009)", td_val_bold),
+            render_latex_math([r'$KGE = 1 - \sqrt{(r - 1)^2 + (\beta - 1)^2 + (\gamma - 1)^2}$',
+                               r'$\beta = \frac{\mu_S}{\mu_O}, \quad \gamma = \frac{\sigma_S/\mu_S}{\sigma_O/\mu_O}$'], max_w_pt=168.0, max_h_pt=24.0),
+            Paragraph("Descompone el error en 3 ejes ortogonales: dinámica temporal (<i>r</i>), sesgo de volumen (&beta;) y dispersión relativa (&gamma;).<br/><b>Rango:</b> (&minus;&infin;, 1]. <b>Óptimo: 1.0</b>.<br/><i>KGE &gt; 0.3 indica habilidad predictiva real sobre la media.</i>", td_val),
+            Paragraph("<b>Métrica rectora multiobjetivo:</b> Equilibra dinámica sinóptica, conservación de masa y dispersión. Evita que modelos que alisan la varianza obtengan puntajes artificialmente altos.", td_val),
+        ],
+        [
+            Paragraph("<b>r</b><br/><i>Correlación de Pearson</i>", td_val_bold),
+            render_latex_math([r'$r = \frac{\mathrm{Cov}(S, O)}{\sigma_S \cdot \sigma_O}$',
+                               r'$\mathrm{Cov}(S,O) = \frac{1}{N}\sum (S_i - \bar{S})(O_i - \bar{O})$'], max_w_pt=168.0, max_h_pt=24.0),
+            Paragraph("Covarianza lineal y sincronía temporal de fases de la señal.<br/><b>Rango:</b> [&minus;1, 1]. <b>Óptimo: 1.0</b>.", td_val),
+            Paragraph("<b>Sincronía de eventos:</b> Mide la fidelidad para captar la llegada y ciclo estacional de ondas tropicales, frentes fríos (<i>Nortes</i>) y giros ciclónicos, independiente del sesgo de escala.", td_val),
+        ],
+        [
+            Paragraph("<b>RMSE</b><br/><i>Root Mean Square Error</i>", td_val_bold),
+            render_latex_math(r'$RMSE = \sqrt{\frac{1}{N} \sum_{i=1}^N (S_i - O_i)^2}$', max_w_pt=168.0, max_h_pt=19.0),
+            Paragraph("Magnitud cuadrática media del error en unidades físicas (mm o &deg;C).<br/><b>Rango:</b> [0, &infin;). <b>Óptimo: 0.0</b>.", td_val),
+            Paragraph("<b>Sensibilidad a extremos:</b> Penaliza desproporcionadamente errores grandes; detecta fallas severas en núcleos convectivos intensos (&gt;100 mm) u olas de calor (&gt;38 &deg;C).", td_val),
+        ],
+        [
+            Paragraph("<b>MAE</b><br/><i>Mean Absolute Error</i>", td_val_bold),
+            render_latex_math(r'$MAE = \frac{1}{N} \sum_{i=1}^N |S_i - O_i|$', max_w_pt=168.0, max_h_pt=19.0),
+            Paragraph("Magnitud lineal promedio del error absoluto en unidades físicas (mm o &deg;C).<br/><b>Rango:</b> [0, &infin;). <b>Óptimo: 0.0</b>.", td_val),
+            Paragraph("<b>Magnitud típica diaria:</b> Discrepancia esperada en un día cualquiera; ofrece una lectura no sesgada por valores atípicos (<i>outliers</i>) aislados.", td_val),
+        ],
+        [
+            Paragraph("<b>PBIAS</b><br/><i>Percent Bias</i>", td_val_bold),
+            render_latex_math(r'$PBIAS = \left[ \frac{\sum (S_i - O_i)}{\sum O_i} \right] \times 100\%$', max_w_pt=168.0, max_h_pt=19.0),
+            Paragraph("Desviación porcentual neta acumulada de volumen.<br/><b>Rango:</b> (&minus;&infin;, &infin;)%. <b>Óptimo: 0.0%</b>.", td_val),
+            Paragraph("<b>Conservación de balance:</b> Cuantifica el déficit (&minus;) o superávit (+) acumulado total; esencial en balances hídricos para no falsear la disponibilidad de agua en cuencas.", td_val),
+        ],
+        [
+            Paragraph("<b>GSS</b><br/><i>Global Skill Score</i><br/>(Índice Multicriterio)", td_val_bold),
+            render_latex_math([r'$\mathrm{GSS}_{\mathrm{rain}} = 0.35\,\mathrm{KGE} + 0.25\,r + 0.20\,\mathrm{ETS} + 0.20\,S_{\mathrm{pbias}}$',
+                               r'$\mathrm{GSS}_{\mathrm{temp}} = 0.40\,\mathrm{KGE} + 0.30\,r + 0.15\,S_{\mathrm{nrmse}} + 0.15\,S_{\mathrm{pbias}}$'], max_w_pt=168.0, max_h_pt=24.0),
+            Paragraph("Índice sintético multiobjetivo normalizado que pondera dinámica temporal, precisión cuadrática, sesgo y extremos.<br/><b>Rango:</b> [0, 1]. <b>Óptimo: 1.0</b>.", td_val),
+            Paragraph("<b>Criterio rector de selección:</b> Previene la sobreoptimización de una métrica aislada; garantiza que el modelo ganador equilibre dinámica sinóptica, balance volumétrico y captura de extremos.", td_val),
+        ],
+    ]
+    t_val_c = Table([th_val_c] + rows_val_c, colWidths=[0.85 * inch, 2.40 * inch, 2.10 * inch, 2.15 * inch])
+    t_val_c.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), SECONDARY),
+        ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+        ("ALIGN", (1, 1), (1, -1), "CENTER"),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("VALIGN", (1, 1), (1, -1), "MIDDLE"),
+        ("GRID", (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_BG]),
+        ("TOPPADDING", (0, 0), (-1, -1), 0.8),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 0.8),
+        ("LEFTPADDING", (0, 0), (-1, -1), 2.8),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 2.8),
+    ]))
+    story.append(t_val_c)
+    story.append(Spacer(1, 2))
+
+    story.append(Paragraph("4.2. Métricas Categóricas y Detección de Lluvia (&ge; 1.0 mm/día)", h2_style))
+    th_val_k = [
+        Paragraph("Métrica", th_val),
+        Paragraph("Ecuación Matemática", th_val),
+        Paragraph("Qué Cuantifica y Rango Óptimo", th_val),
+        Paragraph("Interpretación Física y Climatológica Regional", th_val),
+    ]
+    rows_val_k = [
+        [
+            Paragraph("<b>POD</b><br/><i>Probability of Detection</i>", td_val_bold),
+            render_latex_math(r'$POD = \frac{a}{a + c}$', max_w_pt=168.0, max_h_pt=18.0),
+            Paragraph("Fracción de días lluviosos observados que fueron detectados por el modelo.<br/><b>Rango:</b> [0, 1]. <b>Óptimo: 1.0</b>.", td_val),
+            Paragraph("<b>Sensibilidad de lluvia:</b> Mide la eficacia del satélite fusionado para captar precipitación real sin perder eventos agronómicamente significativos.", td_val),
+        ],
+        [
+            Paragraph("<b>FAR</b><br/><i>False Alarm Ratio</i>", td_val_bold),
+            render_latex_math(r'$FAR = \frac{b}{a + b}$', max_w_pt=168.0, max_h_pt=18.0),
+            Paragraph("Fracción de lluvia simulada que resultó ser día seco en superficie.<br/><b>Rango:</b> [0, 1]. <b>Óptimo: 0.0</b>.", td_val),
+            Paragraph("<b>Control de lloviznas espurias:</b> Cuantifica la persistencia del efecto <i>drizzle</i> y falsa lluvia por cirros fríos; clave para validar la máscara RnoR en la Canícula.", td_val),
+        ],
+        [
+            Paragraph("<b>ETS</b><br/><i>Equitable Threat Score</i><br/>(Gilbert Skill Score)", td_val_bold),
+            render_latex_math([r'$ETS = \frac{a - a_r}{a + b + c - a_r}$',
+                               r'$a_r = \frac{(a+b)(a+c)}{n}$'], max_w_pt=168.0, max_h_pt=24.0),
+            Paragraph("Detección equitativa penalizando falsas alarmas y fallos, descontando aciertos fortuitos.<br/><b>Rango:</b> [&minus;1/3, 1]. <b>Óptimo: 1.0</b>.", td_val),
+            Paragraph("<b>Destreza sobre el azar:</b> Excluye los aciertos que ocurrirían por mera probabilidad climatológica; ETS &gt; 0 certifica habilidad predictiva real de la fusión.", td_val),
+        ],
+        [
+            Paragraph("<b>HSS</b><br/><i>Heidke Skill Score</i>", td_val_bold),
+            render_latex_math(r'$HSS = \frac{2(ad - bc)}{(a+c)(c+d) + (a+b)(b+d)}$', max_w_pt=168.0, max_h_pt=19.0),
+            Paragraph("Exactitud de clasificación binaria (lluvia / no-lluvia) relativa al azar.<br/><b>Rango:</b> (&minus;&infin;, 1]. <b>Óptimo: 1.0</b>.", td_val),
+            Paragraph("<b>Habilidad categórica global:</b> Evalúa conjuntamente el acierto en días secos (rachas sin lluvia en Corredor Seco) y días húmedos, validando la Canícula.", td_val),
+        ],
+    ]
+    t_val_k = Table([th_val_k] + rows_val_k, colWidths=[0.85 * inch, 2.40 * inch, 2.10 * inch, 2.15 * inch])
+    t_val_k.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), SECONDARY),
+        ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+        ("ALIGN", (1, 1), (1, -1), "CENTER"),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("VALIGN", (1, 1), (1, -1), "MIDDLE"),
+        ("GRID", (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_BG]),
+        ("TOPPADDING", (0, 0), (-1, -1), 0.8),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 0.8),
+        ("LEFTPADDING", (0, 0), (-1, -1), 2.8),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 2.8),
+    ]))
+    story.append(t_val_k)
+    story.append(PageBreak())
+
+
+    # =========================================================================
     # PÁGINA 3: SUITE A - PRECIPITACIÓN FASE 1 (EVALUACIÓN PRELIMINAR: R01 A R10)
     # =========================================================================
-    story.append(Paragraph("4.1. Suite A: Precipitación Diaria — Fase 1 (Evaluación Exploratoria Preliminar: 10 Experimentos)", h1_style))
+    story.append(Paragraph("5.1. Suite A: Precipitación Diaria — Fase 1 (Evaluación Exploratoria Preliminar: 10 Experimentos)", h1_style))
     story.append(Paragraph(
         "Batería experimental estructurada según los 3 pasos de CDT para aislar efectos de corrección de sesgo, filtro RnoR y métodos de interpolación en el istmo centroamericano:",
         body_style,
@@ -644,7 +774,7 @@ def generate_experiments_pdf(
     # =========================================================================
     # PÁGINA 4: SUITE A - FASE 2, LEADERBOARD Y DISCUSIÓN DE PRECIPITACIÓN
     # =========================================================================
-    story.append(Paragraph("4.2. Suite A: Precipitación Diaria — Fase 2 (Optimización Dirigida) y Leaderboard", h1_style))
+    story.append(Paragraph("5.2. Suite A: Precipitación Diaria — Fase 2 (Optimización Dirigida) y Leaderboard", h1_style))
     story.append(Paragraph(
         "A partir de los resultados de la Fase 1 en Centroamérica, donde <b>Shepard Modificado (EXP_R08)</b> y <b>Spheremap (EXP_R09)</b> demostraron superioridad concluyente sobre métodos geoestadísticos rígidos y regresiones globales, la Fase 2 formuló 5 experimentos de refinamiento dirigidos a optimizar el estimador de sesgo (mediana), el confinamiento orográfico y la transición suave de lluvia:",
         body_style,
@@ -787,7 +917,7 @@ def generate_experiments_pdf(
     story.append(Spacer(1, 2))
 
     # DISCUSIÓN DE RESULTADOS DE PRECIPITACIÓN
-    story.append(Paragraph("4.3. Discusión de resultados de Precipitación en Centroamérica", h2_style))
+    story.append(Paragraph("5.3. Discusión de resultados de Precipitación en Centroamérica", h2_style))
     story.append(Paragraph(
         "<b>1. No Linealidad Orográfica y Falla de Regression Kriging:</b> En Centroamérica, la relación entre cota altimétrica y precipitación diaria no es monótona: la máxima condensación forzada por los vientos Alisios ocurre en laderas medias de barlovento (800–1,800 msnm) y decrece hacia las cumbres más altas por agotamiento de humedad. Modelos de regresión global con DEM colapsan (KGE &lt; 0.22) al imponer sombras de lluvia artificiales o forzar lluvia excesiva en cumbres secas.<br/>"
         "<b>2. Superioridad de Shepard Modificado en el Istmo:</b> Las 4 variantes de Shepard copan el Top 4. Al evaluar derivadas direccionales locales con polinomios de Taylor en lugar de variogramas esféricos isotrópicos rígidos, se adapta a la topografía escarpada y cañones del istmo sin generar 'ojos de buey' circulares alrededor de estaciones aisladas.<br/>"
@@ -799,7 +929,7 @@ def generate_experiments_pdf(
     # =========================================================================
     # PÁGINA 5: SUITE B - TEMPERATURA MÁXIMA FASE 1 (EXP-TX01 A TX08)
     # =========================================================================
-    story.append(Paragraph("5.1. Suite B: Temperatura Máxima Diurna — Fase 1 (Evaluación Preliminar: 8 Experimentos)", h1_style))
+    story.append(Paragraph("6.1. Suite B: Temperatura Máxima Diurna — Fase 1 (Evaluación Preliminar: 8 Experimentos)", h1_style))
     story.append(Paragraph(
         "Batería experimental estructurada según los 5 pasos de CDT: desescalado topográfico, ajuste de sesgo diurno y fusión con radiación solar e insolación en Centroamérica:",
         body_style,
@@ -898,7 +1028,7 @@ def generate_experiments_pdf(
     # =========================================================================
     # PÁGINA 6: SUITE B - TMAX FASE 2, LEADERBOARD Y DISCUSIÓN
     # =========================================================================
-    story.append(Paragraph("5.2. Suite B: Tmax — Fase 2 (Optimización Dirigida) y Leaderboard Consolidado (12 Experimentos)", h1_style))
+    story.append(Paragraph("6.2. Suite B: Tmax — Fase 2 (Optimización Dirigida) y Leaderboard Consolidado (12 Experimentos)", h1_style))
     story.append(Paragraph(
         "La Fase 2 de Temperatura Máxima en Centroamérica formuló 4 configuraciones avanzadas para acoplar la proyección orográfica real del DEM con el amortiguamiento espectral continuo de Barnes y la evaluación no paramétrica de cuantiles:",
         body_style,
@@ -1021,7 +1151,7 @@ def generate_experiments_pdf(
     story.append(Spacer(1, 2))
 
     # DISCUSIÓN DE RESULTADOS DE TEMPERATURA MÁXIMA
-    story.append(Paragraph("5.3. Discusión de resultados de Temperatura Máxima en Centroamérica", h2_style))
+    story.append(Paragraph("6.3. Discusión de resultados de Temperatura Máxima en Centroamérica", h2_style))
     story.append(Paragraph(
         "<b>1. Convección Diurna y Mezcla Turbulenta en la Capa Límite:</b> Durante el día, la intensa insolación solar tropical induce mezcla turbulenta vigorosa en la capa límite atmosférica (1.5 a 2.5 km de espesor). Esto homogeneiza el gradiente térmico vertical ambiental, aproximándolo estrechamente al gradiente adiabático seco/húmedo (&part;<i>T</i>/&part;<i>z</i> &approx; -6.5 °C/km).<br/>"
         "<b>2. La Falacia de la Línea Base y por qué no es Operativa:</b> En las estaciones de prueba (concentradas en valles poblados y planicies costeras &lt;500 msnm), el IDW plano 2D minimiza el error puntual (1.90 °C) porque interpola entre puntos de una misma masa de aire de valle. Sin embargo, en las zonas desprovistas de estaciones (como la Cordillera de Talamanca a 3,820 m o los Cuchumatanes a &gt;3,500 m), el IDW horizontal propaga las temperaturas cálidas del valle (28–32 °C) hacia las cumbres gélidas, borrando el gradiente hipsométrico real.<br/>"
@@ -1033,7 +1163,7 @@ def generate_experiments_pdf(
     # =========================================================================
     # PÁGINA 7: SUITE C - TEMPERATURA MÍNIMA FASE 1 (EXP-TN01 A TN08)
     # =========================================================================
-    story.append(Paragraph("6.1. Suite C: Temperatura Mínima Nocturna — Fase 1 (Evaluación Preliminar: 8 Experimentos)", h1_style))
+    story.append(Paragraph("7.1. Suite C: Temperatura Mínima Nocturna — Fase 1 (Evaluación Preliminar: 8 Experimentos)", h1_style))
     story.append(Paragraph(
         "Batería experimental estructurada según los 5 pasos de CDT: desescalado altimétrico, enfriamiento radiativo, inversiones nocturnas y frentes fríos en Centroamérica:",
         body_style,
@@ -1132,7 +1262,7 @@ def generate_experiments_pdf(
     # =========================================================================
     # PÁGINA 8: SUITE C - TMIN FASE 2, LEADERBOARD Y DISCUSIÓN
     # =========================================================================
-    story.append(Paragraph("6.2. Suite C: Tmin — Fase 2 (Optimización Dirigida) y Leaderboard Consolidado (12 Experimentos)", h1_style))
+    story.append(Paragraph("7.2. Suite C: Tmin — Fase 2 (Optimización Dirigida) y Leaderboard Consolidado (12 Experimentos)", h1_style))
     story.append(Paragraph(
         "La Fase 2 de Temperatura Mínima en Centroamérica formuló 4 configuraciones avanzadas orientadas a resolver el desacople vertical nocturno, la formación de pozas de aire frío y la calibración no lineal de heladas:",
         body_style,
@@ -1255,7 +1385,7 @@ def generate_experiments_pdf(
     story.append(Spacer(1, 2))
 
     # DISCUSIÓN DE RESULTADOS DE TEMPERATURA MÍNIMA
-    story.append(Paragraph("6.3. Discusión de resultados de Temperatura Mínima en Centroamérica", h2_style))
+    story.append(Paragraph("7.3. Discusión de resultados de Temperatura Mínima en Centroamérica", h2_style))
     story.append(Paragraph(
         "<b>1. Enfriamiento Radiativo Nocturno y Desacople Vertical:</b> Durante la noche no hay insolación solar; la atmósfera se desacopla verticalmente y predomina la pérdida radiativa de onda larga en superficie. El aire frío y denso drena gravitacionalmente laderas abajo (vientos catabáticos) y se acumula en fondos de valles y cuencas endorreicas (<i>cold-air pooling</i>), provocando fuertes inversiones térmicas (valles altos con heladas &lt;0 °C mientras laderas intermedias permanecen 6–8 °C más cálidas).<br/>"
         "<b>2. Falla de Funciones Teóricas Gaussianas:</b> Asumir campanas normales simétricas o colas Gumbel analíticas desploma el KGE (&lt; 0.11), pues los modelos lineales asumen erróneamente que a mayor altitud siempre hace más frío en la noche.<br/>"
@@ -1267,7 +1397,7 @@ def generate_experiments_pdf(
     # =========================================================================
     # PÁGINA 9: GRILLAS, HARDWARE Y RENDIMIENTO (92H 24M TOTAL)
     # =========================================================================
-    story.append(Paragraph("7. Configuración Espacial, Recursos de Cómputo y Tiempos de Ejecución", h1_style))
+    story.append(Paragraph("8. Configuración Espacial, Recursos de Cómputo y Tiempos de Ejecución", h1_style))
     story.append(Paragraph(
         "• <b>Opciones de Grilla en CDT (<code>grid$from</code>):</b> <b><code>from: \"data\"</code></b> (Grilla nativa satelital 0.05° ~5.5 km) garantiza <b>coincidencia geométrica 1:1</b> con CHIRPS crudo en <code>EXP-R01</code> a <code>EXP-R06</code> y <code>EXP-R08</code> a <code>EXP-R10</code>, permitiendo diferencias directas píxel a píxel (&Delta; = Corregido - Original). <b><code>from: \"ncdf\"</code></b> (DEM SRTM 0.01° ~1.1 km) es <b>obligatorio</b> en Desescalado de Temperatura (<code>Downscaling Data</code>) para proyectar el gradiente adiabático (&part;<i>T</i>/&part;<i>z</i> &approx; -6.5 °C/km) a cumbres &gt;3,000 m (Tajumulco, Chirripó) y valles, y en <code>EXP-R07</code> (RK Orográfico).<br/><br/>"
         "• <b>Recorte con Shapefile (<i>Blanking</i>) y Buffer Óptimo de 10 km:</b> Para una celda de 0.05° (diagonal = 7.73 km), un <b>buffer de 10 km (~2 celdas)</b> supera la diagonal, evita pérdidas en costas oblicuas (45°) y asegura la cobertura completa de islas (Roatán, Guanaja, Coiba, Perlas, Ometepe), golfos y cuencas binacionales.",
@@ -1275,7 +1405,7 @@ def generate_experiments_pdf(
     ))
     story.append(Spacer(1, 3))
 
-    story.append(Paragraph("7.1. Plataforma de Cómputo Calibrada: Intel Core i9-10850K @ 3.60GHz, 32 GB RAM, NVMe 400 GB (Ubuntu 24.04.5 LTS)", h2_style))
+    story.append(Paragraph("8.1. Plataforma de Cómputo Calibrada: Intel Core i9-10850K @ 3.60GHz, 32 GB RAM, NVMe 400 GB (Ubuntu 24.04.5 LTS)", h2_style))
     th_hw = [Paragraph("Componente", th_style), Paragraph("Especificación de la Plataforma", th_style), Paragraph("Evaluación de Desempeño en CDT", th_style)]
     rows_hw = [
         [Paragraph("<b>CPU</b>", td_bold), Paragraph("<b>Intel(R) Core(TM) i9-10850K CPU @ 3.60GHz</b><br/>10 Núcleos / 20 Hilos (Base 3.6 GHz, Turbo 5.2 GHz)<br/>Caché L3 Intel Smart Cache: 20 MB", td_style), Paragraph("<b>Excelente Rendimiento Multihilo:</b> 10 núcleos Comet Lake de alta frecuencia. Permite despachar <b>hasta 18 workers paralelos</b> continuos manteniendo 2 hilos reservados para el sistema operativo sin sobrecalentamiento ni contención.", td_style)],
@@ -1290,15 +1420,15 @@ def generate_experiments_pdf(
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("GRID", (0, 0), (-1, -1), 0.5, BORDER_COLOR),
         ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_BG]),
-        ("TOPPADDING", (0, 0), (-1, -1), 2.2),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 2.2),
+        ("TOPPADDING", (0, 0), (-1, -1), 1.2),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 1.2),
         ("LEFTPADDING", (0, 0), (-1, -1), 4.0),
         ("RIGHTPADDING", (0, 0), (-1, -1), 4.0),
     ]))
     story.append(t_table_hw)
     story.append(Spacer(1, 3))
 
-    story.append(Paragraph("7.2. Tiempos de Cómputo Reales Medidos (18 Núcleos en Linux Ubuntu, Total: 92h 24m)", h2_style))
+    story.append(Paragraph("8.2. Tiempos de Cómputo Reales Medidos (18 Núcleos en Linux Ubuntu, Total: 92h 24m)", h2_style))
     story.append(Paragraph(
         "Las 3 suites de experimentos se ejecutaron de manera íntegra sobre la serie climatológica completa 1991–2020 (10,958 días cada uno), acumulando un total de <b>92 horas 24 minutos de cómputo ininterrumpido</b> (3.85 días continuos):",
         body_style,
@@ -1319,134 +1449,12 @@ def generate_experiments_pdf(
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("GRID", (0, 0), (-1, -1), 0.5, BORDER_COLOR),
         ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_BG]),
-        ("TOPPADDING", (0, 0), (-1, -1), 2.2),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 2.2),
+        ("TOPPADDING", (0, 0), (-1, -1), 1.2),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 1.2),
         ("LEFTPADDING", (0, 0), (-1, -1), 3.5),
         ("RIGHTPADDING", (0, 0), (-1, -1), 3.5),
     ]))
     story.append(t_table_tm)
-    story.append(PageBreak())
-
-    # =========================================================================
-    # PÁGINA 10: VALIDACIÓN CRUZADA INDEPENDIENTE Y MÉTRICAS CUANTITATIVAS
-    # =========================================================================
-    story.append(Paragraph("8. Validación Cruzada Independiente (Holdout por CSV) y Métricas Cuantitativas", h1_style))
-    story.append(Paragraph(
-        "<b>Mecanismo de Evaluación de CDT y Partición Ciega (Holdout Validation):</b> Para garantizar una evaluación estrictamente independiente, ciega e insesgada (evitando el sobreajuste de calibrar y evaluar con las mismas estaciones), el orquestador (<code>launcher/station_manager.py</code>) desacopla la red observacional centroamericana en dos subconjuntos disjuntos: "
-        "<b>(1) Subconjunto de Entrenamiento (~80–90%)</b>, asimilado por CDT en el cálculo de coeficientes de sesgo y en la interpolación de residuales; y "
-        "<b>(2) Subconjunto de Validación Ciega (~10–20%, 29 estaciones retenidas)</b>, completamente invisible para CDT durante toda la corrida. "
-        "Tras generar las grillas diarias NetCDF 3D (CF-1.8), se extrae la serie modelada en el píxel de cada estación retenida y se evalúan las métricas cuantitativas:",
-        body_style,
-    ))
-    story.append(Spacer(1, 1))
-
-    story.append(Paragraph("8.1. Métricas Continuas (Magnitud, Dispersión y Distribución del Error)", h2_style))
-    th_val_c = [
-        Paragraph("Métrica", th_val),
-        Paragraph("Ecuación Matemática", th_val),
-        Paragraph("Qué Cuantifica y Rango Óptimo", th_val),
-        Paragraph("Interpretación Física y Climatológica Regional", th_val),
-    ]
-    rows_val_c = [
-        [
-            Paragraph("<b>KGE</b><br/><i>Kling-Gupta Efficiency</i><br/>(Gupta et al., 2009)", td_val_bold),
-            render_latex_math([r'$KGE = 1 - \sqrt{(r - 1)^2 + (\beta - 1)^2 + (\gamma - 1)^2}$',
-                               r'$\beta = \frac{\mu_S}{\mu_O}, \quad \gamma = \frac{\sigma_S/\mu_S}{\sigma_O/\mu_O}$'], max_w_pt=168.0, max_h_pt=24.0),
-            Paragraph("Descompone el error en 3 ejes ortogonales: dinámica temporal (<i>r</i>), sesgo de volumen (&beta;) y dispersión relativa (&gamma;).<br/><b>Rango:</b> (&minus;&infin;, 1]. <b>Óptimo: 1.0</b>.<br/><i>KGE &gt; 0.3 indica habilidad predictiva real sobre la media.</i>", td_val),
-            Paragraph("<b>Métrica rectora multiobjetivo:</b> Equilibra dinámica sinóptica, conservación de masa y dispersión. Evita que modelos que alisan la varianza obtengan puntajes artificialmente altos.", td_val),
-        ],
-        [
-            Paragraph("<b>r</b><br/><i>Correlación de Pearson</i>", td_val_bold),
-            render_latex_math([r'$r = \frac{\mathrm{Cov}(S, O)}{\sigma_S \cdot \sigma_O}$',
-                               r'$\mathrm{Cov}(S,O) = \frac{1}{N}\sum (S_i - \bar{S})(O_i - \bar{O})$'], max_w_pt=168.0, max_h_pt=24.0),
-            Paragraph("Covarianza lineal y sincronía temporal de fases de la señal.<br/><b>Rango:</b> [&minus;1, 1]. <b>Óptimo: 1.0</b>.", td_val),
-            Paragraph("<b>Sincronía de eventos:</b> Mide la fidelidad para captar la llegada y ciclo estacional de ondas tropicales, frentes fríos (<i>Nortes</i>) y giros ciclónicos, independiente del sesgo de escala.", td_val),
-        ],
-        [
-            Paragraph("<b>RMSE</b><br/><i>Root Mean Square Error</i>", td_val_bold),
-            render_latex_math(r'$RMSE = \sqrt{\frac{1}{N} \sum_{i=1}^N (S_i - O_i)^2}$', max_w_pt=168.0, max_h_pt=19.0),
-            Paragraph("Magnitud cuadrática media del error en unidades físicas (mm o &deg;C).<br/><b>Rango:</b> [0, &infin;). <b>Óptimo: 0.0</b>.", td_val),
-            Paragraph("<b>Sensibilidad a extremos:</b> Penaliza desproporcionadamente errores grandes; detecta fallas severas en núcleos convectivos intensos (&gt;100 mm) u olas de calor (&gt;38 &deg;C).", td_val),
-        ],
-        [
-            Paragraph("<b>MAE</b><br/><i>Mean Absolute Error</i>", td_val_bold),
-            render_latex_math(r'$MAE = \frac{1}{N} \sum_{i=1}^N |S_i - O_i|$', max_w_pt=168.0, max_h_pt=19.0),
-            Paragraph("Magnitud lineal promedio del error absoluto en unidades físicas (mm o &deg;C).<br/><b>Rango:</b> [0, &infin;). <b>Óptimo: 0.0</b>.", td_val),
-            Paragraph("<b>Magnitud típica diaria:</b> Discrepancia esperada en un día cualquiera; ofrece una lectura no sesgada por valores atípicos (<i>outliers</i>) aislados.", td_val),
-        ],
-        [
-            Paragraph("<b>PBIAS</b><br/><i>Percent Bias</i>", td_val_bold),
-            render_latex_math(r'$PBIAS = \left[ \frac{\sum (S_i - O_i)}{\sum O_i} \right] \times 100\%$', max_w_pt=168.0, max_h_pt=19.0),
-            Paragraph("Desviación porcentual neta acumulada de volumen.<br/><b>Rango:</b> (&minus;&infin;, &infin;)%. <b>Óptimo: 0.0%</b>.", td_val),
-            Paragraph("<b>Conservación de balance:</b> Cuantifica el déficit (&minus;) o superávit (+) acumulado total; esencial en balances hídricos para no falsear la disponibilidad de agua en cuencas.", td_val),
-        ],
-    ]
-    t_val_c = Table([th_val_c] + rows_val_c, colWidths=[0.85 * inch, 2.40 * inch, 2.10 * inch, 2.15 * inch])
-    t_val_c.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), SECONDARY),
-        ("ALIGN", (0, 0), (-1, 0), "CENTER"),
-        ("ALIGN", (1, 1), (1, -1), "CENTER"),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("VALIGN", (1, 1), (1, -1), "MIDDLE"),
-        ("GRID", (0, 0), (-1, -1), 0.5, BORDER_COLOR),
-        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_BG]),
-        ("TOPPADDING", (0, 0), (-1, -1), 1.1),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 1.1),
-        ("LEFTPADDING", (0, 0), (-1, -1), 2.8),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 2.8),
-    ]))
-    story.append(t_val_c)
-    story.append(Spacer(1, 2))
-
-    story.append(Paragraph("8.2. Métricas Categóricas y Detección de Lluvia (&ge; 1.0 mm/día)", h2_style))
-    th_val_k = [
-        Paragraph("Métrica", th_val),
-        Paragraph("Ecuación Matemática", th_val),
-        Paragraph("Qué Cuantifica y Rango Óptimo", th_val),
-        Paragraph("Interpretación Física y Climatológica Regional", th_val),
-    ]
-    rows_val_k = [
-        [
-            Paragraph("<b>POD</b><br/><i>Probability of Detection</i>", td_val_bold),
-            render_latex_math(r'$POD = \frac{a}{a + c}$', max_w_pt=168.0, max_h_pt=18.0),
-            Paragraph("Fracción de días lluviosos observados que fueron detectados por el modelo.<br/><b>Rango:</b> [0, 1]. <b>Óptimo: 1.0</b>.", td_val),
-            Paragraph("<b>Sensibilidad de lluvia:</b> Mide la eficacia del satélite fusionado para captar precipitación real sin perder eventos agronómicamente significativos.", td_val),
-        ],
-        [
-            Paragraph("<b>FAR</b><br/><i>False Alarm Ratio</i>", td_val_bold),
-            render_latex_math(r'$FAR = \frac{b}{a + b}$', max_w_pt=168.0, max_h_pt=18.0),
-            Paragraph("Fracción de lluvia simulada que resultó ser día seco en superficie.<br/><b>Rango:</b> [0, 1]. <b>Óptimo: 0.0</b>.", td_val),
-            Paragraph("<b>Control de lloviznas espurias:</b> Cuantifica la persistencia del efecto <i>drizzle</i> y falsa lluvia por cirros fríos; clave para validar la máscara RnoR en la Canícula.", td_val),
-        ],
-        [
-            Paragraph("<b>ETS</b><br/><i>Equitable Threat Score</i><br/>(Gilbert Skill Score)", td_val_bold),
-            render_latex_math([r'$ETS = \frac{a - a_r}{a + b + c - a_r}$',
-                               r'$a_r = \frac{(a+b)(a+c)}{n}$'], max_w_pt=168.0, max_h_pt=24.0),
-            Paragraph("Detección equitativa penalizando falsas alarmas y fallos, descontando aciertos fortuitos.<br/><b>Rango:</b> [&minus;1/3, 1]. <b>Óptimo: 1.0</b>.", td_val),
-            Paragraph("<b>Destreza sobre el azar:</b> Excluye los aciertos que ocurrirían por mera probabilidad climatológica; ETS &gt; 0 certifica habilidad predictiva real de la fusión.", td_val),
-        ],
-        [
-            Paragraph("<b>HSS</b><br/><i>Heidke Skill Score</i>", td_val_bold),
-            render_latex_math(r'$HSS = \frac{2(ad - bc)}{(a+c)(c+d) + (a+b)(b+d)}$', max_w_pt=168.0, max_h_pt=19.0),
-            Paragraph("Exactitud de clasificación binaria (lluvia / no-lluvia) relativa al azar.<br/><b>Rango:</b> (&minus;&infin;, 1]. <b>Óptimo: 1.0</b>.", td_val),
-            Paragraph("<b>Habilidad categórica global:</b> Evalúa conjuntamente el acierto en días secos (rachas sin lluvia en Corredor Seco) y días húmedos, validando la Canícula.", td_val),
-        ],
-    ]
-    t_val_k = Table([th_val_k] + rows_val_k, colWidths=[0.85 * inch, 2.40 * inch, 2.10 * inch, 2.15 * inch])
-    t_val_k.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), SECONDARY),
-        ("ALIGN", (0, 0), (-1, 0), "CENTER"),
-        ("ALIGN", (1, 1), (1, -1), "CENTER"),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("VALIGN", (1, 1), (1, -1), "MIDDLE"),
-        ("GRID", (0, 0), (-1, -1), 0.5, BORDER_COLOR),
-        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_BG]),
-        ("TOPPADDING", (0, 0), (-1, -1), 1.1),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 1.1),
-        ("LEFTPADDING", (0, 0), (-1, -1), 2.8),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 2.8),
-    ]))
-    story.append(t_val_k)
     story.append(PageBreak())
 
     # =========================================================================
@@ -1496,8 +1504,8 @@ def generate_experiments_pdf(
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("GRID", (0, 0), (-1, -1), 0.5, BORDER_COLOR),
         ("ROWBACKGROUNDS", (0, 1), (-1, -1), [WINNER_BG, LIGHT_BG]),
-        ("TOPPADDING", (0, 0), (-1, -1), 2.2),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 2.2),
+        ("TOPPADDING", (0, 0), (-1, -1), 1.2),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 1.2),
         ("LEFTPADDING", (0, 0), (-1, -1), 3.0),
         ("RIGHTPADDING", (0, 0), (-1, -1), 3.0),
     ]))
@@ -1515,7 +1523,7 @@ def generate_experiments_pdf(
     ))
     story.append(Spacer(1, 3))
 
-    story.append(Paragraph("9.2. Referencias Bibliográficas Científicas Verificadas (21 Publicaciones Indexadas)", h2_style))
+    story.append(Paragraph("10. Referencias Bibliográficas Científicas Verificadas (21 Publicaciones Indexadas)", h2_style))
     references_data = [
         ("Amador, J. A., Alfaro, E. J., Lizano, O. G., & Magaña, V. O. (2006).",
          "<i>Atmospheric forcing of the eastern tropical Pacific: A review.</i> Prog. Oceanogr., 69(2–4), 101–142. DOI: 10.1016/j.pocean.2006.03.007",
