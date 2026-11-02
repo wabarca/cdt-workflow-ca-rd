@@ -2,20 +2,21 @@
 
 Proyecto: "Escenarios de Cambio Climático de Alta Resolución en Centroamérica y el Caribe"
 Grupo Oficial: Grupo de Trabajo Regional de Escenarios de Cambio Climático de Centroamérica y el Caribe
+Alcance Actual: Dominio Regional de Centroamérica (Guatemala, Belice, El Salvador, Honduras, Nicaragua, Costa Rica, Panamá)
 
 Genera un documento técnico científico de nivel de publicación en formato VERTICAL (Portrait Letter: 8.5 x 11 pulgadas),
 utilizando ReportLab, con tipografía estándar legible, espaciado armónico, cajas contenedoras tipo tarjeta,
 paginación dinámica de dos pasadas ("Página X de Y"), encabezados y pies de página formales, tablas completas
 de arquitectura de pasos en CDT, matrices exhaustivas para los 39 experimentos (15 Precipitación, 12 Tmax, 12 Tmin),
-tablas completas de leaderboard de validación independiente (29 estaciones holdout ciegas),
+discusiones de resultados seccionadas por variable orientadas a la física y climatología centroamericana,
+análisis prospectivo para República Dominicana, tablas completas de leaderboard de validación independiente (29 estaciones holdout ciegas),
 ecuaciones matemáticas renderizadas con alta resolución tipográfica (matplotlib mathtext),
-tiempos de ejecución calibrados (92h 24m totales) y 21 referencias bibliográficas verificadas.
+tiempos de ejecución medidos (92h 24m totales) y 21 referencias bibliográficas verificadas.
 """
 
 from __future__ import annotations
 
 import io
-import shutil
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -99,7 +100,7 @@ class NumberedCanvas(canvas.Canvas):
             self.setStrokeColor(colors.HexColor("#CBD5E1"))
             self.setLineWidth(0.6)
             self.line(0.50 * inch, 10.45 * inch, 8.00 * inch, 10.45 * inch)
-            self.drawString(0.50 * inch, 10.50 * inch, "Escenarios de Cambio Climático de Alta Resolución en Centroamérica y el Caribe")
+            self.drawString(0.50 * inch, 10.50 * inch, "Escenarios de Cambio Climático de Alta Resolución — Fase Centroamérica")
             self.drawRightString(8.00 * inch, 10.50 * inch, "Grupo de Trabajo Regional")
 
         # Pie de página corriente (todas las páginas)
@@ -138,13 +139,15 @@ def generate_experiments_pdf(
     BORDER_COLOR = colors.HexColor("#CBD5E1")
     WINNER_BG = colors.HexColor("#ECFDF5")
     WINNER_TEXT = colors.HexColor("#065F46")
+    ALERT_BG = colors.HexColor("#FFFBEB")  # Amber subtle
+    ALERT_BORDER = colors.HexColor("#FDE68A")
 
     title_style = ParagraphStyle(
         "DocTitle",
         parent=styles["Heading1"],
         fontName="Helvetica-Bold",
-        fontSize=13.0,
-        leading=16.5,
+        fontSize=12.5,
+        leading=16.0,
         textColor=PRIMARY,
         alignment=1,
         spaceAfter=3,
@@ -154,62 +157,62 @@ def generate_experiments_pdf(
         "DocSubtitle",
         parent=styles["Normal"],
         fontName="Helvetica",
-        fontSize=9.5,
-        leading=12.5,
+        fontSize=9.2,
+        leading=12.0,
         textColor=SECONDARY,
         alignment=1,
-        spaceAfter=4,
+        spaceAfter=3,
     )
 
     org_style = ParagraphStyle(
         "DocOrg",
         parent=styles["Normal"],
         fontName="Helvetica-Bold",
-        fontSize=8.5,
-        leading=11.5,
+        fontSize=8.2,
+        leading=11.0,
         textColor=DARK_TEXT,
         alignment=1,
-        spaceAfter=6,
+        spaceAfter=5,
     )
 
     h1_style = ParagraphStyle(
         "H1Style",
         parent=styles["Heading2"],
         fontName="Helvetica-Bold",
-        fontSize=10.5,
-        leading=13.5,
+        fontSize=10.2,
+        leading=13.0,
         textColor=PRIMARY,
         spaceBefore=4.0,
-        spaceAfter=2.5,
+        spaceAfter=2.0,
     )
 
     h2_style = ParagraphStyle(
         "H2Style",
         parent=styles["Heading3"],
         fontName="Helvetica-Bold",
-        fontSize=9.2,
-        leading=11.8,
+        fontSize=8.8,
+        leading=11.4,
         textColor=SECONDARY,
-        spaceBefore=3.5,
-        spaceAfter=2.0,
+        spaceBefore=3.0,
+        spaceAfter=1.8,
     )
 
     body_style = ParagraphStyle(
         "BodyDark",
         parent=styles["BodyText"],
         fontName="Helvetica",
-        fontSize=8.3,
-        leading=11.2,
+        fontSize=8.0,
+        leading=10.8,
         textColor=DARK_TEXT,
-        spaceAfter=3.0,
+        spaceAfter=2.5,
     )
 
-    callout_style = ParagraphStyle(
-        "CalloutText",
+    note_box_style = ParagraphStyle(
+        "NoteBoxText",
         parent=styles["Normal"],
         fontName="Helvetica",
-        fontSize=7.8,
-        leading=10.4,
+        fontSize=7.4,
+        leading=10.0,
         textColor=DARK_TEXT,
     )
 
@@ -217,10 +220,10 @@ def generate_experiments_pdf(
         "RefText",
         parent=styles["BodyText"],
         fontName="Helvetica",
-        fontSize=6.4,
-        leading=8.0,
+        fontSize=6.3,
+        leading=7.8,
         textColor=DARK_TEXT,
-        spaceAfter=0.6,
+        spaceAfter=0.5,
         leftIndent=10,
         firstLineIndent=-10,
     )
@@ -228,8 +231,8 @@ def generate_experiments_pdf(
     th_style = ParagraphStyle(
         "TableHeader",
         fontName="Helvetica-Bold",
-        fontSize=7.8,
-        leading=9.8,
+        fontSize=7.6,
+        leading=9.5,
         textColor=colors.white,
         alignment=1,
     )
@@ -237,16 +240,16 @@ def generate_experiments_pdf(
     td_style = ParagraphStyle(
         "TableCell",
         fontName="Helvetica",
-        fontSize=7.4,
-        leading=9.4,
+        fontSize=7.2,
+        leading=9.0,
         textColor=DARK_TEXT,
     )
 
     td_bold = ParagraphStyle(
         "TableCellBold",
         fontName="Helvetica-Bold",
-        fontSize=7.4,
-        leading=9.4,
+        fontSize=7.2,
+        leading=9.0,
         textColor=PRIMARY,
         alignment=1,
     )
@@ -254,8 +257,8 @@ def generate_experiments_pdf(
     th_sm = ParagraphStyle(
         "TableHeaderSm",
         fontName="Helvetica-Bold",
-        fontSize=7.2,
-        leading=9.0,
+        fontSize=7.0,
+        leading=8.8,
         textColor=colors.white,
         alignment=1,
     )
@@ -263,8 +266,8 @@ def generate_experiments_pdf(
     th_xs = ParagraphStyle(
         "TableHeaderXs",
         fontName="Helvetica-Bold",
-        fontSize=6.8,
-        leading=8.6,
+        fontSize=6.6,
+        leading=8.2,
         textColor=colors.white,
         alignment=1,
     )
@@ -272,16 +275,16 @@ def generate_experiments_pdf(
     td_sm = ParagraphStyle(
         "TableCellSm",
         fontName="Helvetica",
-        fontSize=6.8,
-        leading=8.4,
+        fontSize=6.6,
+        leading=8.0,
         textColor=DARK_TEXT,
     )
 
     td_sm_bold = ParagraphStyle(
         "TableCellSmBold",
         fontName="Helvetica-Bold",
-        fontSize=6.8,
-        leading=8.4,
+        fontSize=6.6,
+        leading=8.0,
         textColor=PRIMARY,
         alignment=1,
     )
@@ -289,16 +292,16 @@ def generate_experiments_pdf(
     td_xs = ParagraphStyle(
         "TableCellXs",
         fontName="Helvetica",
-        fontSize=6.4,
-        leading=7.8,
+        fontSize=6.2,
+        leading=7.6,
         textColor=DARK_TEXT,
     )
 
     td_xs_bold = ParagraphStyle(
         "TableCellXsBold",
         fontName="Helvetica-Bold",
-        fontSize=6.4,
-        leading=7.8,
+        fontSize=6.2,
+        leading=7.6,
         textColor=PRIMARY,
         alignment=1,
     )
@@ -306,8 +309,8 @@ def generate_experiments_pdf(
     th_lb = ParagraphStyle(
         "TableHeaderLb",
         fontName="Helvetica-Bold",
-        fontSize=6.0,
-        leading=7.4,
+        fontSize=5.8,
+        leading=7.2,
         textColor=colors.white,
         alignment=1,
     )
@@ -315,8 +318,8 @@ def generate_experiments_pdf(
     td_lb = ParagraphStyle(
         "TableCellLb",
         fontName="Helvetica",
-        fontSize=5.8,
-        leading=7.0,
+        fontSize=5.6,
+        leading=6.8,
         textColor=DARK_TEXT,
         alignment=1,
     )
@@ -324,8 +327,8 @@ def generate_experiments_pdf(
     td_lb_bold = ParagraphStyle(
         "TableCellLbBold",
         fontName="Helvetica-Bold",
-        fontSize=5.8,
-        leading=7.0,
+        fontSize=5.6,
+        leading=6.8,
         textColor=PRIMARY,
         alignment=1,
     )
@@ -333,8 +336,8 @@ def generate_experiments_pdf(
     td_lb_winner = ParagraphStyle(
         "TableCellLbWinner",
         fontName="Helvetica-Bold",
-        fontSize=5.8,
-        leading=7.0,
+        fontSize=5.6,
+        leading=6.8,
         textColor=WINNER_TEXT,
         alignment=1,
     )
@@ -342,8 +345,8 @@ def generate_experiments_pdf(
     th_val = ParagraphStyle(
         "TableHeaderVal",
         fontName="Helvetica-Bold",
-        fontSize=6.4,
-        leading=8.0,
+        fontSize=6.2,
+        leading=7.8,
         textColor=colors.white,
         alignment=1,
     )
@@ -351,16 +354,16 @@ def generate_experiments_pdf(
     td_val = ParagraphStyle(
         "TableCellVal",
         fontName="Helvetica",
-        fontSize=5.8,
-        leading=7.2,
+        fontSize=5.6,
+        leading=7.0,
         textColor=DARK_TEXT,
     )
 
     td_val_bold = ParagraphStyle(
         "TableCellValBold",
         fontName="Helvetica-Bold",
-        fontSize=5.8,
-        leading=7.2,
+        fontSize=5.6,
+        leading=7.0,
         textColor=PRIMARY,
         alignment=1,
     )
@@ -371,24 +374,42 @@ def generate_experiments_pdf(
     # PÁGINA 1: PORTADA, PROBLEMA CIENTÍFICO Y GLOSARIO
     # =========================================================================
     story.append(Paragraph("INFORME MAESTRO DE RESULTADOS Y MATRIZ DE EXPERIMENTOS DE FUSIÓN CLIMÁTICA CON CDT (1991–2020)", title_style))
-    story.append(Paragraph("Proyecto: “Escenarios de Cambio Climático de Alta Resolución en Centroamérica y el Caribe”", subtitle_style))
+    story.append(Paragraph("Proyecto: “Escenarios de Cambio Climático de Alta Resolución en Centroamérica y el Caribe” — <b>Fase Centroamérica</b>", subtitle_style))
     story.append(Paragraph("<b>Grupo de Trabajo Regional de Escenarios de Cambio Climático de Centroamérica y el Caribe</b>", org_style))
-    story.append(HRFlowable(width="100%", thickness=1.5, color=SECONDARY, spaceBefore=0, spaceAfter=5))
+    story.append(HRFlowable(width="100%", thickness=1.5, color=SECONDARY, spaceBefore=0, spaceAfter=4))
+
+    # Caja de advertencia de alcance geográfico
+    t_scope = Table([[
+        Paragraph(
+            "<b>NOTA DE ALCANCE GEOGRÁFICO REGIONAL:</b> Los resultados, tableros de validación independiente y análisis técnicos documentados en el presente informe corresponden <b>estrictamente al dominio de Centroamérica</b> (Guatemala, Belice, El Salvador, Honduras, Nicaragua, Costa Rica y Panamá), evaluados frente a su red de estaciones meteorológicas de superficie. Las simulaciones análogas para <b>República Dominicana</b> corresponden a la siguiente etapa de ejecución operativa y no forman parte de este conjunto de cómputo; al final del informe se presenta un análisis prospectivo sobre su extrapolación.",
+            note_box_style,
+        )
+    ]], colWidths=[7.50 * inch])
+    t_scope.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), ALERT_BG),
+        ("BOX", (0, 0), (-1, -1), 0.8, ALERT_BORDER),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ("LEFTPADDING", (0, 0), (-1, -1), 5),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+    ]))
+    story.append(t_scope)
+    story.append(Spacer(1, 3))
 
     story.append(Paragraph("1. Justificación Científica del Problema y Objetivos de la Fusión", h1_style))
     story.append(Paragraph(
         "Los conjuntos de datos climáticos satelitales y de reanálisis global presentan discrepancias sistemáticas e importantes con respecto a la realidad observada en superficie en regiones tropicales complejas: "
         "<br/><br/>"
-        "• <b>Precipitación (CHIRPS):</b> Sobreestimación de lloviznas espurias (<i>drizzle effect</i>) debida a la reflectividad infrarroja de cirros fríos durante la <i>Canícula</i> en el Corredor Seco y Azua (Funk et al., 2015; Maldonado et al., 2016); subestimación de picos ciclónicos (&gt;100 mm/día) por alisado espacial del píxel de 5.5 km (Dinku et al., 2018); y falta de resolución del forzamiento orográfico fino en barlovento/sotavento (Daly et al., 2008). "
+        "• <b>Precipitación (CHIRPS):</b> Sobreestimación de lloviznas espurias (<i>drizzle effect</i>) debida a la reflectividad infrarroja de cirros fríos durante la <i>Canícula</i> en el Corredor Seco Centroamericano (Funk et al., 2015; Maldonado et al., 2016); subestimación de picos ciclónicos (&gt;100 mm/día) por alisado espacial del píxel de 5.5 km (Dinku et al., 2018); y falta de resolución del forzamiento orográfico fino en barlovento/sotavento (Daly et al., 2008). "
         "<br/><br/>"
-        "• <b>Temperatura Máxima (CHIRTS Tmax):</b> No modela la radiación solar directa según la orientación de ladera (<i>aspect</i>: calentamiento matutino este vs máximo vespertino oeste) ni captura olas de calor (&gt;38 &deg;C) en depresiones áridas (Azua, Enriquillo a -40 msnm, Golfo de Fonseca) (Coles, 2001; Funk et al., 2019). "
+        "• <b>Temperatura Máxima (CHIRTS Tmax):</b> No modela la radiación solar directa según la orientación de ladera (<i>aspect</i>: calentamiento matutino este vs máximo vespertino oeste) ni captura olas de calor (&gt;38 &deg;C) en depresiones áridas (Golfo de Fonseca, valles tectónicos) (Coles, 2001; Funk et al., 2019). "
         "<br/><br/>"
-        "• <b>Temperatura Mínima (CHIRTS Tmin):</b> No modela inversiones térmicas nocturnas ni drenaje catabático en valles intramontanos cerrados (Constanza, Valle Nuevo, Quetzaltenango) con heladas (&lt;0 &deg;C), ni caídas térmicas bruscas asimétricas por frentes fríos invernales (<i>Nortes</i>) (Alfaro et al., 2018). "
+        "• <b>Temperatura Mínima (CHIRTS Tmin):</b> No modela inversiones térmicas nocturnas ni drenaje catabático en valles intramontanos cerrados (Quetzaltenango, altiplano occidental) con heladas (&lt;0 &deg;C), ni caídas térmicas bruscas asimétricas por frentes fríos invernales (<i>Nortes</i>) (Alfaro et al., 2018). "
         "<br/><br/>"
         "<b>Objetivo:</b> Ejecutar una matriz de <b>39 experimentos controlados</b> (15 de Precipitación organizados en Fase 1 y Fase 2, 12 de Tmax y 12 de Tmin) estructurados estrictamente según las etapas de la secuencia de procesamiento de CDT para determinar la configuración óptima de fusión espacial que propague coherentemente la información de estaciones a zonas sin aforos.",
         body_style,
     ))
-    story.append(Spacer(1, 4))
+    story.append(Spacer(1, 3))
 
     story.append(Paragraph("2. Glosario de Siglas y Acrónimos Técnicos", h1_style))
     th_glo = [Paragraph("Sigla", th_style), Paragraph("Nombre Completo", th_style), Paragraph("Definición y Rol en el Procesamiento", th_style)]
@@ -408,8 +429,8 @@ def generate_experiments_pdf(
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("GRID", (0, 0), (-1, -1), 0.5, BORDER_COLOR),
         ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_BG]),
-        ("TOPPADDING", (0, 0), (-1, -1), 2.2),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 2.2),
+        ("TOPPADDING", (0, 0), (-1, -1), 2.0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2.0),
         ("LEFTPADDING", (0, 0), (-1, -1), 4.0),
         ("RIGHTPADDING", (0, 0), (-1, -1), 4.0),
     ]))
@@ -521,7 +542,7 @@ def generate_experiments_pdf(
     # =========================================================================
     story.append(Paragraph("4.1. Suite A: Precipitación Diaria — Fase 1 (Evaluación Exploratoria Preliminar: 10 Experimentos)", h1_style))
     story.append(Paragraph(
-        "Batería experimental estructurada según los 3 pasos de CDT para aislar efectos de corrección de sesgo, filtro RnoR y métodos de interpolación:",
+        "Batería experimental estructurada según los 3 pasos de CDT para aislar efectos de corrección de sesgo, filtro RnoR y métodos de interpolación en el istmo centroamericano:",
         body_style,
     ))
     story.append(Spacer(1, 2))
@@ -546,35 +567,35 @@ def generate_experiments_pdf(
             Paragraph("• Método: <code>mbvar</code> (&plusmn;5 d)<br/>• Interp: IDW (<i>p</i>=2.0, radio 1.5°)", td_sm),
             Paragraph("• Ajuste multiplicativo sobre grillas CHIRPS<br/>• Salida: <code>rr_adj_*.nc</code>", td_sm),
             Paragraph("• Método: <b>SBA multiescala</b> (3 pasadas: 1.0°, 0.75°, 0.5°)<br/>• Interp: IDW (1.5°)<br/>• RnoR: <b>Activada</b> (Logit GLM, wet=1.0 mm, CutOff=3)", td_sm),
-            Paragraph("<b>Impacto del Filtro RnoR:</b> Evalúa la restauración de rachas secas reales durante la <b>Canícula</b> en Corredor Seco y Azua, eliminando falsa lluvia satelital.", td_sm),
+            Paragraph("<b>Impacto del Filtro RnoR:</b> Evalúa la restauración de rachas secas reales durante la <b>Canícula</b> en el Corredor Seco Centroamericano.", td_sm),
         ],
         [
             Paragraph("<b>EXP-R03</b>", td_sm_bold),
             Paragraph("• Método: <code>qmdist</code> (Quantile Mapping)<br/>• Distribución: <b>Bernoulli-Gamma</b><br/>• Interp: OKR por Bloques (Sph/Exp/Gau, radio 2.0°)", td_sm),
             Paragraph("• Corrección cuantil a cuantil de la CDF sobre CHIRPS<br/>• Salida: <code>rr_adj_*.nc</code>", td_sm),
             Paragraph("• Método: <b>SBA multiescala</b> (3 pasadas: 1.0°, 0.75°, 0.5°)<br/>• Interp: OKR por Bloques (<code>use_block=TRUE</code>)<br/>• RnoR: Activada (Logit GLM)", td_sm),
-            Paragraph("<b>Régimen Convectivo Tropical Típico:</b> Gamma modela asimetría convectiva; Kriging por bloques corrige error de soporte espacial (estación puntual vs píxel 5.5 km).", td_sm),
+            Paragraph("<b>Régimen Convectivo Tropical:</b> Gamma modela asimetría convectiva; Kriging por bloques corrige error de soporte espacial (estación puntual vs píxel 5.5 km).", td_sm),
         ],
         [
             Paragraph("<b>EXP-R04</b>", td_sm_bold),
             Paragraph("• Método: <code>qmdist</code><br/>• Distribución: <b>Bernoulli-Weibull</b><br/>• Interp: OKR por Bloques (radio 2.0°)", td_sm),
             Paragraph("• Mapeo no lineal enfocado en cuantiles extremos (&gt;P95)<br/>• Salida: <code>rr_adj_*.nc</code>", td_sm),
             Paragraph("• Método: <b>SBA multiescala</b> (3 pasadas: 1.0°, 0.75°, 0.5°)<br/>• Interp: OKR por Bloques<br/>• RnoR: Activada (Logit GLM)", td_sm),
-            Paragraph("<b>Extremos Ciclónicos y Tormentas Severas:</b> Weibull captura colas pesadas (&gt;150 mm/día) provocadas por ondas del este, ciclones en el Caribe y giros monzónicos (CAG).", td_sm),
+            Paragraph("<b>Extremos Ciclónicos y Tormentas Severas:</b> Weibull captura colas pesadas (&gt;150 mm/día) provocadas por ondas del este, ciclones y giros monzónicos (CAG).", td_sm),
         ],
         [
             Paragraph("<b>EXP-R05</b>", td_sm_bold),
             Paragraph("• Método: <code>qmdist</code><br/>• Distribución: Bernoulli-Weibull<br/>• Interp: OKR por Bloques (radio 2.0°)", td_sm),
             Paragraph("• Corrección de extremos sobre grillas CHIRPS<br/>• Salida: <code>rr_adj_*.nc</code>", td_sm),
             Paragraph("• Método: <b>Regression Kriging (RK)</b> (3 pasadas)<br/>• <b>Covariables: DEM + Pendiente + Lat + Lon</b><br/>• Residuos: OKR por bloques<br/>• RnoR: Activada (Logit GLM)", td_sm),
-            Paragraph("<b>Forzamiento Orográfico Vertical:</b> Acopla el relieve en regresión determinística; modela ascenso forzado por Alisios en barlovento y sombras de lluvia en sotavento.", td_sm),
+            Paragraph("<b>Forzamiento Orográfico Vertical:</b> Acopla el relieve en regresión determinística; modela ascenso forzado por Alisios en barlovento y sombras en sotavento.", td_sm),
         ],
         [
             Paragraph("<b>EXP-R06</b>", td_sm_bold),
             Paragraph("• Método: <code>mbvar</code> (&plusmn;5 d)<br/>• Interp: <b>NN-3D con elevación DEM (&Delta;<i>z</i>)</b>", td_sm),
             Paragraph("• Ajuste proporcional tridimensional sobre CHIRPS<br/>• Salida: <code>rr_adj_*.nc</code>", td_sm),
             Paragraph("• Método: <b>Barnes Objective Analysis (BSc)</b> (3 pasadas gaussianas decrecientes)<br/>• RnoR: Activada (Logit GLM)<br/>• Covariables: Ninguna", td_sm),
-            Paragraph("<b>Gradientes Costeros e Insulares Suaves:</b> Función gaussiana continua de Barnes evita singularidades y ojos de buey (<i>bulls-eyes</i>) en islas y franjas litorales.", td_sm),
+            Paragraph("<b>Gradientes Costeros e Insulares Suaves:</b> Función gaussiana continua de Barnes evita singularidades y ojos de buey en islas y franjas litorales.", td_sm),
         ],
         [
             Paragraph("<b>EXP-R07</b><br/><font color='#1E40AF'><b>[Guía Oficial CDT]</b></font>", td_sm_bold),
@@ -588,14 +609,14 @@ def generate_experiments_pdf(
             Paragraph("• Método: <code>mbvar</code> (&plusmn;5 d)<br/>• Interp: <b>Shepard Modificado</b>", td_sm),
             Paragraph("• Ajuste de sesgo con polinomios locales<br/>• Salida: <code>rr_adj_*.nc</code>", td_sm),
             Paragraph("• Método: <b>SBA multiescala</b> (3 pasadas)<br/>• Interp: Shepard Modificado con control de derivadas<br/>• RnoR: Activada (Logit GLM)", td_sm),
-            Paragraph("<b>Relieve Escarpado y Cañones:</b> Polinomios de Taylor de Shepard evitan sobreoscilaciones numéricas en transiciones topográficas abruptas (cañones y fallas tectónicas).", td_sm),
+            Paragraph("<b>Relieve Escarpado y Cañones:</b> Polinomios de Taylor de Shepard evitan sobreoscilaciones numéricas en transiciones topográficas abruptas (cañones y fallas).", td_sm),
         ],
         [
             Paragraph("<b>EXP-R09</b>", td_sm_bold),
             Paragraph("• Método: <code>mbvar</code> (&plusmn;5 d)<br/>• Interp: <b>Spheremap (Gran Círculo)</b>", td_sm),
             Paragraph("• Ajuste sobre CHIRPS en coordenadas esféricas<br/>• Salida: <code>rr_adj_*.nc</code>", td_sm),
             Paragraph("• Método: <b>SBA multiescala</b> (3 pasadas)<br/>• Interp: Spheremap en esfera terrestre real<br/>• RnoR: Activada (Logit GLM)", td_sm),
-            Paragraph("<b>Geometría Esférica Trans-Caribe:</b> Corrige la distorsión métrica longitudinal en distancias zonales amplias a lo largo del arco de las Antillas Mayores.", td_sm),
+            Paragraph("<b>Geometría Esférica:</b> Corrige la distorsión métrica longitudinal en distancias amplias a lo largo del istmo.", td_sm),
         ],
         [
             Paragraph("<b>EXP-R10</b>", td_sm_bold),
@@ -621,11 +642,11 @@ def generate_experiments_pdf(
     story.append(PageBreak())
 
     # =========================================================================
-    # PÁGINA 4: SUITE A - FASE 2 Y LEADERBOARD DE PRECIPITACIÓN
+    # PÁGINA 4: SUITE A - FASE 2, LEADERBOARD Y DISCUSIÓN DE PRECIPITACIÓN
     # =========================================================================
-    story.append(Paragraph("4.2. Suite A: Precipitación Diaria — Fase 2 (Optimización Dirigida) y Resultados del Benchmark", h1_style))
+    story.append(Paragraph("4.2. Suite A: Precipitación Diaria — Fase 2 (Optimización Dirigida) y Leaderboard", h1_style))
     story.append(Paragraph(
-        "A partir de los resultados de la Fase 1, donde <b>Shepard Modificado (EXP_R08)</b> y <b>Spheremap (EXP_R09)</b> demostraron superioridad concluyente sobre métodos geoestadísticos rígidos y regresiones globales, la Fase 2 formuló 5 experimentos de refinamiento dirigidos a optimizar el estimador de sesgo (mediana), el confinamiento orográfico y la transición suave de lluvia:",
+        "A partir de los resultados de la Fase 1 en Centroamérica, donde <b>Shepard Modificado (EXP_R08)</b> y <b>Spheremap (EXP_R09)</b> demostraron superioridad concluyente sobre métodos geoestadísticos rígidos y regresiones globales, la Fase 2 formuló 5 experimentos de refinamiento dirigidos a optimizar el estimador de sesgo (mediana), el confinamiento orográfico y la transición suave de lluvia:",
         body_style,
     ))
     story.append(Spacer(1, 2))
@@ -664,7 +685,7 @@ def generate_experiments_pdf(
             Paragraph("• Método: <code>mbvar</code> (&plusmn;5 d)<br/>• mulBiasFunction: 'median'<br/>• addCoarseGrid: true (1.0°)<br/>• Interp: IDW (1.5°)", td_sm),
             Paragraph("• Ajuste esférico sobre grillas CHIRPS<br/>• Salida: <code>rr_adj_*.nc</code>", td_sm),
             Paragraph("• Método: <b>SBA multiescala</b> (3 pasadas: 1.0°, 0.75°, 0.5°)<br/>• <b>Interp: Spheremap (Gran Círculo 1.5°)</b><br/>• RnoR: Activada (Logit GLM)<br/>• addCoarseGrid: true", td_sm),
-            Paragraph("<b>Spheremap con Mediana y Malla Gruesa:</b> Acopla la métrica de distancia de gran círculo sobre la curvatura terrestre real con estimador robusto de mediana y contención gruesa en costas del Caribe y Antillas.", td_sm),
+            Paragraph("<b>Spheremap con Mediana y Malla Gruesa:</b> Acopla la métrica de distancia de gran círculo sobre la curvatura terrestre real con estimador robusto de mediana y contención gruesa en costas del Pacífico y Caribe.", td_sm),
         ],
         [
             Paragraph("<b>EXP-R15</b><br/><font color='#065F46' size=6><b>GANADOR</b></font>", td_sm_bold),
@@ -688,10 +709,10 @@ def generate_experiments_pdf(
         ("RIGHTPADDING", (0, 0), (-1, -1), 3.0),
     ]))
     story.append(t_table_r2)
-    story.append(Spacer(1, 3))
+    story.append(Spacer(1, 2))
 
-    # TABLA RESUMEN / LEADERBOARD FINAL DE PRECIPITACIÓN (15 EXPERIMENTOS)
-    story.append(Paragraph("<b>Ranking Consolidado del Benchmark de Precipitación (29 Estaciones de Validación Ciega Holdout)</b>", h2_style))
+    # Leaderboard Lluvia
+    story.append(Paragraph("<b>Ranking Consolidado de Precipitación (29 Estaciones de Validación Ciega Holdout en Centroamérica)</b>", h2_style))
     th_lb_row = [
         Paragraph("#", th_lb),
         Paragraph("Experimento ID", th_lb),
@@ -764,9 +785,14 @@ def generate_experiments_pdf(
     t_table_lb.setStyle(TableStyle(style_lb_cmds))
     story.append(t_table_lb)
     story.append(Spacer(1, 2))
+
+    # DISCUSIÓN DE RESULTADOS DE PRECIPITACIÓN
+    story.append(Paragraph("4.3. Discusión de resultados de Precipitación en Centroamérica", h2_style))
     story.append(Paragraph(
-        "<b>Nota de Referencia (Guía Oficial CDT):</b> El experimento <b>EXP_R07_Cressman_Spherical</b> (Rank 7) reproduce con exactitud la parametrización estándar documentada en la Guía de Procedimientos de CDT (ajuste multiplicativo de sesgo diario variable <code>mbvar</code> e interpolación de Cressman en 4 pasadas anidadas: 1.0°, 0.75°, 0.50°, 0.25°).",
-        ref_style,
+        "<b>1. No Linealidad Orográfica y Falla de Regression Kriging:</b> En Centroamérica, la relación entre cota altimétrica y precipitación diaria no es monótona: la máxima condensación forzada por los vientos Alisios ocurre en laderas medias de barlovento (800–1,800 msnm) y decrece hacia las cumbres más altas por agotamiento de humedad. Modelos de regresión global con DEM colapsan (KGE &lt; 0.22) al imponer sombras de lluvia artificiales o forzar lluvia excesiva en cumbres secas.<br/>"
+        "<b>2. Superioridad de Shepard Modificado en el Istmo:</b> Las 4 variantes de Shepard copan el Top 4. Al evaluar derivadas direccionales locales con polinomios de Taylor en lugar de variogramas esféricos isotrópicos rígidos, se adapta a la topografía escarpada y cañones del istmo sin generar 'ojos de buey' circulares alrededor de estaciones aisladas.<br/>"
+        "<b>3. Resolución de la Canícula mediante RnoR Suave (EXP_R15):</b> En el Corredor Seco Centroamericano, la nubosidad cirriforme fría durante la Canícula induce a CHIRPS a sobreestimar lloviznas inexistentes (<i>drizzle</i>). Un corte duro (0.5 mm) eliminó el sesgo pero suprimió tormentas reales (-22.15% PBIAS). La transición continua suave (0.1 a 1.0 mm, <code>CutOff=2</code>) resolvió el compromiso físico: suprimió lloviznas espurias reduciendo el sesgo a solo <b>-4.39%</b> y maximizando el ETS (0.329) y Skill (0.501).",
+        body_style,
     ))
     story.append(PageBreak())
 
@@ -775,7 +801,7 @@ def generate_experiments_pdf(
     # =========================================================================
     story.append(Paragraph("5.1. Suite B: Temperatura Máxima Diurna — Fase 1 (Evaluación Preliminar: 8 Experimentos)", h1_style))
     story.append(Paragraph(
-        "Batería experimental estructurada según los 5 pasos de CDT: desescalado topográfico, ajuste de sesgo diurno y fusión con radiación solar e insolación:",
+        "Batería experimental estructurada según los 5 pasos de CDT: desescalado topográfico, ajuste de sesgo diurno y fusión con radiación solar e insolación en Centroamérica:",
         body_style,
     ))
     story.append(Spacer(1, 2))
@@ -803,7 +829,7 @@ def generate_experiments_pdf(
             Paragraph("• Método: <code>qmdist</code><br/>• Distribución: <b>Normal (norm)</b><br/>• Interp: IDW (3.5°)", td_xs),
             Paragraph("• Mapeo cuantil gaussiano.<br/>Salida: <code>tmax_adj_*.nc</code>", td_xs),
             Paragraph("• Método: <b>RK</b> (3 pasadas: 1.0°, 0.75°, 0.5°)<br/>• <b>Covariable: DEM</b><br/>• Residuos: OKR", td_xs),
-            Paragraph("<b>Gradiente Adiabático Diurno:</b> Modela enfriamiento por ascenso adiabático (&part;<i>T</i>/&part;<i>z</i> &approx; -6.5 °C/km) en Cordillera Central y Sierra Madre.", td_xs),
+            Paragraph("<b>Gradiente Adiabático Diurno:</b> Modela enfriamiento por ascenso adiabático (&part;<i>T</i>/&part;<i>z</i> &approx; -6.5 °C/km) en la Sierra Madre y Talamanca.", td_xs),
         ],
         [
             Paragraph("<b>EXP-TX03</b>", td_xs_bold),
@@ -827,7 +853,7 @@ def generate_experiments_pdf(
             Paragraph("• Método: <code>qmdist</code><br/>• Distribución: <b>Gumbel Máximos</b><br/>• Interp: OKR por bloques", td_xs),
             Paragraph("• Mapeo cuantil para extremos (&gt;P95).<br/>Salida: <code>tmax_adj_*.nc</code>", td_xs),
             Paragraph("• Método: <b>RK</b> (3 pasadas)<br/>• <b>Covariables: DEM + Lat + Lon</b><br/>• Residuos: OKR por bloques", td_xs),
-            Paragraph("<b>Olas de Calor en Depresiones Áridas:</b> Ajusta picos extremos (&gt;38 °C a 40 °C) en Hoya de Enriquillo (-40 msnm), Valle de Azua y Golfo de Fonseca.", td_xs),
+            Paragraph("<b>Olas de Calor en Depresiones Áridas:</b> Ajusta picos extremos (&gt;38 °C a 40 °C) en el Golfo de Fonseca, Valle de Motagua y planicies secas.", td_xs),
         ],
         [
             Paragraph("<b>EXP-TX06</b>", td_xs_bold),
@@ -835,7 +861,7 @@ def generate_experiments_pdf(
             Paragraph("• Método: <code>mbvar</code> (&plusmn;5 d)<br/>• Interp: IDW (3.5°)", td_xs),
             Paragraph("• Ajuste proporcional estándar.<br/>Salida: <code>tmax_adj_*.nc</code>", td_xs),
             Paragraph("• Método: <b>Barnes (BSc)</b> (3 pasadas)<br/>• Residuos: Filtro gaussiano continuo<br/>• Covariables: Ninguna", td_xs),
-            Paragraph("<b>Llanuras y Brisas Costeras Diurnas:</b> Transición espacial continua sin saltos abruptos a lo largo de llanuras litorales del Caribe y planicies de RD.", td_xs),
+            Paragraph("<b>Llanuras y Brisas Costeras Diurnas:</b> Transición espacial continua sin saltos abruptos a lo largo de llanuras litorales del Pacífico y Caribe.", td_xs),
         ],
         [
             Paragraph("<b>EXP-TX07</b><br/><font color='#1E40AF'><b>[Guía Oficial CDT]</b></font>", td_xs_bold),
@@ -870,11 +896,11 @@ def generate_experiments_pdf(
     story.append(PageBreak())
 
     # =========================================================================
-    # PÁGINA 6: SUITE B - TMAX FASE 2 Y LEADERBOARD (12 EXP)
+    # PÁGINA 6: SUITE B - TMAX FASE 2, LEADERBOARD Y DISCUSIÓN
     # =========================================================================
     story.append(Paragraph("5.2. Suite B: Tmax — Fase 2 (Optimización Dirigida) y Leaderboard Consolidado (12 Experimentos)", h1_style))
     story.append(Paragraph(
-        "La Fase 2 de Temperatura Máxima formuló 4 configuraciones avanzadas para combinar la proyección orográfica real del DEM con el amortiguamiento espectral continuo de Barnes y la evaluación no paramétrica de cuantiles:",
+        "La Fase 2 de Temperatura Máxima en Centroamérica formuló 4 configuraciones avanzadas para acoplar la proyección orográfica real del DEM con el amortiguamiento espectral continuo de Barnes y la evaluación no paramétrica de cuantiles:",
         body_style,
     ))
     story.append(Spacer(1, 2))
@@ -907,7 +933,7 @@ def generate_experiments_pdf(
         [
             Paragraph("<b>EXP-TX12</b>", td_xs_bold),
             Paragraph("<b>[P1-P2]</b> Bilineal con DEM SRTM.<br/>Salida: <code>tmax_down_*.nc</code>", td_xs),
-            Paragraph("• Método: <code>mbvar</code> (&plusmn;5 d)<br/>• Interp: NN-3D (&Delta;<i>z</i>, 3.5°)", td_xs),
+            Paragraph("• Método: <code>mbvar</code> (&plusmn;5 d)<br/>• NN-3D ($\\Delta z$, 3.5°)", td_xs),
             Paragraph("• Ajuste proporcional con control altimétrico.<br/>Salida: <code>tmax_adj_*.nc</code>", td_xs),
             Paragraph("• Método: <b>SBA multiescala local</b> (1.0°, 0.50°, 0.25°)<br/>• Interp: IDW local (1.5°)", td_xs),
             Paragraph("<b>SBA IDW Local con Control Altimétrico:</b> Refina la línea base reduciendo radios de búsqueda e introduciendo control vertical NN-3D.", td_xs),
@@ -927,9 +953,9 @@ def generate_experiments_pdf(
         ("RIGHTPADDING", (0, 0), (-1, -1), 3.0),
     ]))
     story.append(t_table_tx2)
-    story.append(Spacer(1, 3))
+    story.append(Spacer(1, 2))
 
-    story.append(Paragraph("<b>Ranking Consolidado del Benchmark de Temperatura Máxima (CHIRTS Tmax: 12 Experimentos)</b>", h2_style))
+    story.append(Paragraph("<b>Ranking Consolidado de Temperatura Máxima (CHIRTS Tmax: 12 Experimentos en Centroamérica)</b>", h2_style))
     th_lb_t_row = [
         Paragraph("#", th_lb),
         Paragraph("Experimento ID", th_lb),
@@ -943,7 +969,7 @@ def generate_experiments_pdf(
         Paragraph("Estado / Justificación Operativa", th_lb),
     ]
     rows_lb_tx_data = [
-        ("1", "EXP_TX01_SBA_IDW_Baseline", "SBA IDW Plano sin DEM", "0.735", "0.679", "0.787", "1.90", "1.58", "+1.37%", "Línea Base (Rechazada: Sobreajuste puntual sin gradiente altimétrico)", False),
+        ("1", "EXP_TX01_SBA_IDW_Baseline", "SBA IDW Plano sin DEM", "0.735", "0.679", "0.787", "1.90", "1.58", "+1.37%", "Línea Base (Rechazada: Sobreajuste sin gradiente altimétrico)", False),
         ("2", "EXP_TX11_RK_Barnes_Hybrid", "RK (DEM+Coords) + Barnes Residuos", "0.719", "0.690", "0.743", "2.06", "1.69", "+1.40%", "GANADOR OFICIAL (Máx KGE=0.690, Relieve real y gradiente vertical)", True),
         ("3", "EXP_TX06_Barnes_Gauss_Coastal", "Barnes BSc Gaussiano Continuo", "0.709", "0.676", "0.736", "2.17", "1.80", "+0.95%", "Fase 1 (Suavizado costero sin saltos)", False),
         ("4", "EXP_TX10_QM_Empirical_ECDF", "QM Empírico (ECDF) + RK DEM/Slope", "0.705", "0.655", "0.739", "2.05", "1.69", "+1.31%", "Fase 2 (Excelente captura de olas de calor)", False),
@@ -993,9 +1019,14 @@ def generate_experiments_pdf(
     t_lb_tx.setStyle(TableStyle(style_lb_tx_cmds))
     story.append(t_lb_tx)
     story.append(Spacer(1, 2))
+
+    # DISCUSIÓN DE RESULTADOS DE TEMPERATURA MÁXIMA
+    story.append(Paragraph("5.3. Discusión de resultados de Temperatura Máxima en Centroamérica", h2_style))
     story.append(Paragraph(
-        "<b>Racional Climatológico (Por qué se rechaza la Línea Base en Tmax):</b> En las estaciones de validación (ubicadas en valles y llanuras bajas), un IDW plano sin DEM sobrepondera las observaciones locales y minimiza el error puntual. Sin embargo, en el espacio geográfico sin estaciones (cumbres montañosas de 3,000 a 3,820 m), la ausencia de gradiente vertical (&part;<i>T</i>/&part;<i>z</i>) produce temperaturas irreales (isotermas planas de 28–32 °C en cumbres gélidas). <b>EXP_TX11_RK_Barnes_Hybrid</b> alcanza el <b>KGE más alto del benchmark (0.690 vs 0.679)</b>, proyecta el forzamiento orográfico real del DEM y suaviza las anomalías costeras con Barnes, constituyendo la configuración oficial seleccionada.",
-        ref_style,
+        "<b>1. Convección Diurna y Mezcla Turbulenta en la Capa Límite:</b> Durante el día, la intensa insolación solar tropical induce mezcla turbulenta vigorosa en la capa límite atmosférica (1.5 a 2.5 km de espesor). Esto homogeneiza el gradiente térmico vertical ambiental, aproximándolo estrechamente al gradiente adiabático seco/húmedo (&part;<i>T</i>/&part;<i>z</i> &approx; -6.5 °C/km).<br/>"
+        "<b>2. La Falacia de la Línea Base y por qué no es Operativa:</b> En las estaciones de prueba (concentradas en valles poblados y planicies costeras &lt;500 msnm), el IDW plano 2D minimiza el error puntual (1.90 °C) porque interpola entre puntos de una misma masa de aire de valle. Sin embargo, en las zonas desprovistas de estaciones (como la Cordillera de Talamanca a 3,820 m o los Cuchumatanes a &gt;3,500 m), el IDW horizontal propaga las temperaturas cálidas del valle (28–32 °C) hacia las cumbres gélidas, borrando el gradiente hipsométrico real.<br/>"
+        "<b>3. Superioridad del Híbrido RK + Barnes (EXP_TX11):</b> Acopla el DEM y coordenadas en Regression Kriging para forzar el gradiente vertical real en todo el relieve sin estaciones, mientras que el análisis de Barnes (3 pasadas gaussianas) absorbe suavemente las transiciones de brisas marinas costeras. Alcanza el <b>KGE más alto del benchmark (0.690)</b>, superando al propio baseline (0.679) con coherencia física estricta.",
+        body_style,
     ))
     story.append(PageBreak())
 
@@ -1004,7 +1035,7 @@ def generate_experiments_pdf(
     # =========================================================================
     story.append(Paragraph("6.1. Suite C: Temperatura Mínima Nocturna — Fase 1 (Evaluación Preliminar: 8 Experimentos)", h1_style))
     story.append(Paragraph(
-        "Batería experimental estructurada según los 5 pasos de CDT: desescalado altimétrico, enfriamiento radiativo, inversiones nocturnas y frentes fríos:",
+        "Batería experimental estructurada según los 5 pasos de CDT: desescalado altimétrico, enfriamiento radiativo, inversiones nocturnas y frentes fríos en Centroamérica:",
         body_style,
     ))
     story.append(Spacer(1, 2))
@@ -1048,7 +1079,7 @@ def generate_experiments_pdf(
             Paragraph("• Método: <code>mbvar</code> (&plusmn;5 d)<br/>• Interp: <b>NN-3D con DEM (&Delta;<i>z</i>)</b>", td_xs),
             Paragraph("• Ajuste con aislamiento vertical estricto.<br/>Salida: <code>tmin_adj_*.nc</code>", td_xs),
             Paragraph("• Método: <b>RK</b> (3 pasadas)<br/>• <b>Covariables: DEM + Pend + Lat + Lon</b><br/>• Residuos: OKR por bloques", td_xs),
-            Paragraph("<b>Inversiones Térmicas Nocturnas (Cold-Air Pooling):</b> Evita contaminación térmica entre cimas cálidas y valles fríos (Constanza, Valle Nuevo, Quetzaltenango).", td_xs),
+            Paragraph("<b>Inversiones Térmicas Nocturnas (Cold-Air Pooling):</b> Evita contaminación térmica entre cimas cálidas y valles fríos (Quetzaltenango, altiplano).", td_xs),
         ],
         [
             Paragraph("<b>EXP-TN05</b>", td_xs_bold),
@@ -1099,11 +1130,11 @@ def generate_experiments_pdf(
     story.append(PageBreak())
 
     # =========================================================================
-    # PÁGINA 8: SUITE C - TMIN FASE 2 Y LEADERBOARD (12 EXP)
+    # PÁGINA 8: SUITE C - TMIN FASE 2, LEADERBOARD Y DISCUSIÓN
     # =========================================================================
     story.append(Paragraph("6.2. Suite C: Tmin — Fase 2 (Optimización Dirigida) y Leaderboard Consolidado (12 Experimentos)", h1_style))
     story.append(Paragraph(
-        "La Fase 2 de Temperatura Mínima formuló 4 configuraciones avanzadas orientadas a resolver el desacople vertical nocturno, la formación de pozas de aire frío y la calibración no lineal de heladas:",
+        "La Fase 2 de Temperatura Mínima en Centroamérica formuló 4 configuraciones avanzadas orientadas a resolver el desacople vertical nocturno, la formación de pozas de aire frío y la calibración no lineal de heladas:",
         body_style,
     ))
     story.append(Spacer(1, 2))
@@ -1156,9 +1187,9 @@ def generate_experiments_pdf(
         ("RIGHTPADDING", (0, 0), (-1, -1), 3.0),
     ]))
     story.append(t_table_tn2)
-    story.append(Spacer(1, 3))
+    story.append(Spacer(1, 2))
 
-    story.append(Paragraph("<b>Ranking Consolidado del Benchmark de Temperatura Mínima (CHIRTS Tmin: 12 Experimentos)</b>", h2_style))
+    story.append(Paragraph("<b>Ranking Consolidado de Temperatura Mínima (CHIRTS Tmin: 12 Experimentos en Centroamérica)</b>", h2_style))
     th_lb_tn_row = [
         Paragraph("#", th_lb),
         Paragraph("Experimento ID", th_lb),
@@ -1222,9 +1253,14 @@ def generate_experiments_pdf(
     t_lb_tn.setStyle(TableStyle(style_lb_tn_cmds))
     story.append(t_lb_tn)
     story.append(Spacer(1, 2))
+
+    # DISCUSIÓN DE RESULTADOS DE TEMPERATURA MÍNIMA
+    story.append(Paragraph("6.3. Discusión de resultados de Temperatura Mínima en Centroamérica", h2_style))
     story.append(Paragraph(
-        "<b>Conclusión Científica en Temperatura Mínima:</b> A diferencia de Tmax, en Tmin el modelo físico <b>EXP_TN10_QM_Empirical_ECDF supera de forma directa a la Línea Base en todas las métricas de error</b>: reduce el RMSE a <b>1.92 °C</b> (frente a 2.19 °C del baseline), el MAE a <b>1.57 °C</b> y eleva el Global Skill Score a <b>0.613</b>. Al acoplar el DEM y la pendiente con cuantiles empíricos y NN-3D, resuelve con alta fidelidad las inversiones térmicas y el drenaje de aire frío en valles intramontanos (Constanza, Valle Nuevo, Quetzaltenango).",
-        ref_style,
+        "<b>1. Enfriamiento Radiativo Nocturno y Desacople Vertical:</b> Durante la noche no hay insolación solar; la atmósfera se desacopla verticalmente y predomina la pérdida radiativa de onda larga en superficie. El aire frío y denso drena gravitacionalmente laderas abajo (vientos catabáticos) y se acumula en fondos de valles y cuencas endorreicas (<i>cold-air pooling</i>), provocando fuertes inversiones térmicas (valles altos con heladas &lt;0 °C mientras laderas intermedias permanecen 6–8 °C más cálidas).<br/>"
+        "<b>2. Falla de Funciones Teóricas Gaussianas:</b> Asumir campanas normales simétricas o colas Gumbel analíticas desploma el KGE (&lt; 0.11), pues los modelos lineales asumen erróneamente que a mayor altitud siempre hace más frío en la noche.<br/>"
+        "<b>3. Victoria Contundente de EXP_TN10 sobre la Línea Base:</b> A diferencia de Tmax, en Tmin el modelo físico <b>EXP_TN10_QM_Empirical_ECDF supera de forma directa a la Línea Base en todas las métricas de error</b>: reduce el RMSE a <b>1.92 °C</b> (frente a 2.19 °C del baseline), el MAE a <b>1.57 °C</b> y eleva el Global Skill Score a <b>0.613</b>. Al acoplar el DEM y la pendiente con cuantiles empíricos no paramétricos celda a celda y control vertical NN-3D (&Delta;<i>z</i>), modela con alta fidelidad las heladas y pozas frías sin distorsionar la mediana regional.",
+        body_style,
     ))
     story.append(PageBreak())
 
@@ -1233,8 +1269,8 @@ def generate_experiments_pdf(
     # =========================================================================
     story.append(Paragraph("7. Configuración Espacial, Recursos de Cómputo y Tiempos de Ejecución", h1_style))
     story.append(Paragraph(
-        "• <b>Opciones de Grilla en CDT (<code>grid$from</code>):</b> <b><code>from: \"data\"</code></b> (Grilla nativa satelital 0.05° ~5.5 km) garantiza <b>coincidencia geométrica 1:1</b> con CHIRPS crudo en <code>EXP-R01</code> a <code>EXP-R06</code> y <code>EXP-R08</code> a <code>EXP-R10</code>, permitiendo diferencias directas píxel a píxel (&Delta; = Corregido - Original). <b><code>from: \"ncdf\"</code></b> (DEM SRTM 0.01° ~1.1 km) es <b>obligatorio</b> en Desescalado de Temperatura (<code>Downscaling Data</code>) para proyectar el gradiente adiabático (&part;<i>T</i>/&part;<i>z</i> &approx; -6.5 °C/km) a cumbres &gt;3,000 m (Pico Duarte, Tajumulco) y valles (Constanza, Azua), y en <code>EXP-R07</code> (RK Orográfico).<br/><br/>"
-        "• <b>Recorte con Shapefile (<i>Blanking</i>) y Buffer Óptimo de 10 km:</b> Para una celda de 0.05° (diagonal = 7.73 km), un <b>buffer de 10 km (~2 celdas)</b> supera la diagonal, evita pérdidas en costas oblicuas (45°) y asegura la cobertura completa de islas (Roatán, Saona, Beata), golfos y cuencas binacionales.",
+        "• <b>Opciones de Grilla en CDT (<code>grid$from</code>):</b> <b><code>from: \"data\"</code></b> (Grilla nativa satelital 0.05° ~5.5 km) garantiza <b>coincidencia geométrica 1:1</b> con CHIRPS crudo en <code>EXP-R01</code> a <code>EXP-R06</code> y <code>EXP-R08</code> a <code>EXP-R10</code>, permitiendo diferencias directas píxel a píxel (&Delta; = Corregido - Original). <b><code>from: \"ncdf\"</code></b> (DEM SRTM 0.01° ~1.1 km) es <b>obligatorio</b> en Desescalado de Temperatura (<code>Downscaling Data</code>) para proyectar el gradiente adiabático (&part;<i>T</i>/&part;<i>z</i> &approx; -6.5 °C/km) a cumbres &gt;3,000 m (Tajumulco, Chirripó) y valles, y en <code>EXP-R07</code> (RK Orográfico).<br/><br/>"
+        "• <b>Recorte con Shapefile (<i>Blanking</i>) y Buffer Óptimo de 10 km:</b> Para una celda de 0.05° (diagonal = 7.73 km), un <b>buffer de 10 km (~2 celdas)</b> supera la diagonal, evita pérdidas en costas oblicuas (45°) y asegura la cobertura completa de islas (Roatán, Guanaja, Coiba, Perlas, Ometepe), golfos y cuencas binacionales.",
         body_style,
     ))
     story.append(Spacer(1, 3))
@@ -1296,7 +1332,7 @@ def generate_experiments_pdf(
     # =========================================================================
     story.append(Paragraph("8. Validación Cruzada Independiente (Holdout por CSV) y Métricas Cuantitativas", h1_style))
     story.append(Paragraph(
-        "<b>Mecanismo de Evaluación de CDT y Partición Ciega (Holdout Validation):</b> Para garantizar una evaluación estrictamente independiente, ciega e insesgada (evitando el sobreajuste de calibrar y evaluar con las mismas estaciones), el orquestador (<code>launcher/station_manager.py</code>) desacopla la red observacional en dos subconjuntos disjuntos: "
+        "<b>Mecanismo de Evaluación de CDT y Partición Ciega (Holdout Validation):</b> Para garantizar una evaluación estrictamente independiente, ciega e insesgada (evitando el sobreajuste de calibrar y evaluar con las mismas estaciones), el orquestador (<code>launcher/station_manager.py</code>) desacopla la red observacional centroamericana en dos subconjuntos disjuntos: "
         "<b>(1) Subconjunto de Entrenamiento (~80–90%)</b>, asimilado por CDT en el cálculo de coeficientes de sesgo y en la interpolación de residuales; y "
         "<b>(2) Subconjunto de Validación Ciega (~10–20%, 29 estaciones retenidas)</b>, completamente invisible para CDT durante toda la corrida. "
         "Tras generar las grillas diarias NetCDF 3D (CF-1.8), se extrae la serie modelada en el píxel de cada estación retenida y se evalúan las métricas cuantitativas:",
@@ -1414,11 +1450,11 @@ def generate_experiments_pdf(
     story.append(PageBreak())
 
     # =========================================================================
-    # PÁGINA 11: CUADRO DE HONOR Y REFERENCIAS BIBLIOGRÁFICAS VERIFICADAS
+    # PÁGINA 11: CUADRO DE HONOR Y ANÁLISIS PROSPECTIVO PARA REPÚBLICA DOMINICANA
     # =========================================================================
-    story.append(Paragraph("9. Cuadro de Honor Oficial y Referencias Bibliográficas Verificadas", h1_style))
+    story.append(Paragraph("9. Cuadro de Honor Oficial y Análisis Prospectivo para República Dominicana", h1_style))
     story.append(Paragraph(
-        "A partir de los resultados de los 39 experimentos sobre la serie histórica 1991–2020 en validación ciega con 29 estaciones, se formalizan las <b>3 configuraciones oficiales recomendadas</b> para la generación de los escenarios climáticos regionales de alta resolución:",
+        "A partir de los resultados de los 39 experimentos sobre la serie histórica 1991–2020 en validación ciega con 29 estaciones en Centroamérica, se formalizan las <b>3 configuraciones oficiales recomendadas</b> para la generación de los escenarios climáticos regionales:",
         body_style,
     ))
     story.append(Spacer(1, 2))
@@ -1428,7 +1464,7 @@ def generate_experiments_pdf(
         Paragraph("Experimento Ganador Oficial", th_style),
         Paragraph("Familia Metodológica", th_style),
         Paragraph("Métricas Clave (Validación Ciega)", th_style),
-        Paragraph("Justificación Física y Climatológica Regional", th_style),
+        Paragraph("Justificación Físico-Climatológica Regional", th_style),
     ]
     rows_fin = [
         [
@@ -1436,7 +1472,7 @@ def generate_experiments_pdf(
             Paragraph("<b>EXP_R15_Shepard_RnoR_Smooth</b>", td_lb_winner),
             Paragraph("SBA Multiescala + Shepard Modificado + RnoR Suave (CutOff 2)", td_style),
             Paragraph("• <b>GSS:</b> 0.501<br/>• <b>KGE:</b> 0.379<br/>• <b>r:</b> 0.479<br/>• <b>RMSE:</b> 12.88 mm<br/>• <b>ETS:</b> 0.329<br/>• <b>PBIAS:</b> -4.39%", td_style),
-            Paragraph("Elimina lloviznas espurias (<i>drizzle</i>) en el Corredor Seco mediante RnoR continua suave, preservando la lluvia convectiva real y evitando singularidades en cañones y laderas escarpadas.", td_style),
+            Paragraph("Elimina lloviznas espurias (<i>drizzle</i>) en el Corredor Seco Centroamericano mediante RnoR continua suave, preservando la lluvia convectiva real y evitando singularidades circulares de Kriging en cañones y laderas escarpadas.", td_style),
         ],
         [
             Paragraph("<b>Temperatura Máxima (Tmax)</b>", td_bold),
@@ -1450,7 +1486,7 @@ def generate_experiments_pdf(
             Paragraph("<b>EXP_TN10_QM_Empirical_ECDF</b>", td_lb_winner),
             Paragraph("RK (DEM + Pendiente) + Quantile Mapping Empírico celda a celda (NN-3D)", td_style),
             Paragraph("• <b>GSS:</b> <b>0.613 (Máximo)</b><br/>• <b>KGE:</b> 0.543<br/>• <b>r:</b> 0.649<br/>• <b>RMSE:</b> <b>1.92 °C (Mínimo)</b><br/>• <b>MAE:</b> <b>1.57 °C</b><br/>• <b>PBIAS:</b> +4.46%", td_style),
-            Paragraph("Resuelve el desacople vertical nocturno y el drenaje de aire frío (<i>cold-air pooling</i>) en valles cerrados (Constanza, Valle Nuevo, Quetzaltenango) modelando la curva acumulada empírica real.", td_style),
+            Paragraph("Resuelve el desacople vertical nocturno y el drenaje de aire frío (<i>cold-air pooling</i>) en valles cerrados y altiplanos modelando la curva acumulada empírica real de heladas con búsqueda vertical NN-3D.", td_style),
         ],
     ]
     t_fin = Table([th_fin] + rows_fin, colWidths=[1.10 * inch, 1.60 * inch, 1.50 * inch, 1.35 * inch, 1.95 * inch])
@@ -1466,19 +1502,30 @@ def generate_experiments_pdf(
         ("RIGHTPADDING", (0, 0), (-1, -1), 3.0),
     ]))
     story.append(t_fin)
-    story.append(Spacer(1, 4))
+    story.append(Spacer(1, 3))
 
-    story.append(Paragraph("9.1. Referencias Bibliográficas Científicas Verificadas (21 Publicaciones Indexadas)", h2_style))
+    # SUBSECCIÓN DE ANÁLISIS PROSPECTIVO PARA REPÚBLICA DOMINICANA
+    story.append(Paragraph("9.1. Análisis Prospectivo: ¿Esperaríamos los Mismos Resultados en República Dominicana?", h2_style))
+    story.append(Paragraph(
+        "Dado que las simulaciones para <b>República Dominicana</b> están programadas para la siguiente fase operativa y no han sido ejecutadas aún, cabe realizar una extrapolación científica basada en los principios termodinámicos identificados:<br/><br/>"
+        "• <b>Precipitación Diaria:</b> Sí se anticipa una superioridad conceptual de Shepard Modificado y la máscara RnoR suave (EXP_R15). Al igual que en Centroamérica, República Dominicana posee un marcado contraste barlovento/sotavento (vertiente norte húmeda por alisios vs sombra de lluvia severa en el Valle de Azua y San Juan). Sin embargo, al tratarse de un dominio insular marítimo cerrado, los métodos de distancia esférica sobre el mar (<b>Spheremap, EXP_R14</b>) y la contención de malla gruesa oceánica (<code>addCoarseGrid</code>) podrían mostrar un peso relativo aún más elevado para evitar fugas del gradiente hacia el mar.<br/><br/>"
+        "• <b>Temperatura Máxima ($T_{\\max}$):</b> El rechazo de la Línea Base sin DEM será todavía más crítico en República Dominicana: la brecha hipsométrica entre la cota submarina en tierra de la Hoya de Enriquillo (-40 msnm, con máximas &gt;38–40 °C) y el Pico Duarte (3,087 msnm) se produce en una distancia horizontal reducida (~80 km). Sin el forzamiento determinístico del DEM en la regresión (<b>EXP_TX11</b>), las cumbres dominicanas se sobrecalentarían artificialmente con temperaturas de valle.<br/><br/>"
+        "• <b>Temperatura Mínima ($T_{\\min}$):</b> Se anticipa una confirmación categórica de <b>EXP_TN10 (QM Empírico con NN-3D)</b>. Los valles intramontanos de Constanza (1,200 msnm) y Valle Nuevo (2,200 msnm) en la Cordillera Central dominicana son el arquetipo clásico de pozas de aire frío nocturno (<i>cold-air pooling</i>) y heladas bajo cero (&lt;0 °C). Las leyes gaussianas simétricas colapsarán allí con la misma intensidad que en Centroamérica, resultando imprescindible el modelado empírico no paramétrico acoplado a la cota vertical.",
+        body_style,
+    ))
+    story.append(Spacer(1, 3))
+
+    story.append(Paragraph("9.2. Referencias Bibliográficas Científicas Verificadas (21 Publicaciones Indexadas)", h2_style))
     references_data = [
         ("Amador, J. A., Alfaro, E. J., Lizano, O. G., & Magaña, V. O. (2006).",
          "<i>Atmospheric forcing of the eastern tropical Pacific: A review.</i> Prog. Oceanogr., 69(2–4), 101–142. DOI: 10.1016/j.pocean.2006.03.007",
-         "Modela la interacción del forzamiento atmosférico y orografía en Centroamérica y el Caribe para Regression Kriging."),
+         "Modela la interacción del forzamiento atmosférico y orografía en Centroamérica para Regression Kriging."),
         ("Barnes, S. L. (1964).",
          "<i>A technique for maximizing details in numerical weather map analysis.</i> J. Appl. Meteorol., 3(4), 396–409. DOI: 10.1175/1520-0450(1964)003<0396:ATFMDI>2.0.CO;2",
          "Fundamenta el Esquema de Barnes (BSc) para análisis objetivo continuo gaussiano en zonas costeras e insulares."),
         ("Coles, S. (2001).",
          "<i>An Introduction to Statistical Modeling of Extreme Values.</i> Springer-Verlag, London. DOI: 10.1007/978-1-4471-3675-0",
-         "Sustenta la aplicación de valores extremos Gumbel para olas de calor en valles áridos (Azua, Enriquillo, Fonseca)."),
+         "Sustenta la aplicación de valores extremos Gumbel para olas de calor en valles áridos del istmo."),
         ("Cressman, G. P. (1959).",
          "<i>An operational objective analysis system.</i> Mon. Weather Rev., 87(10), 367–374. DOI: 10.1175/1520-0493(1959)087<0367:AOOAS>2.0.CO;2",
          "Base teórica del método de correcciones sucesivas con radios de corte decrecientes en la guía CDT."),
@@ -1502,7 +1549,7 @@ def generate_experiments_pdf(
          "Descomposición teórica del Kling-Gupta Efficiency (KGE) evaluando correlación, sesgo y dispersión."),
         ("Hastenrath, S. (1967).",
          "<i>Rainfall distribution and regime in Central America.</i> Arch. Meteorol. Geophys. Bioklimatol. Ser. B, 15(3), 201–241. DOI: 10.1007/BF02243853",
-         "Estudio pionero sobre el contraste orográfico Pacífico-Caribe y la estructura estacional de la Canícula."),
+         "Estudio pionero sobre el contraste orográfico Pacífico-Caribe y la estructura estacional de la Canícula en Centroamérica."),
         ("Hastenrath, S. (1991).",
          "<i>Climate Dynamics of the Tropics.</i> Atmospheric Sciences Library, Vol. 8. Springer, Dordrecht. DOI: 10.1007/978-94-011-3156-8",
          "Tratado seminal sobre circulación general tropical, ZCIT, Alisios y forzamiento macroclimático en Centroamérica."),
@@ -1543,10 +1590,10 @@ def generate_experiments_pdf(
     doc.build(story, canvasmaker=NumberedCanvas)
     print(f"[OK] Documento PDF Vertical generado exitosamente en: {output_pdf}")
 
-    # Generar copia idéntica si duplicate_path es especificado
     if duplicate_path:
         dup_pdf = Path(duplicate_path).resolve()
         dup_pdf.parent.mkdir(parents=True, exist_ok=True)
+        import shutil
         shutil.copy2(output_pdf, dup_pdf)
         print(f"[OK] Copia sincronizada generada en: {dup_pdf}")
 
