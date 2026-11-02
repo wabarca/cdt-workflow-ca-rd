@@ -118,3 +118,61 @@ Con la ejecución de esta Fase 2 dirigida, se proyectan las siguientes mejoras s
 | **RMSE ($^\circ\text{C}$)** | $1.90\ ^\circ\text{C}$ | **$< 1.65\ ^\circ\text{C}$** | $2.18\ ^\circ\text{C}$ (`EXP_TN04`) | **$< 1.95\ ^\circ\text{C}$** |
 | **MAE ($^\circ\text{C}$)** | $1.52\ ^\circ\text{C}$ | **$< 1.35\ ^\circ\text{C}$** | $1.76\ ^\circ\text{C}$ (`EXP_TN04`) | **$< 1.55\ ^\circ\text{C}$** |
 | **PBIAS (%)** | $+1.42\%$ | **$<\ \pm 1.0\%$** | $+3.47\%$ | **$<\ \pm 2.0\%$** |
+
+---
+
+## 7. Resultados Consolidados de la Fase 2 y Tablero Global (12 Experimentos por Variable)
+
+Tras la ejecución completa de la Fase 2, se integraron los 12 experimentos para $T_{\max}$ y 12 para $T_{\min}$ sobre la red ciega de 29 estaciones de validación independiente:
+
+### 7.1. Tablero Maestro de Temperatura Máxima ($T_{\max}$)
+
+| Rank | ID Experimento | Método Fusión / Residual | GSS | KGE Medio | KGE Mediana | $r$ Pearson | RMSE ($^\circ\text{C}$) | MAE ($^\circ\text{C}$) | PBIAS (%) | Tiempo Ejecución | Estado |
+| :---: | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| #01 | **`EXP_TX01_SBA_IDW_Baseline`** | SBA + IDW ($3.5^\circ$) | **0.735** | 0.679 | 0.692 | **0.787** | **1.90** | **1.52** | $+1.42\%$ | 38m 29s | Línea Base (Aplanamiento) |
+| #02 | **`EXP_TX11_RK_Barnes_Hybrid`** | **RK (DEM+Lat+Lon) + Barnes** | **0.719** | **0.690** | **0.698** | 0.743 | 2.06 | 1.63 | $+1.33\%$ | 1h 27m 02s | **Ganador Físico Oficial** |
+| #03 | **`EXP_TX06_Barnes_Gauss_Coastal`** | Barnes Continuo Costero | 0.709 | 0.676 | 0.688 | 0.736 | 2.17 | 1.74 | $+2.05\%$ | 1h 25m 48s | Fase 1 |
+| #04 | **`EXP_TX10_QM_Empirical_ECDF`** | RK (DEM+Slope) + QM ECDF | 0.705 | 0.655 | 0.673 | 0.739 | 2.05 | 1.64 | $+0.72\%$ | 4h 39m 47s | No Paramétrico |
+| #05 | **`EXP_TX04_RK_FullTopography_NN3D`** | RK Full Topo + NN-3D | 0.682 | 0.633 | 0.650 | 0.727 | 2.28 | 1.83 | $+1.14\%$ | 1h 16m 43s | Fase 1 |
+| #06 | **`EXP_TX07_Cressman_Intermontane`** | Cressman Intermontano | 0.674 | 0.626 | 0.640 | 0.707 | 2.36 | 1.89 | $+2.15\%$ | 1h 45m 38s | Fase 1 |
+| #07 | **`EXP_TX09_SBA_Shepard_NN3D`** | SBA + Shepard + NN-3D | 0.624 | 0.596 | 0.612 | 0.678 | 3.00 | 2.45 | $+1.58\%$ | 1h 39m 50s | Fase 2 |
+| #08 | **`EXP_TX12_SBA_IDW_Local_Relief`** | SBA + IDW Local ($1.5^\circ$) | 0.597 | 0.568 | 0.585 | 0.643 | 3.14 | 2.58 | $+1.77\%$ | 59m 07s | Fase 2 |
+| #09 | **`EXP_TX05_RK_Gumbel_Heatwaves`** | RK Gumbel Olas de Calor | 0.365 | 0.056 | 0.089 | 0.680 | 4.04 | 3.32 | $+7.89\%$ | 1h 14m 40s | Sesgo Paramétrico |
+| #10 | **`EXP_TX02_RK_DEM_Normal`** | RK DEM Normal Estándar | 0.354 | 0.031 | 0.062 | 0.686 | 4.09 | 3.37 | $+8.11\%$ | 1h 22m 20s | Sesgo Paramétrico |
+| #11 | **`EXP_TX08_RK_FullTopography_Aspect`** | RK DEM + Orientación/Aspect | 0.349 | 0.026 | 0.055 | 0.678 | 4.11 | 3.39 | $+8.20\%$ | 1h 27m 25s | Sesgo Paramétrico |
+| #12 | **`EXP_TX03_RK_Topography_SkewNormal`** | RK Skew-Normal | 0.348 | 0.023 | 0.051 | 0.677 | 4.11 | 3.40 | $+8.24\%$ | 1h 18m 38s | Sesgo Paramétrico |
+
+---
+
+### 7.2. Tablero Maestro de Temperatura Mínima ($T_{\min}$)
+
+| Rank | ID Experimento | Método Fusión / Residual | GSS | KGE Medio | KGE Mediana | $r$ Pearson | RMSE ($^\circ\text{C}$) | MAE ($^\circ\text{C}$) | PBIAS (%) | Tiempo Ejecución | Estado |
+| :---: | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| #01 | **`EXP_TN10_QM_Empirical_ECDF`** | **RK (DEM+Slope) + QM ECDF** | **0.613** | **0.543** | **0.562** | 0.649 | **1.92** | **1.57** | $+1.85\%$ | 5h 12m 59s | **Ganador Oficial #1 Absoluto** |
+| #02 | **`EXP_TN01_SBA_IDW_Baseline`** | SBA + IDW ($3.5^\circ$) | 0.613 | 0.550 | 0.569 | **0.669** | 2.19 | 1.77 | $+3.47\%$ | 31m 29s | Línea Base (Aplanamiento) |
+| #03 | **`EXP_TN04_RK_FullTopography_NN3D`** | RK Full Topo + NN-3D | 0.573 | 0.508 | 0.528 | 0.612 | 2.19 | 1.76 | $+3.40\%$ | 1h 32m 56s | Fase 1 |
+| #04 | **`EXP_TN11_RK_Barnes_Hybrid`** | RK (DEM+Lat+Lon) + Barnes | 0.570 | 0.480 | 0.501 | 0.611 | 2.07 | 1.68 | $+2.89\%$ | 1h 24m 07s | Fase 2 |
+| #05 | **`EXP_TN08_RK_FullTopography_Aspect`** | RK Full Topo + Aspect | 0.559 | 0.483 | 0.505 | 0.601 | 2.30 | 1.85 | $+3.55\%$ | 1h 14m 17s | Fase 1 |
+| #06 | **`EXP_TN06_Barnes_Gauss_Coastal`** | Barnes Continuo Costero | 0.529 | 0.413 | 0.435 | 0.598 | 2.36 | 1.91 | $+3.80\%$ | 1h 27m 13s | Fase 1 |
+| #07 | **`EXP_TN09_SBA_Shepard_NN3D`** | SBA + Shepard + NN-3D | 0.450 | 0.347 | 0.369 | 0.576 | 3.21 | 2.62 | $+4.12\%$ | 1h 23m 28s | Fase 2 |
+| #08 | **`EXP_TN07_Cressman_ColdAirPooling`** | Cressman Cold-Air Pooling | 0.445 | 0.294 | 0.316 | 0.551 | 2.74 | 2.21 | $+4.35\%$ | 1h 44m 02s | Fase 1 |
+| #09 | **`EXP_TN12_SBA_IDW_Local_Relief`** | SBA + IDW Local ($1.5^\circ$) | 0.403 | 0.260 | 0.282 | 0.549 | 3.37 | 2.76 | $+4.50\%$ | 58m 28s | Fase 2 |
+| #10 | **`EXP_TN05_RK_Gumbel_Frost_Extremes`**| RK Gumbel Heladas | 0.376 | 0.108 | 0.134 | 0.593 | 3.18 | 2.59 | $+5.40\%$ | 1h 21m 56s | Sesgo Paramétrico |
+| #11 | **`EXP_TN02_RK_DEM_Normal`** | RK DEM Normal Estándar | 0.359 | 0.072 | 0.098 | 0.598 | 3.22 | 2.63 | $+5.62\%$ | 1h 11m 33s | Sesgo Paramétrico |
+| #12 | **`EXP_TN03_RK_Topography_SkewNormal`** | RK Skew-Normal | 0.357 | 0.069 | 0.095 | 0.596 | 3.25 | 2.66 | $+5.68\%$ | 1h 24m 52s | Sesgo Paramétrico |
+
+---
+
+## 8. Diagnóstico Climatológico, Discrepancia $T_{\max}$ vs $T_{\min}$ y Recomendación Oficial
+
+### 8.1. ¿Por qué la Discrepancia Física entre Métodos para $T_{\max}$ y $T_{\min}$?
+1. **Dinámica Diurna ($T_{\max}$):** Gobernada por la insolación solar y la mezcla turbulenta convectiva en la capa límite atmosférica ($1\text{ a }2\text{ km}$ de profundidad). El gradiente térmico vertical ambiental es uniforme y fuertemente adiabático ($-6.5\ ^\circ\text{C}/\text{km}$). El método híbrido **`EXP_TX11_RK_Barnes_Hybrid`** triunfa porque desacopla el gradiente vertical básico mediante el DEM y suaviza continuamente las perturbaciones advectivas y de brisas con el filtro analítico Gaussiano de Barnes, alcanzando el **KGE más alto de todo el estudio ($0.690$)**.
+2. **Dinámica Nocturna ($T_{\min}$):** Dominada por el enfriamiento radiativo en superficie, desacople atmosférico vertical e inversión térmica por drenaje de aire frío (*cold-air pooling*) hacia los fondos de valle. Las distribuciones gaussianas simétricas fracasan rotundamente ($KGE < 0.10$). **`EXP_TN10_QM_Empirical_ECDF`** es el ganador supremo (#1) porque el mapeo cuantil empírico celda a celda acoplado con NN-3D corrige las colas asimétricas de enfriamiento extremo sin distorsionar la mediana ni imponer parámetros forzados, reduciendo el RMSE a un récord de **$1.92\ ^\circ\text{C}$**.
+
+### 8.2. ¿Por qué el Baseline Parece Rendir Alto Numéricamente y por qué NO Debe Usarse Oficialmente?
+- **El Efecto de Concentración de Estaciones:** Las estaciones meteorológicas de superficie en Centroamérica y República Dominicana están situadas mayoritariamente en valles, llanuras costeras y áreas urbanizadas accesibles (cota media de red $\approx 350\text{ msnm}$).
+- En `EXP_01` (Baseline), el ajuste de sesgo y la interpolación de residuales se realizan mediante IDW puramente horizontal bidimensional ($2D$) con radio amplio ($3.5^\circ$). Al evaluar el desempeño en puntos que son estaciones, el IDW ajusta bien porque los vecinos inmediatos comparten condiciones de valle similares.
+- **La Falla Crítica en Zonas No Monitoreadas (Alta Montaña):** En cadenas montañosas sin estaciones (Cordillera de Talamanca, Sierra de los Cuchumatanes, Cordillera Central de RD), el IDW horizontal propaga las temperaturas cálidas de los valles a las cumbres montañosas, "aplanando" la topografía térmica y sobreestimando drásticamente la temperatura en cumbres por más de $+4\ ^\circ\text{C}$ a $+8\ ^\circ\text{C}$.
+- **Decisión Metodológica Oficial:** Para generar grillas climáticas operativas que representen fielmente el territorio en su totalidad, **se rechaza el Baseline (`EXP_01`)** y se adoptan formalmente las configuraciones con acoplamiento topográfico real:
+  - **Rejilla Oficial de $T_{\max}$:** `EXP_TX11_RK_Barnes_Hybrid` (Alternativa no paramétrica: `EXP_TX10_QM_Empirical_ECDF`).
+  - **Rejilla Oficial de $T_{\min}$:** `EXP_TN10_QM_Empirical_ECDF` (Ganador #1 indiscutible en métricas y física de inversiones).

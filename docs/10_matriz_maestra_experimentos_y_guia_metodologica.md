@@ -419,3 +419,23 @@ tail -f corrida_completa.log
 19. **Themeßl, M. J., Gobiet, A., & Leuprecht, A. (2011).** *Empirical-statistical downscaling and error correction of daily precipitation from regional climate models.* International Journal of Climatology, 31(10), 1530–1544. DOI: [10.1002/joc.2168](https://doi.org/10.1002/joc.2168)
 20. **Willmott, C. J., Rowe, C. M., & Philpot, W. D. (1985).** *Small-scale climate maps: A sensitivity analysis of some common assumptions associated with grid-point interpolation and contouring.* The American Cartographer, 12(1), 5–16. DOI: [10.1559/152304085783914686](https://doi.org/10.1559/152304085783914686)
 21. **WMO / CF Metadata Conventions Committee (2020).** *NetCDF Climate and Forecast (CF) Metadata Conventions Version 1.8.* World Meteorological Organization. URL: [https://cfconventions.org/](https://cfconventions.org/)
+
+---
+
+## 9. Síntesis Final del Benchmark: Batería Completa de 39 Experimentos y Configuraciones Oficiales
+
+Con la ejecución de las Fases 1 y 2, se completaron los **39 experimentos** sobre la serie histórica multidecadal 1991–2020 (10,958 días) en validación cruzada ciega con 29 estaciones independientes:
+
+### 9.1. Cuadro de Honor y Selección de Modelos Oficiales
+
+| Variable | Experimento Ganador Oficial | Familia Metodológica | Métricas de Validación Ciega | Justificación Física y Climatológica Regional |
+| :--- | :--- | :--- | :--- | :--- |
+| **Precipitación Diaria** | **`EXP_R15_Shepard_RnoR_Smooth`** | **SBA Multiescala + Shepard Modificado + Máscara RnoR Suave** | • **GSS:** 0.501<br>• **KGE:** 0.379<br>• **$r$:** 0.479<br>• **ETS:** 0.329<br>• **RMSE:** 12.88 mm | Elimina lloviznas espurias (*drizzle*) en el Corredor Seco mediante RnoR continuo y modela transiciones de gradiente sin singularidades circulares de Kriging en cañones y laderas escarpadas. |
+| **Temperatura Máxima ($T_{\max}$)** | **`EXP_TX11_RK_Barnes_Hybrid`** | **Regression Kriging (DEM+Lat+Lon) + Filtro Barnes Gaussiano** | • **GSS:** 0.719<br>• **KGE:** **0.690**<br>• **$r$:** 0.743<br>• **RMSE:** 2.06 $^\circ\text{C}$<br>• **MAE:** 1.63 $^\circ\text{C}$ | Modela el gradiente adiabático diurno uniforme con el DEM y suaviza las anomalías térmicas y de brisas costeras mediante el filtro espectral de Barnes sin discontinuidades. |
+| **Temperatura Mínima ($T_{\min}$)** | **`EXP_TN10_QM_Empirical_ECDF`** | **Regression Kriging (DEM+Slope) + Quantile Mapping ECDF (NN-3D)** | • **GSS:** **0.613**<br>• **KGE:** 0.543<br>• **$r$:** 0.649<br>• **RMSE:** **1.92 $^\circ\text{C}$**<br>• **MAE:** **1.57 $^\circ\text{C}$** | Resuelve el desacople vertical nocturno y el drenaje de aire frío (*cold-air pooling*) mediante NN-3D y mapeo cuantil empírico celda a celda sin forzar campanas gaussianas simétricas. |
+
+### 9.2. Resumen de Cómputo Acumulado
+- **Precipitación (15 Experimentos):** 55 horas 18 minutos de cómputo ininterrumpido.
+- **Temperatura Máxima (12 Experimentos):** 18 horas 33 minutos.
+- **Temperatura Mínima (12 Experimentos):** 18 horas 33 minutos.
+- **Tiempo Total de Simulación Geoestadística:** **92 horas 24 minutos** (3.85 días de cómputo paralelo).

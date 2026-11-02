@@ -88,3 +88,6 @@ desktop.ini
 !/.dockerignore
 !/.devcontainer/
 !/.devcontainer/**
+
+# Carpeta privada de documentacion y reportes en PDF
+docs-private/
