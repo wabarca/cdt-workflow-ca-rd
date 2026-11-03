@@ -227,7 +227,7 @@ def integrate_control_into_benchmark(
     benchmark_dir: Path | str = "output/benchmark_ca",
     experiments_root: Path | str = "output/experiments_ca",
 ):
-    """Integra los Experimentos 0 de control en el leaderboard consolidado y el dashboard."""
+    """Integra los Experimentos 0 de control en el leaderboard consolidado, regenera figuras y el dashboard."""
     bm_path = Path(benchmark_dir)
     json_path = bm_path / "benchmark_leaderboard.json"
     csv_path = bm_path / "benchmark_leaderboard_summary.csv"
@@ -239,89 +239,164 @@ def integrate_control_into_benchmark(
     with open(json_path, "r", encoding="utf-8") as f:
         existing_items = json.load(f)
 
-    # Filtrar si ya existen los de control para no duplicar
-    existing_ids = {it["experiment_id"] for it in existing_items}
+    # Identificar líneas base para calcular deltas
+    base_rain = next((it for it in existing_items if it.get("experiment_id") == "EXP_R01_SBA_IDW_Baseline"), {})
+    base_tx = next((it for it in existing_items if it.get("experiment_id") == "EXP_TX01_SBA_IDW_Baseline"), {})
+    base_tn = next((it for it in existing_items if it.get("experiment_id") == "EXP_TN01_SBA_IDW_Baseline"), {})
 
-    # Leer los resúmenes generados para los experimentos 0
     control_configs = [
-        ("rainfall", "EXP_R00_Raw_CHIRPS", 0.3789),
-        ("tmax", "EXP_TX00_Raw_CHIRTS", 0.5774),
-        ("tmin", "EXP_TN00_Raw_CHIRTS", 0.4699),
+        ("rainfall", "EXP_R00_Raw_CHIRPS", 0.3789, base_rain),
+        ("tmax", "EXP_TX00_Raw_CHIRTS", 0.5774, base_tx),
+        ("tmin", "EXP_TN00_Raw_CHIRTS", 0.4699, base_tn),
     ]
 
-    updated = False
-    for var, exp_id, gss in control_configs:
-        if exp_id in existing_ids:
-            continue
-
-        sum_file = Path(experiments_root) / exp_id / "validation_summary.json"
-        if not sum_file.exists():
-            continue
-
-        with open(sum_file, "r", encoding="utf-8") as sf:
-            sdata = json.load(sf)
-
+    # Diccionario con los datos completos de control
+    control_items_map = {}
+    for var, exp_id, gss, base_dict in control_configs:
         meta = DEFAULT_RAW_METRICS[var]
+        sum_file = Path(experiments_root) / exp_id / "validation_summary.json"
+        sdata = {}
+        if sum_file.exists():
+            try:
+                with open(sum_file, "r", encoding="utf-8") as sf:
+                    sdata = json.load(sf)
+            except Exception:
+                pass
+
+        kge_val = sdata.get("mean_kge", meta.get("mean_kge", np.nan))
+        r_val = sdata.get("mean_r", meta.get("mean_r", np.nan))
+        rmse_val = sdata.get("mean_rmse", meta.get("mean_rmse", np.nan))
+        mae_val = sdata.get("mean_mae", meta.get("mean_mae", np.nan))
+        pbias_val = sdata.get("mean_pbias", meta.get("mean_pbias", np.nan))
+
+        base_kge = base_dict.get("kge", np.nan)
+        base_rmse = base_dict.get("rmse", np.nan)
+        base_ets = base_dict.get("ets", np.nan)
+
         item = {
             "experiment_id": exp_id,
             "variable": var,
             "description": meta["description"],
             "total_stations": sdata.get("total_stations_evaluated", 29),
-            "kge": sdata.get("mean_kge", np.nan),
-            "kge_median": sdata.get("median_kge", np.nan),
-            "r": sdata.get("mean_r", np.nan),
-            "r2": sdata.get("mean_r2", np.nan),
-            "rmse": sdata.get("mean_rmse", np.nan),
-            "mae": sdata.get("mean_mae", np.nan),
-            "pbias": sdata.get("mean_pbias", np.nan),
+            "kge": float(kge_val) if pd.notna(kge_val) else np.nan,
+            "kge_median": float(sdata.get("median_kge", meta.get("median_kge", kge_val))),
+            "r": float(r_val) if pd.notna(r_val) else np.nan,
+            "r2": float(r_val ** 2) if pd.notna(r_val) else np.nan,
+            "rmse": float(rmse_val) if pd.notna(rmse_val) else np.nan,
+            "mae": float(mae_val) if pd.notna(mae_val) else np.nan,
+            "pbias": float(pbias_val) if pd.notna(pbias_val) else np.nan,
             "output_dir": str(Path(experiments_root) / exp_id),
             "global_skill_score": gss,
             "rank": 0,  # Marcador especial de Control Base
+            "delta_kge_vs_base": float(kge_val - base_kge) if pd.notna(base_kge) and pd.notna(kge_val) else np.nan,
+            "delta_rmse_vs_base": float(base_rmse - rmse_val) if pd.notna(base_rmse) and pd.notna(rmse_val) else np.nan,
             "is_winner": False,
             "is_control": True,
         }
         if var == "rainfall":
+            ets_val = sdata.get("mean_ets", meta.get("mean_ets", np.nan))
             item.update({
-                "pod": sdata.get("mean_pod", np.nan),
-                "far": sdata.get("mean_far", np.nan),
-                "ets": sdata.get("mean_ets", np.nan),
-                "hss": sdata.get("mean_hss", np.nan),
+                "pod": float(sdata.get("mean_pod", meta.get("mean_pod", np.nan))),
+                "far": float(sdata.get("mean_far", meta.get("mean_far", np.nan))),
+                "ets": float(ets_val) if pd.notna(ets_val) else np.nan,
+                "hss": float(sdata.get("mean_hss", meta.get("mean_hss", np.nan))),
+                "delta_ets_vs_base": float(ets_val - base_ets) if pd.notna(base_ets) and pd.notna(ets_val) else np.nan,
             })
+        else:
+            item.update({
+                "pod": np.nan,
+                "far": np.nan,
+                "ets": np.nan,
+                "hss": np.nan,
+                "delta_ets_vs_base": np.nan,
+            })
+        control_items_map[exp_id] = item
 
-        existing_items.append(item)
-        updated = True
+    # Reemplazar o anexar en existing_items
+    cleaned_items = [it for it in existing_items if it.get("experiment_id") not in control_items_map]
+    for exp_id in ["EXP_R00_Raw_CHIRPS", "EXP_TX00_Raw_CHIRTS", "EXP_TN00_Raw_CHIRTS"]:
+        if exp_id in control_items_map:
+            cleaned_items.append(control_items_map[exp_id])
 
-    if updated:
-        # Re-guardar JSON
-        with open(json_path, "w", encoding="utf-8") as f:
-            json.dump(existing_items, f, indent=2)
+    # Guardar JSON actualizado
+    with open(json_path, "w", encoding="utf-8") as f:
+        json.dump(cleaned_items, f, indent=2)
 
-        # Re-guardar CSV
-        df = pd.DataFrame(existing_items)
-        df.to_csv(csv_path, index=False)
-        print(f"[+] Leaderboard actualizado con el Experimento 0 en {json_path} y {csv_path}")
+    # Guardar CSV actualizado
+    df = pd.DataFrame(cleaned_items)
+    df.to_csv(csv_path, index=False)
+    print(f"[+] Leaderboard actualizado con el Experimento 0 en {json_path} y {csv_path}")
 
-        # Regenerar dashboard HTML
-        try:
-            from launcher.benchmark_reporter import generate_interactive_html_dashboard
-            figures_base = bm_path / "figures"
-            figures_map = {}
-            for v in ["rainfall", "tmax", "tmin"]:
-                var_dir = figures_base / v
-                if var_dir.exists():
-                    figures_map[v] = {
-                        "taylor": str(var_dir / "figure_1_taylor_diagram.png"),
-                        "boxplots": str(var_dir / "figure_2_kge_boxplots_by_station.png"),
-                        "strata": str(var_dir / "figure_3_elevation_strata_performance.png"),
-                        "radar": str(var_dir / "figure_4_radar_skill_chart.png"),
-                        "heatmap": str(var_dir / "figure_5_metrics_heatmap.png"),
-                        "roc": str(var_dir / "figure_6_roc_pod_vs_far.png") if (var_dir / "figure_6_roc_pod_vs_far.png").exists() else None,
-                    }
-            html_out = bm_path / "benchmark_report.html"
-            generate_interactive_html_dashboard(df, figures_map=figures_map, output_html_path=html_out)
-            print(f"[+] Dashboard HTML interactivo actualizado: {html_out}")
-        except Exception as e:
-            print(f"[!] Nota al regenerar HTML: {e}")
+    # Cargar df_stations si están disponibles en las carpetas de experimentos
+    station_dfs = []
+    for exp_dir in Path(experiments_root).glob("*"):
+        st_csv = exp_dir / "validation_metrics_by_station.csv"
+        if st_csv.exists():
+            try:
+                sdf = pd.read_csv(st_csv)
+                sdf["experiment_id"] = exp_dir.name
+                sdf["variable"] = "rainfall" if "R0" in exp_dir.name or "R1" in exp_dir.name else (
+                    "tmax" if "TX" in exp_dir.name else "tmin"
+                )
+                station_dfs.append(sdf)
+            except Exception:
+                pass
+    df_stations = pd.concat(station_dfs, ignore_index=True) if station_dfs else pd.DataFrame()
+
+    # Regenerar figuras estáticas de alta resolución (300 DPI) para cada variable
+    print("[*] Generando figuras del benchmark (Taylor, Radar, Heatmap, Boxplots)...")
+    try:
+        from launcher.benchmark_reporter import (
+            generate_taylor_diagram,
+            generate_radar_skill_chart,
+            generate_metrics_heatmap,
+            generate_roc_pod_vs_far,
+            generate_kge_boxplots,
+            generate_strata_performance_chart,
+            generate_interactive_html_dashboard,
+        )
+
+        figures_base = bm_path / "figures"
+        figures_map = {}
+        for v in ["rainfall", "tmax", "tmin"]:
+            var_dir = figures_base / v
+            var_dir.mkdir(parents=True, exist_ok=True)
+
+            taylor_f = var_dir / "figure_1_taylor_diagram.png"
+            boxplots_f = var_dir / "figure_2_kge_boxplots_by_station.png"
+            strata_f = var_dir / "figure_3_elevation_strata_performance.png"
+            radar_f = var_dir / "figure_4_radar_skill_chart.png"
+            heatmap_f = var_dir / "figure_5_metrics_heatmap.png"
+            roc_f = var_dir / "figure_6_roc_pod_vs_far.png"
+
+            generate_taylor_diagram(df, taylor_f, var_type=v)
+            generate_radar_skill_chart(df, radar_f, var_type=v)
+            generate_metrics_heatmap(df, heatmap_f, var_type=v)
+
+            if not df_stations.empty:
+                try:
+                    generate_kge_boxplots(df_stations, boxplots_f, var_type=v)
+                    generate_strata_performance_chart(df_stations, strata_f, var_type=v)
+                except Exception as e_st:
+                    print(f"  [!] Nota en boxplots {v}: {e_st}")
+
+            if v in ("rainfall", "precip", "rain"):
+                generate_roc_pod_vs_far(df, roc_f)
+
+            figures_map[v] = {
+                "taylor": f"figures/{v}/figure_1_taylor_diagram.png",
+                "kge_boxplots": f"figures/{v}/figure_2_kge_boxplots_by_station.png",
+                "strata": f"figures/{v}/figure_3_elevation_strata_performance.png",
+                "radar": f"figures/{v}/figure_4_radar_skill_chart.png",
+                "heatmap": f"figures/{v}/figure_5_metrics_heatmap.png",
+                "roc": f"figures/{v}/figure_6_roc_pod_vs_far.png" if v in ("rainfall", "precip", "rain") else "",
+            }
+
+        html_out = bm_path / "benchmark_report.html"
+        generate_interactive_html_dashboard(df, figures_map=figures_map, output_html_path=html_out, df_stations=df_stations)
+        print(f"[+] Tablero interactivo HTML generado exitosamente: {html_out}")
+    except Exception as e:
+        print(f"[!] Error al generar figuras o tablero: {e}")
 
 
 def main():
