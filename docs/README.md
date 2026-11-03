@@ -68,9 +68,9 @@ La documentación se organiza en **5 bloques lógicos y 11 módulos secuenciales
     - Análisis de 24 experimentos térmicos (12 $T_{\max}$ y 12 $T_{\min}$), diagnóstico de la divergencia termodinámica convectiva diurna vs. desacople e inversiones nocturnas, justificación física del rechazo a la Línea Base sin DEM, y selección de ganadores oficiales (`EXP_TX11` y `EXP_TN10`).
 
 
-### Bloque V: Auditoría del Código Fuente R y Paralelización Headless
+### Bloque V: Auditoría del Código Fuente en R y Ejecución Desatendida (*Headless*)
 11. [**11. Modificaciones al Código Fuente R de CDT y Resolución de la Paralelización**](11_modificaciones_codigo_fuente_r_y_paralelizacion.md)
-   - Diagnóstico de la concurrencia en Tcl/Tk (`tcltk`), desactivación upstream del paralelismo en la GUI, aislamiento de clústeres PSOCK, vectorización algorítmica de cuantiles empíricos (`stats::knots`), smart file skip e inventario detallado de parches en `R/`.
+   - Diagnóstico del bucle de ventanas en Tcl/Tk (`tcltk`), desactivación fija del paralelismo en la interfaz original, aislamiento de memoria en procesos secundarios (clústeres locales PSOCK), aceleración de cuantiles empíricos mediante nudos ordenados (`stats::knots`), omisión inteligente de archivos ya calculados (*smart file skip*) e inventario detallado de ajustes en `R/`.
 ---
 
 ## Resumen de Modelos Ganadores Oficiales
