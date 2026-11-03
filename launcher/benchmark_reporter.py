@@ -90,9 +90,12 @@ def harvest_experiment_metrics(experiments_root: Path | str) -> Tuple[pd.DataFra
         manifest_path = exp_dir / "manifest.json"
 
         exp_id = exp_dir.name
-        var_type = "rainfall" if "R0" in exp_id or "R1" in exp_id or "rain" in exp_id.lower() else (
-            "tmax" if "TX" in exp_id or "tmax" in exp_id.lower() else "tmin"
-        )
+        if re.search(r"EXP_TX\d+", exp_id, re.IGNORECASE) or "tmax" in exp_id.lower():
+            var_type = "tmax"
+        elif re.search(r"EXP_TN\d+", exp_id, re.IGNORECASE) or "tmin" in exp_id.lower():
+            var_type = "tmin"
+        else:
+            var_type = "rainfall"
         desc = exp_id.replace("_", " ")
 
         if manifest_path.exists():
@@ -344,7 +347,11 @@ def generate_kge_boxplots(
     )
 
     palette_map = {"rainfall": "Blues_r", "tmax": "YlOrRd_r", "tmin": "Purples_r"}
-    palette = sns.color_palette(palette_map.get(var_type, "Blues_r"), len(exp_order))
+    base_colors = sns.color_palette(palette_map.get(var_type, "Blues_r"), len(exp_order))
+    palette = [
+        "#64748b" if ("00" in eid or "Raw" in eid) else c
+        for eid, c in zip(exp_order, base_colors)
+    ]
     
     ax = sns.boxplot(
         data=df_var,
@@ -780,13 +787,18 @@ def build_interactive_chart_payloads(
             med_order = st_var.groupby("experiment_id")["kge"].median().sort_values(ascending=False).index
             for exp_id in med_order:
                 vals = [float(v) for v in st_var[st_var["experiment_id"] == exp_id]["kge"].dropna()]
-                box_traces.append({
+                is_ctrl = ("00" in exp_id or "Raw" in exp_id)
+                trace_item = {
                     "type": "box",
-                    "name": exp_id,
+                    "name": exp_id + (" [CONTROL 0]" if is_ctrl else ""),
                     "y": vals,
                     "boxpoints": "outliers",
                     "jitter": 0.2,
-                })
+                }
+                if is_ctrl:
+                    trace_item["marker"] = {"color": "#64748b"}
+                    trace_item["line"] = {"color": "#475569"}
+                box_traces.append(trace_item)
     box_layout = {
         "yaxis": {"title": "Kling-Gupta Efficiency (KGE)", "range": [-0.2, 1.05]},
         "xaxis": {"tickangle": -45},
