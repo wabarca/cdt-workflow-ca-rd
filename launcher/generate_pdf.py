@@ -874,6 +874,7 @@ def generate_experiments_pdf(
         ("13", "EXP_R03_SBA_OKR_BernoulliGamma", "QM Paramétrico Gamma + OKR Bloques", "-0.028", "0.427", "14.87", "-5.83%", "0.639", "0.348", "0.246", "0.373", "0.323", "Fase 1 (Rank 13)", False),
         ("14", "EXP_R04_SBA_OKR_BernoulliWeib", "QM Paramétrico Weibull + OKR Bloques", "0.016", "0.431", "14.51", "-11.98%", "0.636", "0.348", "0.247", "0.373", "0.315", "Fase 1 (Rank 14)", False),
         ("15", "EXP_R10_RK_FullTopography_Asp", "RK Máxima Complejidad DEM+Aspect", "0.106", "0.411", "14.11", "-18.36%", "0.508", "0.376", "0.190", "0.307", "0.305", "Fase 1 (Rank 15)", False),
+        ("Control", "EXP_R00_Raw_CHIRPS", "Control 0: CHIRPS Crudo (Sin estaciones)", "0.284", "0.442", "14.85", "-18.65%", "0.589", "0.392", "0.218", "0.345", "0.379", "Control Grilla Original", False),
     ]
 
     table_lb_rows = [th_lb_row]
@@ -1063,7 +1064,7 @@ def generate_experiments_pdf(
         [
             Paragraph("<b>EXP-TX12</b>", td_xs_bold),
             Paragraph("<b>[P1-P2]</b> Bilineal con DEM SRTM.<br/>Salida: <code>tmax_down_*.nc</code>", td_xs),
-            Paragraph("• Método: <code>mbvar</code> (&plusmn;5 d)<br/>• NN-3D ($\\Delta z$, 3.5°)", td_xs),
+            Paragraph("• Método: <code>mbvar</code> (&plusmn;5 d)<br/>• NN-3D (&Delta;z, 3.5°)", td_xs),
             Paragraph("• Ajuste proporcional con control altimétrico.<br/>Salida: <code>tmax_adj_*.nc</code>", td_xs),
             Paragraph("• Método: <b>SBA multiescala local</b> (1.0°, 0.50°, 0.25°)<br/>• Interp: IDW local (1.5°)", td_xs),
             Paragraph("<b>SBA IDW Local con Control Altimétrico:</b> Refina la línea base reduciendo radios de búsqueda e introduciendo control vertical NN-3D.", td_xs),
@@ -1111,6 +1112,7 @@ def generate_experiments_pdf(
         ("10", "EXP_TX02_RK_DEM_Normal", "RK Solo DEM + QM Normal Gaussiano", "0.354", "0.031", "0.686", "4.09", "3.61", "-5.12%", "Fase 1 (Rigidez de campana gaussiana)", False),
         ("11", "EXP_TX08_RK_FullTopography_Aspect", "RK Acoplamiento Total + Skew-Normal", "0.349", "0.026", "0.678", "4.11", "3.60", "-4.93%", "Fase 1 (Sobreparametrización en residuales)", False),
         ("12", "EXP_TX03_RK_Topography_SkewNormal", "RK DEM + Pendiente + Skew-Normal", "0.348", "0.023", "0.677", "4.11", "3.60", "-4.88%", "Fase 1 (Inestabilidad en distribución asimétrica)", False),
+        ("Control", "EXP_TX00_Raw_CHIRTS", "Control 0: CHIRTS Tmax Crudo (Sin DEM ni estaciones)", "0.577", "0.518", "0.672", "3.12", "2.54", "+5.82%", "Control Grilla Original", False),
     ]
 
     table_lb_tx = [th_lb_t_row]
@@ -1345,6 +1347,7 @@ def generate_experiments_pdf(
         ("10", "EXP_TN05_RK_Gumbel_Frost_Extremes", "RK DEM + QM Gumbel Heladas", "0.376", "0.108", "0.593", "3.18", "2.73", "-1.36%", "Fase 1 (Colapso por asimetría teórica de cola fría)", False),
         ("11", "EXP_TN02_RK_DEM_Normal", "RK Solo DEM + QM Normal Gaussiano", "0.359", "0.072", "0.598", "3.22", "2.79", "-1.82%", "Fase 1 (Rigidez de campana normal en heladas)", False),
         ("12", "EXP_TN03_RK_Topography_SkewNormal", "RK DEM + Pendiente + Skew-Normal", "0.357", "0.069", "0.596", "3.25", "2.82", "-1.50%", "Fase 1 (Inestabilidad en caídas por frentes fríos)", False),
+        ("Control", "EXP_TN00_Raw_CHIRTS", "Control 0: CHIRTS Tmin Crudo (Sin DEM ni estaciones)", "0.470", "0.412", "0.583", "3.28", "2.69", "+7.94%", "Control Grilla Original", False),
     ]
 
     table_lb_tn = [th_lb_tn_row]
@@ -1517,8 +1520,8 @@ def generate_experiments_pdf(
     story.append(Paragraph(
         "Dado que las simulaciones para <b>República Dominicana</b> están programadas para la siguiente fase operativa y no han sido ejecutadas aún, cabe realizar una extrapolación científica basada en los principios termodinámicos identificados:<br/><br/>"
         "• <b>Precipitación Diaria:</b> Sí se anticipa una superioridad conceptual de Shepard Modificado y la máscara RnoR suave (EXP_R15). Al igual que en Centroamérica, República Dominicana posee un marcado contraste barlovento/sotavento (vertiente norte húmeda por alisios vs sombra de lluvia severa en el Valle de Azua y San Juan). Sin embargo, al tratarse de un dominio insular marítimo cerrado, los métodos de distancia esférica sobre el mar (<b>Spheremap, EXP_R14</b>) y la contención de malla gruesa oceánica (<code>addCoarseGrid</code>) podrían mostrar un peso relativo aún más elevado para evitar fugas del gradiente hacia el mar.<br/><br/>"
-        "• <b>Temperatura Máxima ($T_{\\max}$):</b> El rechazo de la Línea Base sin DEM será todavía más crítico en República Dominicana: la brecha hipsométrica entre la cota submarina en tierra de la Hoya de Enriquillo (-40 msnm, con máximas &gt;38–40 °C) y el Pico Duarte (3,087 msnm) se produce en una distancia horizontal reducida (~80 km). Sin el forzamiento determinístico del DEM en la regresión (<b>EXP_TX11</b>), las cumbres dominicanas se sobrecalentarían artificialmente con temperaturas de valle.<br/><br/>"
-        "• <b>Temperatura Mínima ($T_{\\min}$):</b> Se anticipa una confirmación categórica de <b>EXP_TN10 (QM Empírico con NN-3D)</b>. Los valles intramontanos de Constanza (1,200 msnm) y Valle Nuevo (2,200 msnm) en la Cordillera Central dominicana son el arquetipo clásico de pozas de aire frío nocturno (<i>cold-air pooling</i>) y heladas bajo cero (&lt;0 °C). Las leyes gaussianas simétricas colapsarán allí con la misma intensidad que en Centroamérica, resultando imprescindible el modelado empírico no paramétrico acoplado a la cota vertical.",
+        "• <b>Temperatura Máxima (T<sub>máx</sub>):</b> El rechazo de la Línea Base sin DEM será todavía más crítico en República Dominicana: la brecha hipsométrica entre la cota submarina en tierra de la Hoya de Enriquillo (-40 msnm, con máximas &gt;38–40 °C) y el Pico Duarte (3,087 msnm) se produce en una distancia horizontal reducida (~80 km). Sin el forzamiento determinístico del DEM en la regresión (<b>EXP_TX11</b>), las cumbres dominicanas se sobrecalentarían artificialmente con temperaturas de valle.<br/><br/>"
+        "• <b>Temperatura Mínima (T<sub>mín</sub>):</b> Se anticipa una confirmación categórica de <b>EXP_TN10 (QM Empírico con NN-3D)</b>. Los valles intramontanos de Constanza (1,200 msnm) y Valle Nuevo (2,200 msnm) en la Cordillera Central dominicana son el arquetipo clásico de pozas de aire frío nocturno (<i>cold-air pooling</i>) y heladas bajo cero (&lt;0 °C). Las leyes gaussianas simétricas colapsarán allí con la misma intensidad que en Centroamérica, resultando imprescindible el modelado empírico no paramétrico acoplado a la cota vertical.",
         body_style,
     ))
     story.append(Spacer(1, 3))
