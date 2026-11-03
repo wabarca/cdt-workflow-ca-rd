@@ -37,7 +37,7 @@ python launcher/generate_pdf.py
 
 ## Estructura Curricular y Mapa de Navegación de la Documentación
 
-La documentación se organiza en **4 bloques lógicos y 10 módulos secuenciales**, comenzando por la guía de ejecución y producción:
+La documentación se organiza en **5 bloques lógicos y 11 módulos secuenciales**, comenzando por la guía de ejecución y producción:
 
 ### Bloque I: Guías de Ejecución, Automatización y Arquitectura del Sistema
 1. [**01. Guía de Ejecución desde Terminal (CLI / Headless) y Scripts de Producción**](01_guia_ejecucion_produccion_y_scripts.md)
@@ -67,6 +67,10 @@ La documentación se organiza en **4 bloques lógicos y 10 módulos secuenciales
 10. [**10. Diagnóstico Científico y Resultados del Benchmark de Temperatura (Tmax y Tmin)**](10_diagnostico_y_benchmark_temperatura.md)
     - Análisis de 24 experimentos térmicos (12 $T_{\max}$ y 12 $T_{\min}$), diagnóstico de la divergencia termodinámica convectiva diurna vs. desacople e inversiones nocturnas, justificación física del rechazo a la Línea Base sin DEM, y selección de ganadores oficiales (`EXP_TX11` y `EXP_TN10`).
 
+
+### Bloque V: Auditoría del Código Fuente R y Paralelización Headless
+11. [**11. Modificaciones al Código Fuente R de CDT y Resolución de la Paralelización**](11_modificaciones_codigo_fuente_r_y_paralelizacion.md)
+   - Diagnóstico de la concurrencia en Tcl/Tk (`tcltk`), desactivación upstream del paralelismo en la GUI, aislamiento de clústeres PSOCK, vectorización algorítmica de cuantiles empíricos (`stats::knots`), smart file skip e inventario detallado de parches en `R/`.
 ---
 
 ## Resumen de Modelos Ganadores Oficiales
