@@ -336,18 +336,39 @@ Una vez completada la fusión diaria por CDT:
 4. Asigna los atributos estándar CF-1.8 (`standard_name`, `units`, `long_name`, `coverage_content_type`, etc.).
 
 ### C. Evaluación de Métricas de Validación Independiente
-El script compara la serie temporal de cada celda con los registros de la estación de validación independiente:
-- **Métricas Continuas:**
-  - $R^2 = \left(\frac{\sum (O_i - \bar{O})(S_i - \bar{S})}{\sqrt{\sum (O_i - \bar{O})^2 \sum (S_i - \bar{S})^2}}\right)^2$
-  - $\text{RMSE} = \sqrt{\frac{1}{N}\sum_{i=1}^N (S_i - O_i)^2}$
-  - $\text{MAE} = \frac{1}{N}\sum_{i=1}^N |S_i - O_i|$
-  - $\text{PBIAS} = \frac{\sum (S_i - O_i)}{\sum O_i} \times 100\%$
-  - $\text{KGE} = 1 - \sqrt{(r - 1)^2 + (\beta - 1)^2 + (\gamma - 1)^2}$ donde $\beta = \frac{\mu_s}{\mu_o}$ y $\gamma = \frac{\sigma_s / \mu_s}{\sigma_o / \mu_o}$.
-- **Métricas Categóricas (Lluvia $\ge 1.0\text{ mm}$):**
-  - $\text{POD} = \frac{H}{H + M}$
-  - $\text{FAR} = \frac{FA}{H + FA}$
-  - $\text{ETS} = \frac{H - H_r}{H + M + FA - H_r}$ donde $H_r = \frac{(H + M)(H + FA)}{N}$
-  - $\text{HSS} = \frac{2(H \cdot CN - FA \cdot M)}{(H + M)(M + CN) + (H + FA)(FA + CN)}$
+
+Una vez generado y ensamblado el producto climático en formato NetCDF 3D (estándar CF-1.8), el sistema ejecuta de forma automática la evaluación cuantitativa de desempeño contra observaciones in situ.
+
+#### 1. ¿Cómo se extraen los datos de la cuadrícula en las coordenadas de las estaciones?
+Para comparar los valores de la cuadrícula continua con las observaciones puntuales de las estaciones meteorológicas, el evaluador ([`launcher/station_manager.py`](file:///d:/Workspace/CDT-8.0/launcher/station_manager.py)) implementa un esquema espacial riguroso:
+* **Extracción por Vecino Más Cercano (*Nearest Neighbor*):** Se localiza el centroide de la celda de la cuadrícula más próxima geográficamente a la latitud y longitud de la estación (`da.sel(..., method="nearest")`). No se utiliza interpolación bilineal porque promediar los 4 píxeles vecinos en topografía compleja suaviza de forma artificial las temperaturas extremas y genera lloviznas espurias (*drizzle*) que distorsionan las estadísticas de contingencia.
+* **Mecanismo de Contingencia Costera (Búsqueda en Ventana $3 \times 3$):** Si la estación se localiza en una zona litoral o insular y la celda más próxima cae dentro del océano (donde la máscara continental tiene valor ausente o `NaN`), el evaluador inspecciona automáticamente una ventana circundante de $3 \times 3$ celdas para identificar la celda continental válida más cercana. Esto previene la exclusión inadvertida de estaciones costeras.
+* **Emparejamiento Temporal Estricto (*Inner Join*):** Se sincronizan las fechas día a día y se eliminan del cómputo los días con datos faltantes (`NA`, `-99.0` o valores no físicos).
+
+#### 2. ¿Por qué las métricas se calculan con Python y no directamente con CDT en R?
+Aunque CDT incluye internamente un módulo de validación en R (`R/cdtValidation_functions.R` y `R/cdtCrossValidation_...`), en este flujo de producción se calculan mediante la capa en Python ([`launcher/metrics.py`](file:///d:/Workspace/CDT-8.0/launcher/metrics.py)) por tres razones metodológicas y de rendimiento:
+1. **Validación Ciega Real (*Holdout* Independiente):** En el protocolo científico del proyecto, **el modelo no debe evaluarse a sí mismo**. Las 29 estaciones de prueba fueron extraídas y apartadas físicamente antes de ejecutar CDT (`stations_holdout.csv`); CDT solo conoció las estaciones de entrenamiento (`stations_calibration.csv`). La evaluación se realiza a posteriori como una auditoría externa e imparcial sobre el producto final NetCDF 3D.
+2. **Limitaciones de Métricas en CDT (Inclusión de KGE y ETS):** Como se detalla a continuación, el código original de CDT en R **no incluye** el índice de eficiencia de Kling-Gupta (**KGE**) ni la puntuación equitativa de amenaza (**ETS/GSS**), dos de las métricas más importantes en la literatura hidrometeorológica moderna.
+3. **Eficiencia y Escalabilidad:** Calcular las métricas vectorizadas en Python con `xarray` y `numpy` toma apenas ~1.5 segundos por experimento para 30 años de datos diarios (10,958 días), evitando la sobrecarga de generar tablas intermedias en disco desde R.
+
+#### 3. Comparativa Rigurosa: ¿Son los mismos estadísticos que incluye CDT?
+Existe una correspondencia matemática directa entre las métricas de CDT y las implementadas en Python, pero con adiciones críticas:
+
+| Métrica / Estadístico | ¿Incluido en CDT (R)? | ¿Incluido en Python (`metrics.py`)? | Equivalencia Matemática y Formulación |
+| :--- | :---: | :---: | :--- |
+| **Error Cuadrático Medio (RMSE)** | Sí (`RMSE`) | Sí (`rmse`) | **Idéntico:** $\text{RMSE} = \sqrt{\frac{1}{N}\sum_{i=1}^N (S_i - O_i)^2}$ |
+| **Error Medio Absoluto (MAE)** | Sí (`MAE`) | Sí (`mae`) | **Idéntico:** $\text{MAE} = \frac{1}{N}\sum_{i=1}^N |S_i - O_i|$ |
+| **Sesgo Porcentual (PBIAS)** | Sí (`PBIAS`) | Sí (`pbias`) | **Idéntico:** $\text{PBIAS} = \frac{\sum (S_i - O_i)}{\sum O_i} \times 100\%$ |
+| **Coeficiente de Correlación ($r$)** | Sí (`CORR`) | Sí (`r`) | **Idéntico:** Correlación momento-producto de Pearson. |
+| **Coeficiente de Determinación ($R^2$)** | Parcial (`BR2`)* | Sí (`r2`) | Python calcula $R^2 = r^2$. *CDT en R calcula $b \cdot r^2$ ponderado por la pendiente de regresión. |
+| **Probabilidad de Detección (POD)** | Sí (`POD`) | Sí (`pod`) | **Idéntico:** $\text{POD} = \frac{H}{H + M}$ (aciertos sobre eventos observados). |
+| **Tasa de Falsa Alarma (FAR)** | Sí (`FAR`) | Sí (`far`) | **Idéntico:** $\text{FAR} = \frac{FA}{H + FA}$ (falsas alarmas sobre eventos pronosticados). |
+| **Índice de Sesgo de Frecuencia (FBI / FBS)** | Sí (`FBS`) | Sí (`fbi`) | **Idéntico:** $\text{FBI} = \frac{H + FA}{H + M}$ |
+| **Puntuación de Habilidad de Heidke (HSS)** | Sí (`HSS`) | Sí (`hss`) | **Idéntico:** Puntuación contra aciertos fortuitos marginales. |
+| **Eficiencia de Kling-Gupta (KGE)** | **No** (solo tiene NSE) | **Sí** (`kge`) | **Extensión estándar:** $1 - \sqrt{(r - 1)^2 + (\beta - 1)^2 + (\gamma - 1)^2}$ (Kling et al., 2012). CDT solo incluye Nash-Sutcliffe clásico. |
+| **Puntuación de Amenaza Equitativa (ETS / GSS)** | **No** (solo tiene CSI) | **Sí** (`ets`) | **Extensión estándar:** $\text{ETS} = \frac{H - H_r}{H + M + FA - H_r}$ donde $H_r$ descuenta aciertos por puro azar (Schaefer, 1990). CDT solo calcula CSI simple sin corrección de azar. |
+
+*Nota sobre la terminología de contingencia:* $H$ = Aciertos (*Hits*), $FA$ = Falsas Alarmas (*False Alarms*), $M$ = Fallos (*Misses*), $CN$ = Negativos Correctos (*Correct Negatives*). Umbral de lluvia estándar: $\ge 1.0\text{ mm/día}$.
 
 ---
 
