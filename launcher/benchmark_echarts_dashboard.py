@@ -1507,6 +1507,9 @@ def generate_echarts_html_dashboard(
         const dataTmax = {{ pay_tmax_json | safe }};
         const dataTmin = {{ pay_tmin_json | safe }};
 
+        // Global Chart Registry for Smooth Tab Resizing
+        const allChartInstances = [];
+
         // Tab Switching Logic
         function switchTab(tabId) {
             document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
@@ -1517,8 +1520,13 @@ def generate_echarts_html_dashboard(
             if (targetPanel) targetPanel.classList.remove('hidden');
             if (targetBtn) targetBtn.classList.add('active');
 
-            // Trigger window resize to render ECharts smoothly
-            setTimeout(() => { window.dispatchEvent(new Event('resize')); }, 60);
+            // Trigger resize on all charts smoothly after container unhides
+            setTimeout(() => {
+                allChartInstances.forEach(c => {
+                    try { if (c && typeof c.resize === 'function') c.resize(); } catch(e) {}
+                });
+                window.dispatchEvent(new Event('resize'));
+            }, 60);
         }
 
         // Initialize ECharts for a variable
@@ -1543,6 +1551,7 @@ def generate_echarts_html_dashboard(
             const taylorDom = document.getElementById('taylor' + prefix);
             if (taylorDom && payload.taylor_series) {
                 const taylorChart = echarts.init(taylorDom);
+                allChartInstances.push(taylorChart);
                 const taylorOption = {
                     backgroundColor: 'transparent',
                     toolbox: commonToolbox,
@@ -1553,7 +1562,7 @@ def generate_echarts_html_dashboard(
                         formatter: function(params) {
                             if (params.seriesName === 'Referencia Holdout') {
                                 return '<div class="font-bold text-rose-400">Estaciones Holdout (Referencia)</div>' +
-                                       '<div class="text-xs text-slate-300">r = 1.000 | σ* = 1.00 | E\'* = 0.00</div>';
+                                       '<div class="text-xs text-slate-300">r = 1.000 | σ* = 1.00 | E* = 0.00</div>';
                             }
                             const d = params.value;
                             if (!d || d.length < 10) return params.seriesName;
@@ -1572,7 +1581,7 @@ def generate_echarts_html_dashboard(
                                    '<div style="font-size:11px;color:#cbd5e1;line-height:1.6;">' +
                                    '<div>• Pearson r: <b style="color:#38bdf8;">' + Number(r).toFixed(3) + '</b></div>' +
                                    '<div>• Desv. Estándar Norm. (σ*): <b>' + Number(sigma).toFixed(3) + '</b></div>' +
-                                   '<div>• Error Centrado (E\'*): <b style="color:#fbbf24;">' + Number(crmse).toFixed(3) + '</b></div>' +
+                                   '<div>• Error Centrado (E*): <b style="color:#fbbf24;">' + Number(crmse).toFixed(3) + '</b></div>' +
                                    '<div>• Eficiencia KGE: <b style="color:#34d399;">' + Number(kge).toFixed(3) + '</b></div>' +
                                    '<div>• RMSE: <b>' + Number(rmse).toFixed(2) + ' ' + unit + '</b></div>' +
                                    '<div>• PBIAS: <b>' + (pbias > 0 ? '+' : '') + Number(pbias).toFixed(1) + '%</b></div>' +
@@ -1621,6 +1630,7 @@ def generate_echarts_html_dashboard(
             const radarDom = document.getElementById('radar' + prefix);
             if (radarDom && payload.radar_indicators.length > 0) {
                 const radarChart = echarts.init(radarDom);
+                allChartInstances.push(radarChart);
                 const radarOption = {
                     backgroundColor: 'transparent',
                     toolbox: commonToolbox,
@@ -1661,6 +1671,7 @@ def generate_echarts_html_dashboard(
             const scatterDom = document.getElementById('scatter' + prefix);
             if (scatterDom) {
                 const scatterChart = echarts.init(scatterDom);
+                allChartInstances.push(scatterChart);
                 const scatterOption = {
                     backgroundColor: 'transparent',
                     toolbox: commonToolbox,
@@ -1729,6 +1740,7 @@ def generate_echarts_html_dashboard(
             const barDom = document.getElementById('barDelta' + prefix);
             if (barDom) {
                 const barChart = echarts.init(barDom);
+                allChartInstances.push(barChart);
                 const barOption = {
                     backgroundColor: 'transparent',
                     toolbox: commonToolbox,
@@ -1782,6 +1794,7 @@ def generate_echarts_html_dashboard(
             const boxDom = document.getElementById('box' + prefix);
             if (boxDom && payload.boxplot_data.length > 0) {
                 const boxChart = echarts.init(boxDom);
+                allChartInstances.push(boxChart);
                 const boxOption = {
                     backgroundColor: 'transparent',
                     toolbox: commonToolbox,
@@ -1842,26 +1855,35 @@ def generate_echarts_html_dashboard(
 
         // Initialize All Dashboard Charts on DOM Ready
         document.addEventListener('DOMContentLoaded', function() {
-            // Render Math equations with KaTeX
+            // Render Math equations with KaTeX safely
             if (window.renderMathInElement) {
-                renderMathInElement(document.body, {
-                    delimiters: [
-                        {left: '$$', right: '$$', display: true},
-                        {left: '\(', right: '\)', display: false}
-                    ]
-                });
+                try {
+                    renderMathInElement(document.body, {
+                        delimiters: [
+                            {left: '$$', right: '$$', display: true},
+                            {left: '\\(', right: '\\)', display: false}
+                        ],
+                        throwOnError: false
+                    });
+                } catch(e) {
+                    console.warn('KaTeX auto-render skipped:', e);
+                }
             }
 
-            // Init ECharts per Variable
-            initVariableCharts('Rain', dataRain, 'mm', '#0284c7');
-            initVariableCharts('Tmax', dataTmax, '°C', '#ea580c');
-            initVariableCharts('Tmin', dataTmin, '°C', '#7c3aed');
+            // Init ECharts per Variable with error boundaries
+            try { initVariableCharts('Rain', dataRain, 'mm', '#0284c7'); } catch(e) { console.error('Error Rain charts:', e); }
+            try { initVariableCharts('Tmax', dataTmax, '°C', '#ea580c'); } catch(e) { console.error('Error Tmax charts:', e); }
+            try { initVariableCharts('Tmin', dataTmin, '°C', '#7c3aed'); } catch(e) { console.error('Error Tmin charts:', e); }
 
             // Initialize DataTables (Page length 25 so all experiments fit on one page)
-            $('#tableRain').DataTable({ pageLength: 25, order: [[0, 'asc']] });
-            $('#tableTmax').DataTable({ pageLength: 25, order: [[0, 'asc']] });
-            $('#tableTmin').DataTable({ pageLength: 25, order: [[0, 'asc']] });
-            $('#tableAll').DataTable({ pageLength: 25, order: [[4, 'desc']] });
+            try {
+                $('#tableRain').DataTable({ pageLength: 25, order: [[0, 'asc']] });
+                $('#tableTmax').DataTable({ pageLength: 25, order: [[0, 'asc']] });
+                $('#tableTmin').DataTable({ pageLength: 25, order: [[0, 'asc']] });
+                $('#tableAll').DataTable({ pageLength: 25, order: [[4, 'desc']] });
+            } catch(e) {
+                console.warn('DataTables init error:', e);
+            }
         });
     </script>
 </body>
