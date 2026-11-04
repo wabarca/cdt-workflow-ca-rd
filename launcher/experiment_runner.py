@@ -118,6 +118,81 @@ def consolidate_daily_files(target_dir: Path, file_prefix: str) -> Path:
     return primary_dir
 
 
+def pack_intermediate_daily_grids(exp_dir: Path | str, force: bool = False) -> Dict[str, Any]:
+    """
+    Empaqueta los archivos diarios de pasos intermedios (downscaled/, bias_adjusted/, merged/)
+    en archivos .zip individuales (modo almacenamiento directo ZIP_STORED) y elimina los archivos
+    sueltos individuales para optimizar espacio, inodos y portabilidad.
+    """
+    import zipfile
+    exp_p = Path(exp_dir)
+    results = {"packed": {}, "errors": []}
+    if not exp_p.exists() or not exp_p.is_dir():
+        return results
+
+    # Buscar el NetCDF 3D consolidado como salvaguarda
+    assembled_files = list(exp_p.glob("*_3D.nc")) + list(exp_p.glob("*assembled*.nc")) + list(exp_p.glob("*_1991_2020.nc"))
+    has_assembled = any(f.is_file() and f.stat().st_size > 10_000 for f in assembled_files)
+
+    steps_to_pack = [
+        ("downscaled", "downscaled_daily_grids.zip", "*_down_*.nc"),
+        ("bias_adjusted", "bias_adjusted_daily_grids.zip", "*_adj_*.nc"),
+        ("merged", "merged_daily_grids.zip", "*_mrg_*.nc"),
+    ]
+
+    for dir_name, zip_name, file_pattern in steps_to_pack:
+        target_dir = exp_p / dir_name
+        zip_file = exp_p / zip_name
+
+        if not target_dir.exists() or not target_dir.is_dir():
+            continue
+
+        nc_files = sorted(list(target_dir.rglob("*.nc")))
+        if not nc_files:
+            continue
+
+        print(f"      [Empaquetador] Empaquetando {len(nc_files):,} archivos diarios de {dir_name}/ en {zip_name} (modo almacenamiento)...")
+        try:
+            # Crear zip con compresión ZIP_STORED (rápido, sin sobrecarga de CPU)
+            with zipfile.ZipFile(zip_file, "w", compression=zipfile.ZIP_STORED, allowZip64=True) as zf:
+                for f in nc_files:
+                    arcname = f.relative_to(target_dir).as_posix()
+                    zf.write(f, arcname=arcname)
+
+            # Verificación estricta de integridad
+            with zipfile.ZipFile(zip_file, "r") as zf:
+                bad_file = zf.testzip()
+                if bad_file:
+                    raise RuntimeError(f"Falla de integridad CRC en zip {zip_name}: archivo {bad_file} corrupto.")
+
+            # Eliminar archivos individuales .nc tras verificación exitosa
+            deleted_count = 0
+            for f in nc_files:
+                try:
+                    f.unlink()
+                    deleted_count += 1
+                except Exception:
+                    pass
+
+            results["packed"][dir_name] = {
+                "zip_file": str(zip_file),
+                "files_count": len(nc_files),
+                "deleted_count": deleted_count,
+                "zip_size_mb": round(zip_file.stat().st_size / (1024 * 1024), 2),
+            }
+            print(f"      [Empaquetador] [OK] {len(nc_files):,} archivos de {dir_name}/ empaquetados en {zip_name} ({results['packed'][dir_name]['zip_size_mb']} MB). Archivos individuales eliminados.")
+        except Exception as e:
+            print(f"      [Empaquetador] [!] Error al empaquetar {dir_name}: {e}")
+            results["errors"].append(str(e))
+            if zip_file.exists() and len(list(target_dir.rglob("*.nc"))) == len(nc_files):
+                try:
+                    zip_file.unlink()
+                except Exception:
+                    pass
+
+    return results
+
+
 def _check_python_requirements() -> bool:
     """Ensure all required Python packages are installed, showing a clean error if not."""
     try:
@@ -204,6 +279,7 @@ class ExperimentRunner:
         region: Optional[str] = "ca",
         nb_cores: Optional[Union[int, str]] = "auto",
         rscript_path: Optional[Path | str] = None,
+        is_production: bool = False,
     ):
         """Initialize runner with path to a YAML configuration file or directory of YAMLs."""
         self.config_target = Path(config_target).resolve()
@@ -212,6 +288,7 @@ class ExperimentRunner:
 
         self.base_config_path = Path(base_config_path).resolve() if base_config_path else None
         self.region = (region or "ca").lower()
+        self.is_production = is_production
         
         # Parse nb_cores
         parsed_cores: Optional[Union[int, str]] = None
@@ -396,16 +473,24 @@ class ExperimentRunner:
         paths["holdout_stations_file"] = chosen_holdout
 
         # Ensure output_dir and log_dir are set with regional awareness
-        def_out_root = f"output/experiments_{self.region}" if self.region in ("ca", "rd") else "output/experiments"
-        def_log_root = f"logs/experiments_{self.region}" if self.region in ("ca", "rd") else "logs/experiments"
+        if self.is_production:
+            def_out_root = f"output/production_{self.region}" if self.region in ("ca", "rd") else "output/production"
+            def_log_root = f"logs/production_{self.region}" if self.region in ("ca", "rd") else "logs/production"
+        else:
+            def_out_root = f"output/experiments_{self.region}" if self.region in ("ca", "rd") else "output/experiments"
+            def_log_root = f"logs/experiments_{self.region}" if self.region in ("ca", "rd") else "logs/experiments"
 
         out_root = paths.get("output_root", def_out_root)
         log_root = paths.get("log_root", def_log_root)
 
-        if "output_dir" not in paths:
-            paths["output_dir"] = f"{out_root}/{exp_id}"
-        if "log_dir" not in paths:
-            paths["log_dir"] = f"{log_root}/{exp_id}"
+        if self.is_production:
+            paths["output_dir"] = f"{def_out_root}/{exp_id}"
+            paths["log_dir"] = f"{def_log_root}/{exp_id}"
+        else:
+            if "output_dir" not in paths:
+                paths["output_dir"] = f"{out_root}/{exp_id}"
+            if "log_dir" not in paths:
+                paths["log_dir"] = f"{log_root}/{exp_id}"
 
         exp["paths"] = paths
         exp["active_region"] = self.region
@@ -545,6 +630,17 @@ class ExperimentRunner:
                             print(f"      [Metricas Actualizadas] Evaluadas {new_val_summary.get('total_stations_evaluated', 0)} estaciones | KGE Medio: {new_val_summary.get('mean_kge', 0):.3f} | r: {new_val_summary.get('mean_r', 0):.3f} | RMSE: {new_val_summary.get('mean_rmse', 0):.2f}")
                         else:
                             print(f"[*] Experimento {exp_id} ya completado previamente con exito. Saltando (usar --force para reejecutar).")
+
+                        # Empaquetado automatico de pasos intermedios si estaban sueltos
+                        pack_res = pack_intermediate_daily_grids(out_dir)
+                        if pack_res.get("packed"):
+                            try:
+                                prev_m["intermediates_packed"] = True
+                                with open(manifest_file, "w", encoding="utf-8") as pf:
+                                    json.dump(prev_m, pf, indent=2)
+                            except Exception:
+                                pass
+
                         self.results_summary.append({
                             "id": exp_id,
                             "variable": var_type,
@@ -581,12 +677,16 @@ class ExperimentRunner:
 
             # Check for holdout / omitted stations configuration
             validation_cfg = exp.get("validation", {})
-            holdout_file = (
-                paths.get("holdout_stations_file")
-                or paths.get("omitted_stations_file")
-                or validation_cfg.get("holdout_stations_file")
-                or validation_cfg.get("omitted_stations_file")
-            )
+            if self.is_production:
+                holdout_file = None
+                print(f"  --> [MODO PRODUCCION] Asimilando el 100% de estaciones disponibles sin particion holdout.")
+            else:
+                holdout_file = (
+                    paths.get("holdout_stations_file")
+                    or paths.get("omitted_stations_file")
+                    or validation_cfg.get("holdout_stations_file")
+                    or validation_cfg.get("omitted_stations_file")
+                )
             
             orig_station_file = paths.get("stations_file", "")
             training_station_file = orig_station_file
@@ -765,6 +865,11 @@ class ExperimentRunner:
                         print(f"      [Categoricas] POD: {val_summary.get('mean_pod', 0):.3f} | FAR: {val_summary.get('mean_far', 0):.3f} | ETS: {val_summary.get('mean_ets', 0):.3f} | HSS: {val_summary.get('mean_hss', 0):.3f}")
                 except Exception as e:
                     print(f"  [!] Advertencia al computar metricas de validacion: {e}")
+
+            # Empaquetar archivos diarios de pasos intermedios (downscaled, bias_adjusted, merged)
+            if ret_code == 0 and assembled_nc_path and assembled_nc_path.exists():
+                pack_res = pack_intermediate_daily_grids(out_dir)
+                manifest_data["intermediates_packed"] = bool(pack_res.get("packed"))
 
             with open(manifest_file, "w", encoding="utf-8") as mf:
                 json.dump(manifest_data, mf, indent=2)
@@ -1309,6 +1414,18 @@ def main() -> None:
         action="store_true",
         help="Fuerza la reejecución completa de experimentos e ignora checkpoints o archivos previamente generados.",
     )
+    parser.add_argument(
+        "--production",
+        action="store_true",
+        default=False,
+        help="Ejecuta en modo produccion utilizando todas las estaciones disponibles (sin particion holdout).",
+    )
+    parser.add_argument(
+        "--pack-only",
+        action="store_true",
+        default=False,
+        help="Escanea y empaqueta carpetas intermedias (downscaled, bias_adjusted, merged) en archivos .zip para experimentos existentes.",
+    )
 
     args = parser.parse_args()
 
@@ -1382,6 +1499,16 @@ def main() -> None:
         # Default fallback: run rainfall baseline
         suite_targets.append(PROJECT_ROOT / "config" / "experiments_rainfall" / "EXP_R01_SBA_IDW_Baseline.yaml")
 
+    if args.pack_only:
+        target_root = exp_out_dir
+        print(f"[*] Escaneando experimentos en {target_root} para empaquetado de pasos intermedios...")
+        for p in sorted(target_root.glob("EXP_*")):
+            if p.is_dir():
+                print(f"  -> Verificando {p.name}...")
+                pack_intermediate_daily_grids(p)
+        print("[+] Proceso de empaquetado finalizado.")
+        sys.exit(0)
+
     all_summaries = []
     for target in suite_targets:
         runner = ExperimentRunner(
@@ -1390,6 +1517,7 @@ def main() -> None:
             region=args.region,
             nb_cores=args.cores,
             rscript_path=args.rscript,
+            is_production=args.production,
         )
         res = runner.run_all_experiments(force=args.force)
         all_summaries.extend(res)

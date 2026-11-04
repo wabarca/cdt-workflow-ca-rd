@@ -1912,9 +1912,26 @@ def run_full_benchmark_suite(
             "roc": f"figures/{var}/figure_6_roc_pod_vs_far.png" if var in ("rainfall", "precip", "rain") else "",
         }
 
-    # 4. Generate Interactive HTML Dashboard with Plotly
+    # 4. Clean root figures and generate high-resolution Winner vs Raw comparisons
+    from launcher.benchmark_comparisons import generate_all_comparisons_suite, clean_figures_root
+    from launcher.benchmark_echarts_dashboard import generate_echarts_html_dashboard
+
+    clean_figures_root(figures_base)
+    comp_figures = generate_all_comparisons_suite(
+        df_ranked=df_ranked,
+        df_stations=df_stations,
+        output_dir=figures_base / "comparisons_winner_vs_raw"
+    )
+
+    # 5. Generate Interactive HTML Dashboard powered by Apache ECharts
     html_path = out_path / "benchmark_report.html"
-    generate_interactive_html_dashboard(df_ranked, figures_map, html_path, df_stations=df_stations)
+    generate_echarts_html_dashboard(
+        df_ranked=df_ranked,
+        figures_map=figures_map,
+        comparison_figures=comp_figures,
+        output_html_path=html_path,
+        df_stations=df_stations
+    )
 
     # 5. Print Leaderboard in Console
     print("\n" + "-" * 80)

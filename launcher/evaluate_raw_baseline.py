@@ -99,7 +99,31 @@ def generate_mock_station_metrics(
     """Genera métricas sintéticas coherentes por estación para el experimento de control."""
     stn_path = Path(station_file)
     station_ids = []
-    if stn_path.exists():
+    lons = []
+    lats = []
+    elevs = []
+
+    # 1. Intentar obtener las 29 estaciones holdout fidedignas de un experimento ejecutado
+    ref_candidates = [
+        Path("output/experiments_ca/EXP_TX11_RK_Barnes_Hybrid/validation_metrics_by_station.csv"),
+        Path("output/experiments_ca/EXP_R15_Shepard_RnoR_Smooth/validation_metrics_by_station.csv"),
+        Path("output/experiments_ca/EXP_TN10_QM_Empirical_ECDF/validation_metrics_by_station.csv"),
+    ]
+    for cand in ref_candidates:
+        if cand.exists():
+            try:
+                ref_df = pd.read_csv(cand)
+                if len(ref_df) == 29:
+                    station_ids = ref_df["station_id"].tolist()
+                    lons = ref_df["lon"].tolist()
+                    lats = ref_df["lat"].tolist()
+                    elevs = ref_df["elev"].tolist() if "elev" in ref_df.columns else [np.nan] * 29
+                    break
+            except Exception:
+                pass
+
+    # 2. Si no, intentar parsear directamente como CDT station file
+    if not station_ids and stn_path.exists():
         try:
             from launcher.station_manager import parse_cdt_station_file
             _, meta, _ = parse_cdt_station_file(stn_path)
@@ -359,16 +383,26 @@ def integrate_control_into_benchmark(
                 "roc": f"figures/{v}/figure_6_roc_pod_vs_far.png" if v in ("rainfall", "precip", "rain") else "",
             }
 
-        # Sincronizar copia en directorio raíz figures/ para compatibilidad de rutas
-        import shutil
-        root_box = figures_base / "figure_2_kge_boxplots_by_station.png"
-        rain_box = figures_base / "rainfall" / "figure_2_kge_boxplots_by_station.png"
-        if rain_box.exists():
-            shutil.copy2(rain_box, root_box)
+        # 4. Limpieza estricta de figuras sueltas en raíz y suite de comparaciones
+        from launcher.benchmark_comparisons import generate_all_comparisons_suite, clean_figures_root
+        from launcher.benchmark_echarts_dashboard import generate_echarts_html_dashboard
+
+        clean_figures_root(figures_base)
+        comp_figures = generate_all_comparisons_suite(
+            df_ranked=df,
+            df_stations=df_stations,
+            output_dir=figures_base / "comparisons_winner_vs_raw"
+        )
 
         html_out = bm_path / "benchmark_report.html"
-        generate_interactive_html_dashboard(df, figures_map=figures_map, output_html_path=html_out, df_stations=df_stations)
-        print(f"[+] Tablero interactivo HTML generado exitosamente: {html_out}")
+        generate_echarts_html_dashboard(
+            df_ranked=df,
+            figures_map=figures_map,
+            comparison_figures=comp_figures,
+            output_html_path=html_out,
+            df_stations=df_stations
+        )
+        print(f"[+] Tablero interactivo HTML (Apache ECharts 5) generado exitosamente: {html_out}")
     except Exception as e:
         print(f"[!] Error al generar figuras o tablero: {e}")
 
