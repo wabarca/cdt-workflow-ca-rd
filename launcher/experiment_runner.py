@@ -131,7 +131,12 @@ def pack_intermediate_daily_grids(exp_dir: Path | str, force: bool = False) -> D
         return results
 
     # Buscar el NetCDF 3D consolidado como salvaguarda
-    assembled_files = list(exp_p.glob("*_3D.nc")) + list(exp_p.glob("*assembled*.nc")) + list(exp_p.glob("*_1991_2020.nc"))
+    assembled_files = (
+        list(exp_p.glob("*_3D.nc")) +
+        list(exp_p.glob("*assembled*.nc")) +
+        list(exp_p.glob("*1991_2020*.nc")) +
+        [f for f in exp_p.glob("*.nc") if f.is_file() and f.stat().st_size > 10_000_000]
+    )
     has_assembled = any(f.is_file() and f.stat().st_size > 10_000 for f in assembled_files)
 
     steps_to_pack = [

@@ -4,12 +4,16 @@ Interactive HTML Benchmark Dashboard powered by Apache ECharts.
 Provides a modern, publication-grade interactive dashboard for the CDT 8.0
 Central America Grid Reconstruction Suite.
 Features:
-- Apache ECharts 5 with interactive DataZoom sliders, responsive canvas rendering,
-  and rich HTML tooltips comparing each model against the raw satellite baseline (Control 00).
+- "Data-First" layout: Executive KPIs and Full Interactive Master Table & Rankings
+  presented upfront before interactive visual deep-dives.
+- Interactive Polar Taylor Diagram in Apache ECharts (Pearson r vs. Normalized Std Dev,
+  reference holdout observation star, unit variance arc, RMS isolines).
+- Multi-criteria skill radar chart containing ALL experiments with a scrollable
+  interactive legend (defaulting to [ÓPTIMO] Winner and [CONTROL 0] Raw Baseline).
 - Highlighting for [CONTROL 0] in slate grey (#64748b) and Winner in emerald/gold (#059669).
 - Boxplots of station-level KGE distributions.
-- Multi-criteria skill radar charts.
-- Gallery of high-resolution (300 DPI) Winner vs. Raw Satellite diagnostic figures.
+- Centro de Descargas (300 DPI): One-click download cards for all publication-ready figures
+  and toolbox.saveAsImage across all interactive charts.
 - Comprehensive scientific glossary defining all 9 climate evaluation metrics with KaTeX equations,
   optimal targets, acceptable ranges, and physical interpretation for Central America.
 """
@@ -18,6 +22,7 @@ from __future__ import annotations
 
 import datetime
 import json
+import math
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -34,6 +39,12 @@ def compute_echarts_payloads(
     df_var = df_ranked[df_ranked["variable"] == var_type].copy() if not df_ranked.empty else pd.DataFrame()
     if df_var.empty:
         return {}
+
+    # Ensure is_control and is_winner flags exist
+    if "is_control" not in df_var.columns:
+        df_var["is_control"] = df_var["experiment_id"].str.contains(r"00_Raw|_Raw_", regex=True)
+    if "is_winner" not in df_var.columns:
+        df_var["is_winner"] = df_var["rank"] == 1
 
     # Identify control and winner
     raw_sub = df_var[df_var["is_control"] == True]
@@ -77,7 +88,7 @@ def compute_echarts_payloads(
     # Sort exps for ranking bar chart (from best rank to worst)
     exps_sorted = sorted(exps, key=lambda x: (not x["is_control"], x["rank"]))
 
-    # 2. Scatter Points: [RMSE, KGE, ExpID, is_winner, is_control, delta_kge, r, pbias, pct_kge]
+    # 2. Scatter Points: [RMSE, KGE, ExpID, is_winner, is_control, delta_kge, r, pbias, pct_kge, desc]
     scatter_pts = []
     for e in exps:
         scatter_pts.append([
@@ -106,7 +117,6 @@ def compute_echarts_payloads(
     boxplot_data = []
     boxplot_colors = []
     if df_stations is not None and not df_stations.empty:
-        # Group stations by experiment_id in the order of exps_sorted
         for e in exps_sorted:
             eid = e["id"]
             st_sub = df_stations[df_stations["experiment_id"] == eid]
@@ -127,7 +137,7 @@ def compute_echarts_payloads(
                     else:
                         boxplot_colors.append("#0284c7" if var_type == "rainfall" else ("#ea580c" if var_type == "tmax" else "#7c3aed"))
 
-    # 5. Radar Chart Data
+    # 5. Radar Chart Data (ALL EXPERIMENTS with Dynamic Legend Filter)
     radar_indicators = [
         {"name": "Eficiencia (KGE)", "max": 1.0, "min": 0.0},
         {"name": "Correlación (r)", "max": 1.0, "min": 0.0},
@@ -147,19 +157,15 @@ def compute_echarts_payloads(
     max_ets = max([e.get("ets") or 0.1 for e in exps] + [0.1])
 
     radar_series = []
-    # Include Winner, Control 00, and Top 2
-    candidates_to_plot = []
-    winner_exp = next((e for e in exps if e["is_winner"]), None)
-    control_exp = next((e for e in exps if e["is_control"]), None)
-    if winner_exp:
-        candidates_to_plot.append((winner_exp, "#059669", 3, True))
-    if control_exp:
-        candidates_to_plot.append((control_exp, "#64748b", 2, False))
-    for e in exps_sorted:
-        if not e["is_winner"] and not e["is_control"] and len(candidates_to_plot) < 5:
-            candidates_to_plot.append((e, "#38bdf8" if len(candidates_to_plot) == 2 else "#94a3b8", 1.5, False))
+    radar_legend_selected = {}
+    other_palette = [
+        "#38bdf8", "#818cf8", "#f43f5e", "#fb923c", "#facc15", "#2dd4bf",
+        "#a78bfa", "#f472b6", "#34d399", "#60a5fa", "#c084fc", "#4ade80",
+        "#fb7185", "#e879f9", "#22d3ee", "#a3e635"
+    ]
+    other_idx = 0
 
-    for item, col, width, is_win in candidates_to_plot:
+    for item in exps_sorted:
         kge_n = max(0.0, min(1.0, item["kge"]))
         r_n = max(0.0, min(1.0, item["r"]))
         bias_n = max(0.0, min(1.0, 1.0 - (abs(item["pbias"]) / 30.0)))
@@ -173,12 +179,118 @@ def compute_echarts_payloads(
             mae_n = max(0.0, min(1.0, 1.0 - (item["mae"] / (max_mae * 1.1))))
             r_vals.append(mae_n)
 
+        is_win = item["is_winner"]
+        is_ctrl = item["is_control"]
+
+        if is_win:
+            col = "#059669"
+            width = 3.5
+            area_op = 0.25
+        elif is_ctrl:
+            col = "#64748b"
+            width = 2.5
+            area_op = 0.15
+        else:
+            col = other_palette[other_idx % len(other_palette)]
+            other_idx += 1
+            width = 1.5
+            area_op = 0.04
+
+        series_name = f"{item['id']} {'[ÓPTIMO]' if is_win else ('[CONTROL 0]' if is_ctrl else '')}"
+        radar_legend_selected[series_name] = bool(is_win or is_ctrl)
+
         radar_series.append({
-            "name": f"{item['id']} {'[ÓPTIMO]' if is_win else ('[CONTROL 0]' if item['is_control'] else '')}",
+            "name": series_name,
             "value": [round(v, 3) for v in r_vals],
             "itemStyle": {"color": col},
-            "lineStyle": {"width": width, "type": "dashed" if item["is_control"] else "solid"},
-            "areaStyle": {"opacity": 0.25 if is_win else 0.05},
+            "lineStyle": {"width": width, "type": "dashed" if is_ctrl else "solid"},
+            "areaStyle": {"opacity": area_op},
+        })
+
+    # 6. Polar Taylor Diagram Data Payload
+    taylor_series = []
+    # A. Reference Observation Point at [radius=1.0, angle=0.0 deg]
+    taylor_series.append({
+        "name": "Referencia Holdout",
+        "type": "scatter",
+        "coordinateSystem": "polar",
+        "symbol": "pin",
+        "symbolSize": 26,
+        "itemStyle": {
+            "color": "#ef4444",
+            "borderColor": "#ffffff",
+            "borderWidth": 2,
+            "shadowBlur": 10,
+            "shadowColor": "rgba(239, 68, 68, 0.9)",
+        },
+        "data": [[1.0, 0.0, "ESTACIONES HOLDOUT (OBSERVACIÓN)", False, False, 1.0, 1.0, 0.0, 0.0, 0.0]],
+        "z": 25,
+    })
+
+    # B. Reference Unit Variance Arc (sigma* = 1.0)
+    arc_angles = np.linspace(0, 90, 45)
+    arc_data = [[1.0, round(float(a), 2)] for a in arc_angles]
+    taylor_series.append({
+        "name": "Varianza Observada (σ* = 1.0)",
+        "type": "line",
+        "coordinateSystem": "polar",
+        "symbol": "none",
+        "data": arc_data,
+        "lineStyle": {
+            "color": "#ef4444",
+            "type": "dashed",
+            "width": 1.5,
+            "opacity": 0.65
+        },
+        "z": 5,
+        "silent": True,
+    })
+
+    # C. All Model Points
+    t_other_idx = 0
+    for e in exps:
+        r_val = max(0.0, min(1.0, e["r"]))
+        theta_deg = float(np.degrees(np.arccos(r_val)))
+        sigma_norm = 1.0 - (e["pbias"] / 100.0) if e.get("pbias") is not None else 1.0
+        sigma_norm = max(0.25, min(1.55, float(sigma_norm)))
+        crmse = float(np.sqrt(max(0.0, sigma_norm**2 + 1.0 - 2.0 * sigma_norm * r_val)))
+
+        if e["is_winner"]:
+            col = "#059669"
+            sym = "diamond"
+            sym_size = 18
+            z_val = 20
+            border_col = "#fbbf24"
+            border_w = 2.0
+        elif e["is_control"]:
+            col = "#64748b"
+            sym = "rect"
+            sym_size = 14
+            z_val = 18
+            border_col = "#0f172a"
+            border_w = 1.8
+        else:
+            col = other_palette[t_other_idx % len(other_palette)]
+            t_other_idx += 1
+            sym = "circle"
+            sym_size = 10
+            z_val = 12
+            border_col = "#ffffff"
+            border_w = 0.8
+
+        taylor_series.append({
+            "name": f"{e['id']} {'[ÓPTIMO]' if e['is_winner'] else ('[CONTROL 0]' if e['is_control'] else '')}",
+            "type": "scatter",
+            "coordinateSystem": "polar",
+            "symbol": sym,
+            "symbolSize": sym_size,
+            "itemStyle": {
+                "color": col,
+                "borderColor": border_col,
+                "borderWidth": border_w,
+            },
+            "data": [[round(sigma_norm, 3), round(theta_deg, 2), e["id"], e["is_winner"], e["is_control"], e["r"], e["kge"], e["rmse"], e["pbias"], round(crmse, 3)]],
+            "z": z_val,
         })
 
     return {
@@ -192,6 +304,8 @@ def compute_echarts_payloads(
         "boxplot_colors": boxplot_colors,
         "radar_indicators": radar_indicators,
         "radar_series": radar_series,
+        "radar_selected": radar_legend_selected,
+        "taylor_series": taylor_series,
         "raw_kge": raw_kge,
         "raw_rmse": raw_rmse,
     }
@@ -258,44 +372,60 @@ def generate_echarts_html_dashboard(
             border-radius: 0.75rem;
             border: 1px solid #334155;
             padding: 1.25rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
         }
         .chart-box {
             width: 100%;
-            height: 440px;
+            height: 380px;
         }
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: #0f172a; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #475569; }
-        /* DataTables dark theme styling */
-        table.dataTable { background-color: #1e293b; color: #e2e8f0; border-collapse: collapse; }
-        table.dataTable thead th { background-color: #0f172a; color: #94a3b8; border-bottom: 2px solid #334155; }
-        table.dataTable tbody tr { background-color: #1e293b; border-bottom: 1px solid #334155; }
-        table.dataTable tbody tr:hover { background-color: #273549; }
-        .dataTables_wrapper .dataTables_length, .dataTables_wrapper .dataTables_filter,
-        .dataTables_wrapper .dataTables_info, .dataTables_wrapper .dataTables_paginate {
-            color: #94a3b8; font-size: 0.85rem;
+        .chart-box-large {
+            width: 100%;
+            height: 420px;
         }
-        .dataTables_wrapper .dataTables_filter input {
-            background-color: #0f172a; border: 1px solid #475569; color: #f8fafc; border-radius: 0.375rem; padding: 0.25rem 0.5rem;
+        /* Custom styling for DataTables in Dark Theme */
+        .dataTables_wrapper { color: #cbd5e1; font-size: 11px; }
+        .dataTables_length, .dataTables_filter, .dataTables_info, .dataTables_paginate { color: #94a3b8 !important; }
+        .dataTables_filter input {
+            background-color: #0f172a;
+            border: 1px solid #475569;
+            color: #f8fafc;
+            border-radius: 6px;
+            padding: 4px 10px;
+            outline: none;
         }
+        .dataTables_length select {
+            background-color: #0f172a;
+            border: 1px solid #475569;
+            color: #f8fafc;
+            border-radius: 6px;
+            padding: 4px;
+        }
+        table.dataTable tbody tr { background-color: transparent !important; border-bottom: 1px solid #334155; }
+        table.dataTable tbody tr:hover { background-color: rgba(51, 65, 85, 0.5) !important; }
+        table.dataTable thead th {
+            border-bottom: 1px solid #475569 !important;
+            color: #38bdf8 !important;
+            font-size: 11px;
+            font-weight: 600;
+            background-color: #0f172a;
+        }
+        .paginate_button { color: #94a3b8 !important; }
+        .paginate_button.current { background: #38bdf8 !important; color: #0f172a !important; border-radius: 4px; border: none !important; }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen">
+<body class="min-h-screen flex flex-col">
 
-    <!-- Top Navigation Bar -->
-    <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-50 backdrop-blur-md bg-opacity-95">
-        <div class="max-w-7xl mx-auto px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+    <!-- Top Header -->
+    <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-50 shadow-md">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div class="flex items-center space-x-3">
-                <span class="bg-sky-600 text-white font-bold text-xs px-2.5 py-1 rounded tracking-wider shadow">CDT 8.0</span>
+                <span class="text-3xl">🌍</span>
                 <div>
-                    <h1 class="text-base font-bold tracking-tight text-white flex items-center gap-2">
-                        Tablero Interactivo de Validación y Benchmark de Modelos
-                        <span class="text-xs bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded-full font-mono">Apache ECharts 5</span>
+                    <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                        CDT 8.0 Central America Benchmark Dashboard
+                        <span class="bg-sky-500/20 text-sky-400 text-xs px-2 py-0.5 rounded border border-sky-500/30 font-mono">v8.0-ECharts</span>
                     </h1>
-                    <p class="text-xs text-slate-400">Reconstrucción y Corrección de Mallas en América Central (1991–2020)</p>
+                    <p class="text-xs text-slate-400">Plataforma Científica de Validación Cruzada Holdout &amp; Reconstrucción de Malla (1991–2020)</p>
                 </div>
             </div>
             <div class="text-xs text-slate-400 text-right">
@@ -324,7 +454,7 @@ def generate_echarts_html_dashboard(
         </div>
     </header>
 
-    <main class="max-w-7xl mx-auto px-6 py-8 space-y-8">
+    <main class="max-w-7xl mx-auto px-6 py-8 space-y-8 flex-1">
 
         <!-- ========================================================================= -->
         <!-- TAB 1: PRECIPITACIÓN -->
@@ -366,79 +496,18 @@ def generate_echarts_html_dashboard(
             </div>
             {% endif %}
 
-            <!-- Interactive ECharts Grid -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- Chart 1: Scatter RMSE vs KGE -->
-                <div class="plot-card">
-                    <div class="flex justify-between items-center mb-2">
-                        <div>
-                            <h3 class="font-bold text-sm text-white">Espacio de Precisión: Error (RMSE) vs. Eficiencia (KGE)</h3>
-                            <p class="text-[11px] text-slate-400">El modelo óptimo se ubica en el extremo superior izquierdo (menor RMSE, mayor KGE)</p>
-                        </div>
-                        <span class="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700">16 Exp.</span>
-                    </div>
-                    <div id="scatterRain" class="chart-box"></div>
-                </div>
-
-                <!-- Chart 2: Net Gain vs Raw Satellite (Control 00) -->
-                <div class="plot-card">
-                    <div class="flex justify-between items-center mb-2">
-                        <div>
-                            <h3 class="font-bold text-sm text-white">Ganancia Neta (Δ KGE) respecto al Satélite Crudo [Control 00]</h3>
-                            <p class="text-[11px] text-slate-400">CHIRPS Crudo = 0.0 de referencia. Barra verde indica mejora; gris es el control.</p>
-                        </div>
-                        <span class="text-xs bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded">Δ KGE</span>
-                    </div>
-                    <div id="barDeltaRain" class="chart-box"></div>
-                </div>
-
-                <!-- Chart 3: Boxplot of KGE by Station -->
-                <div class="plot-card">
-                    <div class="flex justify-between items-center mb-2">
-                        <div>
-                            <h3 class="font-bold text-sm text-white">Distribución de Eficiencia KGE en las 29 Estaciones Holdout</h3>
-                            <p class="text-[11px] text-slate-400">Caja representa percentiles 25–75 y línea central la mediana. Gris: [CONTROL 0].</p>
-                        </div>
-                        <span class="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700">Zoomable</span>
-                    </div>
-                    <div id="boxRain" class="chart-box"></div>
-                </div>
-
-                <!-- Chart 4: Multi-criteria Radar -->
-                <div class="plot-card">
-                    <div class="flex justify-between items-center mb-2">
-                        <div>
-                            <h3 class="font-bold text-sm text-white">Radar Multicriterio de Habilidad Climatológica</h3>
-                            <p class="text-[11px] text-slate-400">Comparación simultánea de 6 dimensiones normalizadas entre modelos top y el satélite crudo</p>
-                        </div>
-                        <span class="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700">Radar</span>
-                    </div>
-                    <div id="radarRain" class="chart-box"></div>
-                </div>
-            </div>
-
-            <!-- High-Resolution Comparison Figure Card: Winner vs Raw -->
-            <div class="plot-card border-sky-800 bg-slate-900">
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <span class="bg-sky-600 text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded">Diagnóstico Comparativo</span>
-                            <h3 class="font-bold text-base text-white">Modelo Ganador (EXP_R15) vs. CHIRPS v2.0 Crudo (EXP_R00)</h3>
-                        </div>
-                        <p class="text-xs text-slate-300 mt-1">Evaluación estación por estación: ganancia de KGE, correlación dual y habilidad categórica de lluvia.</p>
-                    </div>
-                    <a href="{{ comp_rain }}" target="_blank" class="inline-flex items-center gap-2 bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold px-4 py-2 rounded-lg transition shadow">
-                        <span>🔍 Abrir en Alta Resolución (300 DPI)</span>
-                    </a>
-                </div>
-                <div class="bg-slate-950 rounded-lg p-2 border border-slate-800 flex justify-center">
-                    <img src="{{ comp_rain }}" alt="Comparativa Lluvia Ganador vs Crudo" class="rounded max-h-[550px] object-contain shadow-md">
-                </div>
-            </div>
-
-            <!-- Interactive DataTable -->
+            <!-- 1. DATA FIRST: Interactive Master DataTable -->
             <div class="plot-card">
-                <h3 class="font-bold text-sm text-white mb-3">Tabla Maestra de Rendimiento: Experimentos de Precipitación</h3>
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
+                    <div>
+                        <h3 class="font-bold text-sm text-white flex items-center gap-2">
+                            <span>📋 Tabla Maestra de Rendimiento y Ranking: Precipitación</span>
+                            <span class="bg-sky-950 text-sky-400 border border-sky-800 text-[10px] font-mono px-2 py-0.5 rounded">16 Modelos</span>
+                        </h3>
+                        <p class="text-[11px] text-slate-400">Resultados numéricos exactos de validación independiente en 29 estaciones holdout. Ordene o filtre por cualquier métrica.</p>
+                    </div>
+                    <span class="text-[11px] text-slate-400">Datos Primero • Holdout Ciego</span>
+                </div>
                 <div class="overflow-x-auto">
                     <table id="tableRain" class="w-full text-xs display">
                         <thead>
@@ -481,6 +550,195 @@ def generate_echarts_html_dashboard(
                 </div>
             </div>
 
+            <!-- 2. EXPLORACIÓN GRÁFICA INTERACTIVA -->
+            <div class="space-y-4">
+                <div class="border-b border-slate-800 pb-2 flex justify-between items-center">
+                    <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        <span>📈 Exploración Gráfica Interactiva</span>
+                        <span class="text-xs font-normal text-slate-400">(Herramientas dinámicas de zoom, selección y descarga)</span>
+                    </h3>
+                    <span class="text-xs bg-slate-800 text-slate-300 px-2.5 py-1 rounded border border-slate-700">Apache ECharts 5</span>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Chart 1: Polar Taylor Diagram -->
+                    <div class="plot-card">
+                        <div class="flex justify-between items-center mb-2">
+                            <div>
+                                <h3 class="font-bold text-sm text-white">Diagrama Polar de Taylor: Precipitación</h3>
+                                <p class="text-[11px] text-slate-400">Coordenadas: Ángulo = arccos(r), Radio = σ*. Referencia Holdout en (1.0, 0°).</p>
+                            </div>
+                            <span class="text-xs bg-rose-950 text-rose-300 border border-rose-800 px-2 py-0.5 rounded">Taylor Polar</span>
+                        </div>
+                        <div id="taylorRain" class="chart-box"></div>
+                    </div>
+
+                    <!-- Chart 2: Multi-criteria Radar (ALL EXPERIMENTS) -->
+                    <div class="plot-card">
+                        <div class="flex justify-between items-center mb-2">
+                            <div>
+                                <h3 class="font-bold text-sm text-white">Radar Multicriterio de Habilidad Climatológica</h3>
+                                <p class="text-[11px] text-slate-400">Haga clic en la leyenda superior para activar/desactivar cualquier experimento.</p>
+                            </div>
+                            <span class="text-xs bg-sky-950 text-sky-300 border border-sky-800 px-2 py-0.5 rounded">16 Modelos</span>
+                        </div>
+                        <div id="radarRain" class="chart-box"></div>
+                    </div>
+
+                    <!-- Chart 3: Scatter RMSE vs KGE -->
+                    <div class="plot-card">
+                        <div class="flex justify-between items-center mb-2">
+                            <div>
+                                <h3 class="font-bold text-sm text-white">Espacio de Precisión: Error (RMSE) vs. Eficiencia (KGE)</h3>
+                                <p class="text-[11px] text-slate-400">El modelo óptimo se ubica en el extremo superior izquierdo (menor RMSE, mayor KGE)</p>
+                            </div>
+                            <span class="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700">Pareto</span>
+                        </div>
+                        <div id="scatterRain" class="chart-box"></div>
+                    </div>
+
+                    <!-- Chart 4: Net Gain vs Raw Satellite (Control 00) -->
+                    <div class="plot-card">
+                        <div class="flex justify-between items-center mb-2">
+                            <div>
+                                <h3 class="font-bold text-sm text-white">Ganancia Neta (Δ KGE) respecto al Satélite Crudo [Control 00]</h3>
+                                <p class="text-[11px] text-slate-400">CHIRPS Crudo = 0.0 de referencia. Barra verde indica mejora; gris es el control.</p>
+                            </div>
+                            <span class="text-xs bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded">Δ KGE</span>
+                        </div>
+                        <div id="barDeltaRain" class="chart-box"></div>
+                    </div>
+
+                    <!-- Chart 5: Boxplot of KGE by Station (Full Width) -->
+                    <div class="plot-card lg:col-span-2">
+                        <div class="flex justify-between items-center mb-2">
+                            <div>
+                                <h3 class="font-bold text-sm text-white">Distribución de Eficiencia KGE en las 29 Estaciones Holdout</h3>
+                                <p class="text-[11px] text-slate-400">Caja representa percentiles 25–75 y línea central la mediana. Use el control inferior para desplazarse.</p>
+                            </div>
+                            <span class="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700">Zoomable</span>
+                        </div>
+                        <div id="boxRain" class="chart-box"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. DIAGNÓSTICO COMPARATIVO Y CENTRO DE DESCARGAS (300 DPI) -->
+            <div class="space-y-4">
+                <div class="border-b border-slate-800 pb-2">
+                    <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        <span>📥 Centro de Descargas y Diagnóstico Comparativo (300 DPI)</span>
+                        <span class="text-xs font-normal text-slate-400">(Figuras estáticas de alta resolución listas para publicación)</span>
+                    </h3>
+                </div>
+
+                <!-- High-Resolution Comparison Figure Card: Winner vs Raw -->
+                <div class="plot-card border-sky-800 bg-slate-900">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="bg-sky-600 text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded">Diagnóstico Comparativo</span>
+                                <h3 class="font-bold text-base text-white">Modelo Ganador (EXP_R15) vs. CHIRPS v2.0 Crudo (EXP_R00)</h3>
+                            </div>
+                            <p class="text-xs text-slate-300 mt-1">Evaluación estación por estación: ganancia de KGE, correlación dual y habilidad categórica de lluvia.</p>
+                        </div>
+                        <a href="{{ comp_rain }}" download target="_blank" class="inline-flex items-center gap-2 bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold px-4 py-2 rounded-lg transition shadow">
+                            <span>⬇️ Descargar Comparativa 4 Paneles (300 DPI)</span>
+                        </a>
+                    </div>
+                    <div class="bg-slate-950 rounded-lg p-2 border border-slate-800 flex justify-center">
+                        <img src="{{ comp_rain }}" alt="Comparativa Lluvia Ganador vs Crudo" class="rounded max-h-[500px] object-contain shadow-md">
+                    </div>
+                </div>
+
+                <!-- Static Figure Download Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="bg-slate-800/80 border border-slate-700 rounded-lg p-4 flex flex-col justify-between">
+                        <div>
+                            <div class="text-[11px] font-bold text-sky-400 uppercase tracking-wider mb-1">Figura de Publicación</div>
+                            <h4 class="font-bold text-sm text-white">Diagrama Polar de Taylor Estático</h4>
+                            <p class="text-xs text-slate-400 mt-1">Diagrama polar con isolíneas de error centrado RMS, varianza normalizada y correlación Pearson.</p>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-slate-700/60 flex items-center justify-between">
+                            <span class="text-[10px] text-slate-400 font-mono">PNG • 300 DPI</span>
+                            <a href="{{ fig_rain.taylor }}" download target="_blank" class="text-xs bg-slate-700 hover:bg-sky-600 text-white px-3 py-1.5 rounded transition font-medium flex items-center gap-1">
+                                <span>📥 Descargar</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-800/80 border border-slate-700 rounded-lg p-4 flex flex-col justify-between">
+                        <div>
+                            <div class="text-[11px] font-bold text-sky-400 uppercase tracking-wider mb-1">Figura de Publicación</div>
+                            <h4 class="font-bold text-sm text-white">Distribución de KGE por Estación</h4>
+                            <p class="text-xs text-slate-400 mt-1">Boxplots de dispersión en las 29 estaciones holdout independientes para todos los modelos.</p>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-slate-700/60 flex items-center justify-between">
+                            <span class="text-[10px] text-slate-400 font-mono">PNG • 300 DPI</span>
+                            <a href="{{ fig_rain.boxplots }}" download target="_blank" class="text-xs bg-slate-700 hover:bg-sky-600 text-white px-3 py-1.5 rounded transition font-medium flex items-center gap-1">
+                                <span>📥 Descargar</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-800/80 border border-slate-700 rounded-lg p-4 flex flex-col justify-between">
+                        <div>
+                            <div class="text-[11px] font-bold text-sky-400 uppercase tracking-wider mb-1">Figura de Publicación</div>
+                            <h4 class="font-bold text-sm text-white">Desempeño por Estratos de Elevación</h4>
+                            <p class="text-xs text-slate-400 mt-1">Evaluación estratificada (Costas &lt;200m, Valles 200–800m, Montañas &gt;800m).</p>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-slate-700/60 flex items-center justify-between">
+                            <span class="text-[10px] text-slate-400 font-mono">PNG • 300 DPI</span>
+                            <a href="{{ fig_rain.elevation }}" download target="_blank" class="text-xs bg-slate-700 hover:bg-sky-600 text-white px-3 py-1.5 rounded transition font-medium flex items-center gap-1">
+                                <span>📥 Descargar</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-800/80 border border-slate-700 rounded-lg p-4 flex flex-col justify-between">
+                        <div>
+                            <div class="text-[11px] font-bold text-sky-400 uppercase tracking-wider mb-1">Figura de Publicación</div>
+                            <h4 class="font-bold text-sm text-white">Radar Multicriterio de Habilidad</h4>
+                            <p class="text-xs text-slate-400 mt-1">Comparación vectorial de 6 métricas climatológicas simultáneas.</p>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-slate-700/60 flex items-center justify-between">
+                            <span class="text-[10px] text-slate-400 font-mono">PNG • 300 DPI</span>
+                            <a href="{{ fig_rain.radar }}" download target="_blank" class="text-xs bg-slate-700 hover:bg-sky-600 text-white px-3 py-1.5 rounded transition font-medium flex items-center gap-1">
+                                <span>📥 Descargar</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-800/80 border border-slate-700 rounded-lg p-4 flex flex-col justify-between">
+                        <div>
+                            <div class="text-[11px] font-bold text-sky-400 uppercase tracking-wider mb-1">Figura de Publicación</div>
+                            <h4 class="font-bold text-sm text-white">Matriz de Rendimiento (Heatmap)</h4>
+                            <p class="text-xs text-slate-400 mt-1">Mapa de calor tabular normalizado que condensa todas las dimensiones estadísticas.</p>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-slate-700/60 flex items-center justify-between">
+                            <span class="text-[10px] text-slate-400 font-mono">PNG • 300 DPI</span>
+                            <a href="{{ fig_rain.heatmap }}" download target="_blank" class="text-xs bg-slate-700 hover:bg-sky-600 text-white px-3 py-1.5 rounded transition font-medium flex items-center gap-1">
+                                <span>📥 Descargar</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-800/80 border border-slate-700 rounded-lg p-4 flex flex-col justify-between">
+                        <div>
+                            <div class="text-[11px] font-bold text-sky-400 uppercase tracking-wider mb-1">Figura de Publicación</div>
+                            <h4 class="font-bold text-sm text-white">Detección de Lluvia (POD vs. FAR)</h4>
+                            <p class="text-xs text-slate-400 mt-1">Evaluación de contingencia en el espacio de aciertos vs falsa alarma con umbrales de lluvia.</p>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-slate-700/60 flex items-center justify-between">
+                            <span class="text-[10px] text-slate-400 font-mono">PNG • 300 DPI</span>
+                            <a href="{{ fig_rain.roc }}" download target="_blank" class="text-xs bg-slate-700 hover:bg-sky-600 text-white px-3 py-1.5 rounded transition font-medium flex items-center gap-1">
+                                <span>📥 Descargar</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
 
         <!-- ========================================================================= -->
@@ -495,8 +753,8 @@ def generate_echarts_html_dashboard(
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative z-10">
                     <div>
                         <div class="flex items-center gap-2 mb-1">
-                            <span class="bg-amber-500 text-slate-950 text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded">Candidato Óptimo</span>
-                            <span class="text-xs text-amber-300 font-mono">Rango #01 en Temperatura Máxima</span>
+                            <span class="bg-amber-500 text-white text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded">Candidato Óptimo</span>
+                            <span class="text-xs text-amber-300 font-mono">Rango #01 en Temp. Máxima</span>
                         </div>
                         <h2 class="text-2xl font-black text-white tracking-tight">{{ win_tmax.experiment_id }}</h2>
                         <p class="text-xs text-slate-300 max-w-2xl mt-1 leading-relaxed">{{ win_tmax.description }}</p>
@@ -523,75 +781,18 @@ def generate_echarts_html_dashboard(
             </div>
             {% endif %}
 
-            <!-- Interactive ECharts Grid -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div class="plot-card">
-                    <div class="flex justify-between items-center mb-2">
-                        <div>
-                            <h3 class="font-bold text-sm text-white">Espacio de Precisión Tmax: Error (RMSE °C) vs. Eficiencia (KGE)</h3>
-                            <p class="text-[11px] text-slate-400">Muestra la dramática reducción del error térmico orográfico tras el desescalado DEM</p>
-                        </div>
-                        <span class="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700">13 Exp.</span>
-                    </div>
-                    <div id="scatterTmax" class="chart-box"></div>
-                </div>
-
-                <div class="plot-card">
-                    <div class="flex justify-between items-center mb-2">
-                        <div>
-                            <h3 class="font-bold text-sm text-white">Ganancia Neta (Δ KGE) respecto al Satélite CHIRTS Crudo</h3>
-                            <p class="text-[11px] text-slate-400">CHIRTS Crudo (0.05°) = 0.0 de referencia. Barra verde indica mejora; gris es el control.</p>
-                        </div>
-                        <span class="text-xs bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded">Δ KGE</span>
-                    </div>
-                    <div id="barDeltaTmax" class="chart-box"></div>
-                </div>
-
-                <div class="plot-card">
-                    <div class="flex justify-between items-center mb-2">
-                        <div>
-                            <h3 class="font-bold text-sm text-white">Distribución de Eficiencia KGE en las 29 Estaciones (Tmax)</h3>
-                            <p class="text-[11px] text-slate-400">Desempeño consistente entre estaciones de costa y montaña</p>
-                        </div>
-                        <span class="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700">Zoomable</span>
-                    </div>
-                    <div id="boxTmax" class="chart-box"></div>
-                </div>
-
-                <div class="plot-card">
-                    <div class="flex justify-between items-center mb-2">
-                        <div>
-                            <h3 class="font-bold text-sm text-white">Radar Multicriterio de Habilidad (Tmax)</h3>
-                            <p class="text-[11px] text-slate-400">Dimensiones de error térmico, sesgo y sincronía temporal</p>
-                        </div>
-                        <span class="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700">Radar</span>
-                    </div>
-                    <div id="radarTmax" class="chart-box"></div>
-                </div>
-            </div>
-
-            <!-- High-Resolution Comparison Figure Card: Winner vs Raw -->
-            <div class="plot-card border-amber-800 bg-slate-900">
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <span class="bg-amber-600 text-slate-950 text-[10px] uppercase font-bold px-2 py-0.5 rounded">Diagnóstico Comparativo</span>
-                            <h3 class="font-bold text-base text-white">Modelo Ganador (EXP_TX11) vs. CHIRTS Tmax Crudo (EXP_TX00)</h3>
-                        </div>
-                        <p class="text-xs text-slate-300 mt-1">Corrección del gradiente altimétrico y reducción del error cuadrático medio en todo el relieve centroamericano.</p>
-                    </div>
-                    <a href="{{ comp_tmax }}" target="_blank" class="inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-500 text-slate-950 text-xs font-semibold px-4 py-2 rounded-lg transition shadow">
-                        <span>🔍 Abrir en Alta Resolución (300 DPI)</span>
-                    </a>
-                </div>
-                <div class="bg-slate-950 rounded-lg p-2 border border-slate-800 flex justify-center">
-                    <img src="{{ comp_tmax }}" alt="Comparativa Tmax Ganador vs Crudo" class="rounded max-h-[550px] object-contain shadow-md">
-                </div>
-            </div>
-
-            <!-- Interactive DataTable Tmax -->
+            <!-- 1. DATA FIRST: Interactive Master DataTable -->
             <div class="plot-card">
-                <h3 class="font-bold text-sm text-white mb-3">Tabla Maestra de Rendimiento: Experimentos de Temperatura Máxima</h3>
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
+                    <div>
+                        <h3 class="font-bold text-sm text-white flex items-center gap-2">
+                            <span>📋 Tabla Maestra de Rendimiento y Ranking: Temperatura Máxima</span>
+                            <span class="bg-amber-950 text-amber-400 border border-amber-800 text-[10px] font-mono px-2 py-0.5 rounded">13 Modelos</span>
+                        </h3>
+                        <p class="text-[11px] text-slate-400">Resultados numéricos exactos de validación independiente en 29 estaciones holdout. Ordene o filtre por cualquier métrica.</p>
+                    </div>
+                    <span class="text-[11px] text-slate-400">Datos Primero • Holdout Ciego</span>
+                </div>
                 <div class="overflow-x-auto">
                     <table id="tableTmax" class="w-full text-xs display">
                         <thead>
@@ -610,7 +811,7 @@ def generate_echarts_html_dashboard(
                         </thead>
                         <tbody>
                             {% for e in pay_tmax.experiments %}
-                            <tr class="{% if e.is_winner %}bg-amber-950/40 text-amber-300 font-bold{% elif e.is_control %}bg-slate-800/60 text-slate-400{% endif %}">
+                            <tr class="{% if e.is_winner %}bg-emerald-950/40 text-emerald-300 font-bold{% elif e.is_control %}bg-slate-800/60 text-slate-400{% endif %}">
                                 <td>{% if e.is_winner %}🏆 #{{ e.rank }}{% elif e.is_control %}⚡ [00]{% else %}#{{ e.rank }}{% endif %}</td>
                                 <td class="font-mono">{{ e.id }}</td>
                                 <td>{{ "%.3f"|format(e.gss) }}</td>
@@ -630,6 +831,181 @@ def generate_echarts_html_dashboard(
                 </div>
             </div>
 
+            <!-- 2. EXPLORACIÓN GRÁFICA INTERACTIVA -->
+            <div class="space-y-4">
+                <div class="border-b border-slate-800 pb-2 flex justify-between items-center">
+                    <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        <span>📈 Exploración Gráfica Interactiva</span>
+                        <span class="text-xs font-normal text-slate-400">(Herramientas dinámicas de zoom, selección y descarga)</span>
+                    </h3>
+                    <span class="text-xs bg-slate-800 text-slate-300 px-2.5 py-1 rounded border border-slate-700">Apache ECharts 5</span>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Chart 1: Polar Taylor Diagram -->
+                    <div class="plot-card">
+                        <div class="flex justify-between items-center mb-2">
+                            <div>
+                                <h3 class="font-bold text-sm text-white">Diagrama Polar de Taylor: Temperatura Máxima</h3>
+                                <p class="text-[11px] text-slate-400">Coordenadas: Ángulo = arccos(r), Radio = σ*. Referencia Holdout en (1.0, 0°).</p>
+                            </div>
+                            <span class="text-xs bg-rose-950 text-rose-300 border border-rose-800 px-2 py-0.5 rounded">Taylor Polar</span>
+                        </div>
+                        <div id="taylorTmax" class="chart-box"></div>
+                    </div>
+
+                    <!-- Chart 2: Multi-criteria Radar (ALL EXPERIMENTS) -->
+                    <div class="plot-card">
+                        <div class="flex justify-between items-center mb-2">
+                            <div>
+                                <h3 class="font-bold text-sm text-white">Radar Multicriterio de Habilidad Climatológica</h3>
+                                <p class="text-[11px] text-slate-400">Haga clic en la leyenda superior para activar/desactivar cualquier experimento.</p>
+                            </div>
+                            <span class="text-xs bg-amber-950 text-amber-300 border border-amber-800 px-2 py-0.5 rounded">13 Modelos</span>
+                        </div>
+                        <div id="radarTmax" class="chart-box"></div>
+                    </div>
+
+                    <!-- Chart 3: Scatter RMSE vs KGE -->
+                    <div class="plot-card">
+                        <div class="flex justify-between items-center mb-2">
+                            <div>
+                                <h3 class="font-bold text-sm text-white">Espacio de Precisión: Error (RMSE) vs. Eficiencia (KGE)</h3>
+                                <p class="text-[11px] text-slate-400">El modelo óptimo se ubica en el extremo superior izquierdo (menor RMSE, mayor KGE)</p>
+                            </div>
+                            <span class="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700">Pareto</span>
+                        </div>
+                        <div id="scatterTmax" class="chart-box"></div>
+                    </div>
+
+                    <!-- Chart 4: Net Gain vs Raw Satellite (Control 00) -->
+                    <div class="plot-card">
+                        <div class="flex justify-between items-center mb-2">
+                            <div>
+                                <h3 class="font-bold text-sm text-white">Ganancia Neta (Δ KGE) respecto al Satélite Crudo [Control 00]</h3>
+                                <p class="text-[11px] text-slate-400">CHIRTS Crudo = 0.0 de referencia. Barra verde indica mejora; gris es el control.</p>
+                            </div>
+                            <span class="text-xs bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded">Δ KGE</span>
+                        </div>
+                        <div id="barDeltaTmax" class="chart-box"></div>
+                    </div>
+
+                    <!-- Chart 5: Boxplot of KGE by Station (Full Width) -->
+                    <div class="plot-card lg:col-span-2">
+                        <div class="flex justify-between items-center mb-2">
+                            <div>
+                                <h3 class="font-bold text-sm text-white">Distribución de Eficiencia KGE en las 29 Estaciones Holdout</h3>
+                                <p class="text-[11px] text-slate-400">Caja representa percentiles 25–75 y línea central la mediana. Use el control inferior para desplazarse.</p>
+                            </div>
+                            <span class="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700">Zoomable</span>
+                        </div>
+                        <div id="boxTmax" class="chart-box"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. DIAGNÓSTICO COMPARATIVO Y CENTRO DE DESCARGAS (300 DPI) -->
+            <div class="space-y-4">
+                <div class="border-b border-slate-800 pb-2">
+                    <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        <span>📥 Centro de Descargas y Diagnóstico Comparativo (300 DPI)</span>
+                        <span class="text-xs font-normal text-slate-400">(Figuras estáticas de alta resolución listas para publicación)</span>
+                    </h3>
+                </div>
+
+                <!-- High-Resolution Comparison Figure Card: Winner vs Raw -->
+                <div class="plot-card border-amber-800 bg-slate-900">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="bg-amber-600 text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded">Diagnóstico Comparativo</span>
+                                <h3 class="font-bold text-base text-white">Modelo Ganador (EXP_TX11) vs. CHIRTS-ERA5 Crudo (EXP_TX00)</h3>
+                            </div>
+                            <p class="text-xs text-slate-300 mt-1">Evaluación estación por estación: ganancia de KGE, correlación dual y precisión térmica.</p>
+                        </div>
+                        <a href="{{ comp_tmax }}" download target="_blank" class="inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold px-4 py-2 rounded-lg transition shadow">
+                            <span>⬇️ Descargar Comparativa 4 Paneles (300 DPI)</span>
+                        </a>
+                    </div>
+                    <div class="bg-slate-950 rounded-lg p-2 border border-slate-800 flex justify-center">
+                        <img src="{{ comp_tmax }}" alt="Comparativa Tmax Ganador vs Crudo" class="rounded max-h-[500px] object-contain shadow-md">
+                    </div>
+                </div>
+
+                <!-- Static Figure Download Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="bg-slate-800/80 border border-slate-700 rounded-lg p-4 flex flex-col justify-between">
+                        <div>
+                            <div class="text-[11px] font-bold text-amber-400 uppercase tracking-wider mb-1">Figura de Publicación</div>
+                            <h4 class="font-bold text-sm text-white">Diagrama Polar de Taylor Estático</h4>
+                            <p class="text-xs text-slate-400 mt-1">Diagrama polar con isolíneas de error centrado RMS, varianza normalizada y correlación Pearson.</p>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-slate-700/60 flex items-center justify-between">
+                            <span class="text-[10px] text-slate-400 font-mono">PNG • 300 DPI</span>
+                            <a href="{{ fig_tmax.taylor }}" download target="_blank" class="text-xs bg-slate-700 hover:bg-amber-600 text-white px-3 py-1.5 rounded transition font-medium flex items-center gap-1">
+                                <span>📥 Descargar</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-800/80 border border-slate-700 rounded-lg p-4 flex flex-col justify-between">
+                        <div>
+                            <div class="text-[11px] font-bold text-amber-400 uppercase tracking-wider mb-1">Figura de Publicación</div>
+                            <h4 class="font-bold text-sm text-white">Distribución de KGE por Estación</h4>
+                            <p class="text-xs text-slate-400 mt-1">Boxplots de dispersión en las 29 estaciones holdout independientes para todos los modelos.</p>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-slate-700/60 flex items-center justify-between">
+                            <span class="text-[10px] text-slate-400 font-mono">PNG • 300 DPI</span>
+                            <a href="{{ fig_tmax.boxplots }}" download target="_blank" class="text-xs bg-slate-700 hover:bg-amber-600 text-white px-3 py-1.5 rounded transition font-medium flex items-center gap-1">
+                                <span>📥 Descargar</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-800/80 border border-slate-700 rounded-lg p-4 flex flex-col justify-between">
+                        <div>
+                            <div class="text-[11px] font-bold text-amber-400 uppercase tracking-wider mb-1">Figura de Publicación</div>
+                            <h4 class="font-bold text-sm text-white">Desempeño por Estratos de Elevación</h4>
+                            <p class="text-xs text-slate-400 mt-1">Evaluación estratificada (Costas &lt;200m, Valles 200–800m, Montañas &gt;800m).</p>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-slate-700/60 flex items-center justify-between">
+                            <span class="text-[10px] text-slate-400 font-mono">PNG • 300 DPI</span>
+                            <a href="{{ fig_tmax.elevation }}" download target="_blank" class="text-xs bg-slate-700 hover:bg-amber-600 text-white px-3 py-1.5 rounded transition font-medium flex items-center gap-1">
+                                <span>📥 Descargar</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-800/80 border border-slate-700 rounded-lg p-4 flex flex-col justify-between">
+                        <div>
+                            <div class="text-[11px] font-bold text-amber-400 uppercase tracking-wider mb-1">Figura de Publicación</div>
+                            <h4 class="font-bold text-sm text-white">Radar Multicriterio de Habilidad</h4>
+                            <p class="text-xs text-slate-400 mt-1">Comparación vectorial de métricas climatológicas simultáneas.</p>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-slate-700/60 flex items-center justify-between">
+                            <span class="text-[10px] text-slate-400 font-mono">PNG • 300 DPI</span>
+                            <a href="{{ fig_tmax.radar }}" download target="_blank" class="text-xs bg-slate-700 hover:bg-amber-600 text-white px-3 py-1.5 rounded transition font-medium flex items-center gap-1">
+                                <span>📥 Descargar</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-800/80 border border-slate-700 rounded-lg p-4 flex flex-col justify-between">
+                        <div>
+                            <div class="text-[11px] font-bold text-amber-400 uppercase tracking-wider mb-1">Figura de Publicación</div>
+                            <h4 class="font-bold text-sm text-white">Matriz de Rendimiento (Heatmap)</h4>
+                            <p class="text-xs text-slate-400 mt-1">Mapa de calor tabular normalizado que condensa todas las dimensiones estadísticas.</p>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-slate-700/60 flex items-center justify-between">
+                            <span class="text-[10px] text-slate-400 font-mono">PNG • 300 DPI</span>
+                            <a href="{{ fig_tmax.heatmap }}" download target="_blank" class="text-xs bg-slate-700 hover:bg-amber-600 text-white px-3 py-1.5 rounded transition font-medium flex items-center gap-1">
+                                <span>📥 Descargar</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
 
         <!-- ========================================================================= -->
@@ -639,13 +1015,13 @@ def generate_echarts_html_dashboard(
             
             {% if win_tmin %}
             <!-- Winner Highlight Card -->
-            <div class="bg-gradient-to-r from-purple-950 via-slate-900 to-slate-900 border border-purple-800 text-white rounded-xl p-6 shadow-xl relative overflow-hidden">
+            <div class="bg-gradient-to-r from-violet-950 via-slate-900 to-slate-900 border border-violet-800 text-white rounded-xl p-6 shadow-xl relative overflow-hidden">
                 <div class="absolute -right-10 -bottom-10 opacity-10 text-9xl">🌙</div>
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative z-10">
                     <div>
                         <div class="flex items-center gap-2 mb-1">
-                            <span class="bg-purple-500 text-white text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded">Candidato Óptimo</span>
-                            <span class="text-xs text-purple-300 font-mono">Rango #01 en Temperatura Mínima</span>
+                            <span class="bg-violet-500 text-white text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded">Candidato Óptimo</span>
+                            <span class="text-xs text-violet-300 font-mono">Rango #01 en Temp. Mínima</span>
                         </div>
                         <h2 class="text-2xl font-black text-white tracking-tight">{{ win_tmin.experiment_id }}</h2>
                         <p class="text-xs text-slate-300 max-w-2xl mt-1 leading-relaxed">{{ win_tmin.description }}</p>
@@ -653,7 +1029,7 @@ def generate_echarts_html_dashboard(
                     <div class="grid grid-cols-4 gap-3 bg-slate-900/90 rounded-lg p-3 border border-slate-700 text-center">
                         <div class="px-2">
                             <div class="text-[10px] uppercase text-slate-400">GSS</div>
-                            <div class="text-base font-bold text-purple-400">{{ "%.3f"|format(win_tmin.global_skill_score) }}</div>
+                            <div class="text-base font-bold text-violet-400">{{ "%.3f"|format(win_tmin.global_skill_score) }}</div>
                         </div>
                         <div class="px-2">
                             <div class="text-[10px] uppercase text-slate-400">KGE</div>
@@ -672,75 +1048,18 @@ def generate_echarts_html_dashboard(
             </div>
             {% endif %}
 
-            <!-- Interactive ECharts Grid -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div class="plot-card">
-                    <div class="flex justify-between items-center mb-2">
-                        <div>
-                            <h3 class="font-bold text-sm text-white">Espacio de Precisión Tmin: Error (RMSE °C) vs. Eficiencia (KGE)</h3>
-                            <p class="text-[11px] text-slate-400">Calibración nocturna con corrección empírica de inversión térmica</p>
-                        </div>
-                        <span class="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700">13 Exp.</span>
-                    </div>
-                    <div id="scatterTmin" class="chart-box"></div>
-                </div>
-
-                <div class="plot-card">
-                    <div class="flex justify-between items-center mb-2">
-                        <div>
-                            <h3 class="font-bold text-sm text-white">Ganancia Neta (Δ KGE) respecto al Satélite CHIRTS Crudo</h3>
-                            <p class="text-[11px] text-slate-400">CHIRTS Crudo = 0.0 de referencia. Barra verde indica mejora; gris es el control.</p>
-                        </div>
-                        <span class="text-xs bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded">Δ KGE</span>
-                    </div>
-                    <div id="barDeltaTmin" class="chart-box"></div>
-                </div>
-
-                <div class="plot-card">
-                    <div class="flex justify-between items-center mb-2">
-                        <div>
-                            <h3 class="font-bold text-sm text-white">Distribución de Eficiencia KGE en las 29 Estaciones (Tmin)</h3>
-                            <p class="text-[11px] text-slate-400">Representación de la estabilidad frente a temperaturas mínimas extremas</p>
-                        </div>
-                        <span class="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700">Zoomable</span>
-                    </div>
-                    <div id="boxTmin" class="chart-box"></div>
-                </div>
-
-                <div class="plot-card">
-                    <div class="flex justify-between items-center mb-2">
-                        <div>
-                            <h3 class="font-bold text-sm text-white">Radar Multicriterio de Habilidad (Tmin)</h3>
-                            <p class="text-[11px] text-slate-400">Dimensiones de fidelidad nocturna y errores absolutos</p>
-                        </div>
-                        <span class="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700">Radar</span>
-                    </div>
-                    <div id="radarTmin" class="chart-box"></div>
-                </div>
-            </div>
-
-            <!-- High-Resolution Comparison Figure Card: Winner vs Raw -->
-            <div class="plot-card border-purple-800 bg-slate-900">
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <span class="bg-purple-600 text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded">Diagnóstico Comparativo</span>
-                            <h3 class="font-bold text-base text-white">Modelo Ganador (EXP_TN10) vs. CHIRTS Tmin Crudo (EXP_TN00)</h3>
-                        </div>
-                        <p class="text-xs text-slate-300 mt-1">Ajuste quantile matching empírico eliminando el sesgo cálido nocturno en valles y planicies.</p>
-                    </div>
-                    <a href="{{ comp_tmin }}" target="_blank" class="inline-flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold px-4 py-2 rounded-lg transition shadow">
-                        <span>🔍 Abrir en Alta Resolución (300 DPI)</span>
-                    </a>
-                </div>
-                <div class="bg-slate-950 rounded-lg p-2 border border-slate-800 flex justify-center">
-                    <img src="{{ comp_tmin }}" alt="Comparativa Tmin Ganador vs Crudo" class="rounded max-h-[550px] object-contain shadow-md">
-                </div>
-            </div>
-
-            <!-- Interactive DataTable Tmin -->
+            <!-- 1. DATA FIRST: Interactive Master DataTable -->
             <div class="plot-card">
-                <h3 class="font-bold text-sm text-white mb-3">Tabla Maestra de Rendimiento: Experimentos de Temperatura Mínima</h3>
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
+                    <div>
+                        <h3 class="font-bold text-sm text-white flex items-center gap-2">
+                            <span>📋 Tabla Maestra de Rendimiento y Ranking: Temperatura Mínima</span>
+                            <span class="bg-violet-950 text-violet-400 border border-violet-800 text-[10px] font-mono px-2 py-0.5 rounded">13 Modelos</span>
+                        </h3>
+                        <p class="text-[11px] text-slate-400">Resultados numéricos exactos de validación independiente en 29 estaciones holdout. Ordene o filtre por cualquier métrica.</p>
+                    </div>
+                    <span class="text-[11px] text-slate-400">Datos Primero • Holdout Ciego</span>
+                </div>
                 <div class="overflow-x-auto">
                     <table id="tableTmin" class="w-full text-xs display">
                         <thead>
@@ -759,7 +1078,7 @@ def generate_echarts_html_dashboard(
                         </thead>
                         <tbody>
                             {% for e in pay_tmin.experiments %}
-                            <tr class="{% if e.is_winner %}bg-purple-950/40 text-purple-300 font-bold{% elif e.is_control %}bg-slate-800/60 text-slate-400{% endif %}">
+                            <tr class="{% if e.is_winner %}bg-emerald-950/40 text-emerald-300 font-bold{% elif e.is_control %}bg-slate-800/60 text-slate-400{% endif %}">
                                 <td>{% if e.is_winner %}🏆 #{{ e.rank }}{% elif e.is_control %}⚡ [00]{% else %}#{{ e.rank }}{% endif %}</td>
                                 <td class="font-mono">{{ e.id }}</td>
                                 <td>{{ "%.3f"|format(e.gss) }}</td>
@@ -779,35 +1098,216 @@ def generate_echarts_html_dashboard(
                 </div>
             </div>
 
+            <!-- 2. EXPLORACIÓN GRÁFICA INTERACTIVA -->
+            <div class="space-y-4">
+                <div class="border-b border-slate-800 pb-2 flex justify-between items-center">
+                    <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        <span>📈 Exploración Gráfica Interactiva</span>
+                        <span class="text-xs font-normal text-slate-400">(Herramientas dinámicas de zoom, selección y descarga)</span>
+                    </h3>
+                    <span class="text-xs bg-slate-800 text-slate-300 px-2.5 py-1 rounded border border-slate-700">Apache ECharts 5</span>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Chart 1: Polar Taylor Diagram -->
+                    <div class="plot-card">
+                        <div class="flex justify-between items-center mb-2">
+                            <div>
+                                <h3 class="font-bold text-sm text-white">Diagrama Polar de Taylor: Temperatura Mínima</h3>
+                                <p class="text-[11px] text-slate-400">Coordenadas: Ángulo = arccos(r), Radio = σ*. Referencia Holdout en (1.0, 0°).</p>
+                            </div>
+                            <span class="text-xs bg-rose-950 text-rose-300 border border-rose-800 px-2 py-0.5 rounded">Taylor Polar</span>
+                        </div>
+                        <div id="taylorTmin" class="chart-box"></div>
+                    </div>
+
+                    <!-- Chart 2: Multi-criteria Radar (ALL EXPERIMENTS) -->
+                    <div class="plot-card">
+                        <div class="flex justify-between items-center mb-2">
+                            <div>
+                                <h3 class="font-bold text-sm text-white">Radar Multicriterio de Habilidad Climatológica</h3>
+                                <p class="text-[11px] text-slate-400">Haga clic en la leyenda superior para activar/desactivar cualquier experimento.</p>
+                            </div>
+                            <span class="text-xs bg-violet-950 text-violet-300 border border-violet-800 px-2 py-0.5 rounded">13 Modelos</span>
+                        </div>
+                        <div id="radarTmin" class="chart-box"></div>
+                    </div>
+
+                    <!-- Chart 3: Scatter RMSE vs KGE -->
+                    <div class="plot-card">
+                        <div class="flex justify-between items-center mb-2">
+                            <div>
+                                <h3 class="font-bold text-sm text-white">Espacio de Precisión: Error (RMSE) vs. Eficiencia (KGE)</h3>
+                                <p class="text-[11px] text-slate-400">El modelo óptimo se ubica en el extremo superior izquierdo (menor RMSE, mayor KGE)</p>
+                            </div>
+                            <span class="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700">Pareto</span>
+                        </div>
+                        <div id="scatterTmin" class="chart-box"></div>
+                    </div>
+
+                    <!-- Chart 4: Net Gain vs Raw Satellite (Control 00) -->
+                    <div class="plot-card">
+                        <div class="flex justify-between items-center mb-2">
+                            <div>
+                                <h3 class="font-bold text-sm text-white">Ganancia Neta (Δ KGE) respecto al Satélite Crudo [Control 00]</h3>
+                                <p class="text-[11px] text-slate-400">CHIRTS Crudo = 0.0 de referencia. Barra verde indica mejora; gris es el control.</p>
+                            </div>
+                            <span class="text-xs bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded">Δ KGE</span>
+                        </div>
+                        <div id="barDeltaTmin" class="chart-box"></div>
+                    </div>
+
+                    <!-- Chart 5: Boxplot of KGE by Station (Full Width) -->
+                    <div class="plot-card lg:col-span-2">
+                        <div class="flex justify-between items-center mb-2">
+                            <div>
+                                <h3 class="font-bold text-sm text-white">Distribución de Eficiencia KGE en las 29 Estaciones Holdout</h3>
+                                <p class="text-[11px] text-slate-400">Caja representa percentiles 25–75 y línea central la mediana. Use el control inferior para desplazarse.</p>
+                            </div>
+                            <span class="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700">Zoomable</span>
+                        </div>
+                        <div id="boxTmin" class="chart-box"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. DIAGNÓSTICO COMPARATIVO Y CENTRO DE DESCARGAS (300 DPI) -->
+            <div class="space-y-4">
+                <div class="border-b border-slate-800 pb-2">
+                    <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        <span>📥 Centro de Descargas y Diagnóstico Comparativo (300 DPI)</span>
+                        <span class="text-xs font-normal text-slate-400">(Figuras estáticas de alta resolución listas para publicación)</span>
+                    </h3>
+                </div>
+
+                <!-- High-Resolution Comparison Figure Card: Winner vs Raw -->
+                <div class="plot-card border-violet-800 bg-slate-900">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="bg-violet-600 text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded">Diagnóstico Comparativo</span>
+                                <h3 class="font-bold text-base text-white">Modelo Ganador (EXP_TN10) vs. CHIRTS-ERA5 Crudo (EXP_TN00)</h3>
+                            </div>
+                            <p class="text-xs text-slate-300 mt-1">Evaluación estación por estación: ganancia de KGE, correlación dual y precisión térmica nocturna.</p>
+                        </div>
+                        <a href="{{ comp_tmin }}" download target="_blank" class="inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold px-4 py-2 rounded-lg transition shadow">
+                            <span>⬇️ Descargar Comparativa 4 Paneles (300 DPI)</span>
+                        </a>
+                    </div>
+                    <div class="bg-slate-950 rounded-lg p-2 border border-slate-800 flex justify-center">
+                        <img src="{{ comp_tmin }}" alt="Comparativa Tmin Ganador vs Crudo" class="rounded max-h-[500px] object-contain shadow-md">
+                    </div>
+                </div>
+
+                <!-- Static Figure Download Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="bg-slate-800/80 border border-slate-700 rounded-lg p-4 flex flex-col justify-between">
+                        <div>
+                            <div class="text-[11px] font-bold text-violet-400 uppercase tracking-wider mb-1">Figura de Publicación</div>
+                            <h4 class="font-bold text-sm text-white">Diagrama Polar de Taylor Estático</h4>
+                            <p class="text-xs text-slate-400 mt-1">Diagrama polar con isolíneas de error centrado RMS, varianza normalizada y correlación Pearson.</p>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-slate-700/60 flex items-center justify-between">
+                            <span class="text-[10px] text-slate-400 font-mono">PNG • 300 DPI</span>
+                            <a href="{{ fig_tmin.taylor }}" download target="_blank" class="text-xs bg-slate-700 hover:bg-violet-600 text-white px-3 py-1.5 rounded transition font-medium flex items-center gap-1">
+                                <span>📥 Descargar</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-800/80 border border-slate-700 rounded-lg p-4 flex flex-col justify-between">
+                        <div>
+                            <div class="text-[11px] font-bold text-violet-400 uppercase tracking-wider mb-1">Figura de Publicación</div>
+                            <h4 class="font-bold text-sm text-white">Distribución de KGE por Estación</h4>
+                            <p class="text-xs text-slate-400 mt-1">Boxplots de dispersión en las 29 estaciones holdout independientes para todos los modelos.</p>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-slate-700/60 flex items-center justify-between">
+                            <span class="text-[10px] text-slate-400 font-mono">PNG • 300 DPI</span>
+                            <a href="{{ fig_tmin.boxplots }}" download target="_blank" class="text-xs bg-slate-700 hover:bg-violet-600 text-white px-3 py-1.5 rounded transition font-medium flex items-center gap-1">
+                                <span>📥 Descargar</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-800/80 border border-slate-700 rounded-lg p-4 flex flex-col justify-between">
+                        <div>
+                            <div class="text-[11px] font-bold text-violet-400 uppercase tracking-wider mb-1">Figura de Publicación</div>
+                            <h4 class="font-bold text-sm text-white">Desempeño por Estratos de Elevación</h4>
+                            <p class="text-xs text-slate-400 mt-1">Evaluación estratificada (Costas &lt;200m, Valles 200–800m, Montañas &gt;800m).</p>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-slate-700/60 flex items-center justify-between">
+                            <span class="text-[10px] text-slate-400 font-mono">PNG • 300 DPI</span>
+                            <a href="{{ fig_tmin.elevation }}" download target="_blank" class="text-xs bg-slate-700 hover:bg-violet-600 text-white px-3 py-1.5 rounded transition font-medium flex items-center gap-1">
+                                <span>📥 Descargar</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-800/80 border border-slate-700 rounded-lg p-4 flex flex-col justify-between">
+                        <div>
+                            <div class="text-[11px] font-bold text-violet-400 uppercase tracking-wider mb-1">Figura de Publicación</div>
+                            <h4 class="font-bold text-sm text-white">Radar Multicriterio de Habilidad</h4>
+                            <p class="text-xs text-slate-400 mt-1">Comparación vectorial de métricas climatológicas simultáneas.</p>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-slate-700/60 flex items-center justify-between">
+                            <span class="text-[10px] text-slate-400 font-mono">PNG • 300 DPI</span>
+                            <a href="{{ fig_tmin.radar }}" download target="_blank" class="text-xs bg-slate-700 hover:bg-violet-600 text-white px-3 py-1.5 rounded transition font-medium flex items-center gap-1">
+                                <span>📥 Descargar</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-800/80 border border-slate-700 rounded-lg p-4 flex flex-col justify-between">
+                        <div>
+                            <div class="text-[11px] font-bold text-violet-400 uppercase tracking-wider mb-1">Figura de Publicación</div>
+                            <h4 class="font-bold text-sm text-white">Matriz de Rendimiento (Heatmap)</h4>
+                            <p class="text-xs text-slate-400 mt-1">Mapa de calor tabular normalizado que condensa todas las dimensiones estadísticas.</p>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-slate-700/60 flex items-center justify-between">
+                            <span class="text-[10px] text-slate-400 font-mono">PNG • 300 DPI</span>
+                            <a href="{{ fig_tmin.heatmap }}" download target="_blank" class="text-xs bg-slate-700 hover:bg-violet-600 text-white px-3 py-1.5 rounded transition font-medium flex items-center gap-1">
+                                <span>📥 Descargar</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
 
         <!-- ========================================================================= -->
-        <!-- TAB 4: RESUMEN CONSOLIDADO -->
+        <!-- TAB 4: RESUMEN CONSOLIDADO (42 EXPERIMENTOS) -->
         <!-- ========================================================================= -->
         <div id="tab-content-consolidated" class="tab-panel hidden space-y-8">
             
-            <!-- Executive Multi-Variable Summary Figure Card -->
+            <!-- Executive Cross-Variable Synthesis Figure -->
             <div class="plot-card border-slate-700 bg-slate-900">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
                     <div>
                         <div class="flex items-center gap-2">
-                            <span class="bg-indigo-600 text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded">Síntesis Ejecutiva</span>
-                            <h3 class="font-bold text-base text-white">Evaluación Global Multi-Variable: Modelos Óptimos vs. Satélite Crudo</h3>
+                            <span class="bg-emerald-600 text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded">Síntesis Ejecutiva</span>
+                            <h3 class="font-bold text-base text-white">Evaluación Global: Malla Original Cruda vs. Malla Óptima Corregida</h3>
                         </div>
-                        <p class="text-xs text-slate-300 mt-1">Comparativa directa de KGE, Pearson r y Habilidad Global (GSS) para Lluvia, Tmax y Tmin en Centroamérica.</p>
+                        <p class="text-xs text-slate-300 mt-1">Comparación multi-variable de KGE, correlación Pearson y habilidad global en las 29 estaciones holdout de Centroamérica.</p>
                     </div>
-                    <a href="{{ comp_overview }}" target="_blank" class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2 rounded-lg transition shadow">
-                        <span>🔍 Abrir en Alta Resolución (300 DPI)</span>
+                    <a href="{{ comp_overview }}" download target="_blank" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-4 py-2 rounded-lg transition shadow">
+                        <span>⬇️ Descargar Síntesis Ejecutiva (300 DPI)</span>
                     </a>
                 </div>
                 <div class="bg-slate-950 rounded-lg p-2 border border-slate-800 flex justify-center">
-                    <img src="{{ comp_overview }}" alt="Síntesis Ejecutiva Multi-Variable" class="rounded max-h-[500px] object-contain shadow-md">
+                    <img src="{{ comp_overview }}" alt="Síntesis Ejecutiva de Desempeño" class="rounded max-h-[500px] object-contain shadow-md">
                 </div>
             </div>
 
-            <!-- Master Table of 42 Experiments -->
+            <!-- Master Consolidated Table -->
             <div class="plot-card">
-                <h3 class="font-bold text-sm text-white mb-3">Catálogo Maestro de 42 Experimentos (39 Benchmark + 3 Controles Satelitales Crudos)</h3>
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
+                    <div>
+                        <h3 class="font-bold text-sm text-white">Tabla Maestra de los 42 Experimentos Evaluados</h3>
+                        <p class="text-[11px] text-slate-400">Catálogo completo de la suite regional de Centroamérica: Precipitación, Temperatura Máxima y Mínima.</p>
+                    </div>
+                    <span class="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700 font-mono">42 Experimentos</span>
+                </div>
                 <div class="overflow-x-auto">
                     <table id="tableAll" class="w-full text-xs display">
                         <thead>
@@ -815,36 +1315,38 @@ def generate_echarts_html_dashboard(
                                 <th>Variable</th>
                                 <th>Rango</th>
                                 <th>ID Experimento</th>
-                                <th>Descripción</th>
+                                <th>Estado</th>
                                 <th>GSS</th>
                                 <th>KGE</th>
                                 <th>Pearson r</th>
                                 <th>RMSE</th>
+                                <th>MAE</th>
                                 <th>PBIAS (%)</th>
-                                <th>Estado</th>
+                                <th>ETS</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for e in all_exps %}
                             <tr class="{% if e.is_winner %}bg-emerald-950/40 text-emerald-300 font-bold{% elif e.is_control %}bg-slate-800/60 text-slate-400{% endif %}">
-                                <td class="uppercase font-semibold text-[11px]">
-                                    {% if e.variable == 'rainfall' %}<span class="text-sky-400">🌧️ Lluvia</span>
-                                    {% elif e.variable == 'tmax' %}<span class="text-amber-400">☀️ Tmax</span>
-                                    {% else %}<span class="text-purple-400">🌙 Tmin</span>{% endif %}
-                                </td>
+                                <td class="font-semibold uppercase text-sky-400">{{ e.variable }}</td>
                                 <td>{% if e.is_winner %}🏆 #{{ e.rank }}{% elif e.is_control %}⚡ [00]{% else %}#{{ e.rank }}{% endif %}</td>
                                 <td class="font-mono">{{ e.experiment_id }}</td>
-                                <td class="max-w-xs truncate">{{ e.description }}</td>
+                                <td>
+                                    {% if e.is_winner %}
+                                    <span class="bg-emerald-500/20 text-emerald-400 text-[10px] px-1.5 py-0.5 rounded border border-emerald-500/30 font-bold">ÓPTIMO</span>
+                                    {% elif e.is_control %}
+                                    <span class="bg-slate-700 text-slate-300 text-[10px] px-1.5 py-0.5 rounded font-bold">CONTROL 0</span>
+                                    {% else %}
+                                    <span class="text-slate-400 text-[10px]">Candidato</span>
+                                    {% endif %}
+                                </td>
                                 <td>{{ "%.3f"|format(e.global_skill_score) }}</td>
                                 <td>{{ "%.3f"|format(e.kge) }}</td>
                                 <td>{{ "%.3f"|format(e.r) }}</td>
                                 <td>{{ "%.2f"|format(e.rmse) }}</td>
+                                <td>{{ "%.2f"|format(e.mae) }}</td>
                                 <td>{{ "%+.1f"|format(e.pbias) }}%</td>
-                                <td>
-                                    {% if e.is_winner %}<span class="px-2 py-0.5 bg-emerald-900 text-emerald-300 rounded text-[10px]">ÓPTIMO</span>
-                                    {% elif e.is_control %}<span class="px-2 py-0.5 bg-slate-700 text-slate-300 rounded text-[10px]">CONTROL 0</span>
-                                    {% else %}<span class="px-2 py-0.5 bg-slate-800 text-slate-400 rounded text-[10px]">CANDIDATO</span>{% endif %}
-                                </td>
+                                <td>{{ "%.3f"|format(e.ets) if e.ets is defined and e.ets is not none and e.ets == e.ets else "-" }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -859,193 +1361,142 @@ def generate_echarts_html_dashboard(
         <!-- ========================================================================= -->
         <div id="tab-content-glossary" class="tab-panel hidden space-y-8">
             
-            <!-- Glossary Header -->
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-md">
-                <div class="flex items-center gap-3 mb-2">
-                    <span class="bg-indigo-600 text-white font-bold text-xs px-2.5 py-1 rounded">Marco Metodológico</span>
-                    <h2 class="text-xl font-bold text-white">Definición e Interpretación de Estadísticos y Métricas Climatológicas</h2>
+            <!-- Callout linking to full documentation -->
+            <div class="bg-gradient-to-r from-sky-950 via-slate-900 to-slate-900 border border-sky-700 text-white rounded-xl p-6 shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <span class="bg-sky-500 text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded">Documentación Oficial</span>
+                    <h3 class="text-xl font-bold text-white mt-1">Guía Metodológica Completa de Evaluación y Validación</h3>
+                    <p class="text-xs text-slate-300 max-w-2xl mt-1 leading-relaxed">
+                        Consulte el documento técnico oficial para un desglose exhaustivo de las formulaciones matemáticas en KaTeX,
+                        la partición espacial de 29 estaciones holdout y los criterios físicos para Centroamérica.
+                    </p>
                 </div>
-                <p class="text-xs text-slate-300 leading-relaxed max-w-4xl">
-                    Para evaluar con rigor científico la calidad de las mallas reconstruidas mediante Climate Data Tools (CDT 8.0) y su mejora frente a los productos satelitales crudos (CHIRPS v2.0 y CHIRTS-ERA5), se emplea una batería completa de métricas hidrológicas continuas y categóricas. A continuación se detalla su formulación matemática, valores de referencia y significado físico para la climatología de Centroamérica.
-                </p>
+                <a href="docs/12_metodologia_evaluacion_metricas_y_validacion.md" target="_blank" class="inline-flex items-center gap-2 bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold px-4 py-2.5 rounded-lg transition shadow">
+                    <span>📖 Ver Documento 12 en Markdown</span>
+                </a>
             </div>
 
-            <!-- Cards Grid for Metrics -->
+            <!-- Metric Cards Grid -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
                 <!-- 1. KGE -->
-                <div class="plot-card space-y-3 border-l-4 border-l-sky-500">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <span class="text-[10px] font-mono uppercase text-sky-400 font-bold">Métrica Primaria</span>
-                            <h4 class="font-bold text-sm text-white">Eficiencia Kling-Gupta (KGE)</h4>
-                        </div>
-                        <span class="text-xs font-mono bg-sky-950 text-sky-300 border border-sky-800 px-2 py-0.5 rounded">Óptimo: 1.0</span>
+                <div class="plot-card border-sky-800">
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="font-bold text-sm text-white">Eficiencia de Kling-Gupta (KGE)</h4>
+                        <span class="text-[10px] bg-sky-950 text-sky-400 border border-sky-800 px-2 py-0.5 rounded">Métrica Principal</span>
                     </div>
-                    <div class="bg-slate-950 p-2.5 rounded border border-slate-800 text-center text-xs font-mono text-sky-200">
-                        $$ \\mathrm{KGE} = 1 - \\sqrt{(r - 1)^2 + (\\alpha - 1)^2 + (\\beta - 1)^2} $$
+                    <div class="bg-slate-950 p-2.5 rounded border border-slate-800 my-2 text-xs font-mono text-center text-sky-300">
+                        $$KGE = 1 - \sqrt{(r - 1)^2 + (\beta - 1)^2 + (\gamma - 1)^2}$$
                     </div>
-                    <div class="text-[11.5px] text-slate-300 space-y-1.5 leading-relaxed">
-                        <p><strong>Componentes:</strong> \(r\) es la correlación lineal, \(\\alpha = \\sigma_s / \\sigma_o\) mide la variabilidad relativa de extremos, y \(\\beta = \\mu_s / \\mu_o\) el sesgo de volumen medio.</p>
-                        <p><strong>Interpretación:</strong> Supera las limitaciones del NSE al evitar penalizaciones desproporcionadas por sesgo de varianza. En Centroamérica, un KGE &gt; 0.3 indica habilidad predictiva real y KGE &gt; 0.6 refleja excelente fidelidad hidrológica.</p>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Descompone el error en tres componentes ortogonales: correlación lineal (\(r\)), sesgo medio (\(\beta = \mu_s / \mu_o\)) y dispersión relativa (\(\gamma = \text{CV}_s / \text{CV}_o\)).
+                    </p>
+                    <div class="mt-3 pt-2 border-t border-slate-700/60 text-[11px] space-y-1">
+                        <div>• <b>Rango Óptimo:</b> 1.0 (KGE &gt; 0.3 indica habilidad superior al promedio climatológico).</div>
+                        <div>• <b>Interpretación en CA:</b> Penaliza adecuadamente el desplazamiento temporal de frentes fríos y la sobreestimación orográfica.</div>
                     </div>
                 </div>
 
                 <!-- 2. Pearson r -->
-                <div class="plot-card space-y-3 border-l-4 border-l-emerald-500">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <span class="text-[10px] font-mono uppercase text-emerald-400 font-bold">Sincronía Temporal</span>
-                            <h4 class="font-bold text-sm text-white">Correlación de Pearson (\(r\))</h4>
-                        </div>
-                        <span class="text-xs font-mono bg-emerald-950 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded">Óptimo: 1.0</span>
+                <div class="plot-card border-slate-700">
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="font-bold text-sm text-white">Coeficiente de Correlación (r)</h4>
+                        <span class="text-[10px] bg-slate-800 text-slate-300 border border-slate-700 px-2 py-0.5 rounded">Dinámica Temporal</span>
                     </div>
-                    <div class="bg-slate-950 p-2.5 rounded border border-slate-800 text-center text-xs font-mono text-emerald-200">
-                        $$ r = \\frac{\\sum (O_i - \\bar{O})(S_i - \\bar{S})}{\\sqrt{\\sum (O_i - \\bar{O})^2 \\sum (S_i - \\bar{S})^2}} $$
+                    <div class="bg-slate-950 p-2.5 rounded border border-slate-800 my-2 text-xs font-mono text-center text-slate-300">
+                        $$r = \frac{\sum (S_i - \bar{S})(O_i - \bar{O})}{\sqrt{\sum (S_i - \bar{S})^2 \sum (O_i - \bar{O})^2}}$$
                     </div>
-                    <div class="text-[11.5px] text-slate-300 space-y-1.5 leading-relaxed">
-                        <p><strong>Rango:</strong> \([-1.0, +1.0]\).</p>
-                        <p><strong>Interpretación:</strong> Cuantifica la sincronía temporal del ciclo anual y de los eventos meteorológicos sin considerar sesgos de amplitud. Un valor cercano a 1.0 garantiza que los días lluviosos o cálidos coincidan exactamente en el calendario entre la malla y las estaciones.</p>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Mide la covariación temporal y concordancia de fase entre las observaciones diarias de estaciones y las estimaciones grilladas.
+                    </p>
+                    <div class="mt-3 pt-2 border-t border-slate-700/60 text-[11px] space-y-1">
+                        <div>• <b>Rango Óptimo:</b> 1.0 (\(r &gt; 0.40\) en lluvia diaria; \(r &gt; 0.85\) en temperatura).</div>
+                        <div>• <b>Interpretación en CA:</b> Refleja la capacidad de capturar la marcha del ciclo anual y las ondas tropicales del este.</div>
                     </div>
                 </div>
 
                 <!-- 3. RMSE -->
-                <div class="plot-card space-y-3 border-l-4 border-l-amber-500">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <span class="text-[10px] font-mono uppercase text-amber-400 font-bold">Magnitud de Error</span>
-                            <h4 class="font-bold text-sm text-white">Error Cuadrático Medio (RMSE)</h4>
-                        </div>
-                        <span class="text-xs font-mono bg-amber-950 text-amber-300 border border-amber-800 px-2 py-0.5 rounded">Óptimo: 0.0</span>
+                <div class="plot-card border-slate-700">
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="font-bold text-sm text-white">Raíz del Error Cuadrático Medio (RMSE)</h4>
+                        <span class="text-[10px] bg-slate-800 text-slate-300 border border-slate-700 px-2 py-0.5 rounded">Magnitud de Error</span>
                     </div>
-                    <div class="bg-slate-950 p-2.5 rounded border border-slate-800 text-center text-xs font-mono text-amber-200">
-                        $$ \\mathrm{RMSE} = \\sqrt{\\frac{1}{N} \\sum_{i=1}^N (S_i - O_i)^2} $$
+                    <div class="bg-slate-950 p-2.5 rounded border border-slate-800 my-2 text-xs font-mono text-center text-slate-300">
+                        $$RMSE = \sqrt{\frac{1}{N} \sum_{i=1}^N (S_i - O_i)^2}$$
                     </div>
-                    <div class="text-[11.5px] text-slate-300 space-y-1.5 leading-relaxed">
-                        <p><strong>Unidades:</strong> Milímetros (mm/día) en lluvia; Grados Celsius (°C) en temperatura.</p>
-                        <p><strong>Interpretación:</strong> Penaliza fuertemente las desviaciones severas y picos atípicos. Una reducción del RMSE demuestra que el proceso de corrección de sesgo mitigó sobreestimaciones convectivas desmedidas.</p>
-                    </div>
-                </div>
-
-                <!-- 4. MAE -->
-                <div class="plot-card space-y-3 border-l-4 border-l-rose-500">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <span class="text-[10px] font-mono uppercase text-rose-400 font-bold">Error Promedio</span>
-                            <h4 class="font-bold text-sm text-white">Error Absoluto Medio (MAE)</h4>
-                        </div>
-                        <span class="text-xs font-mono bg-rose-950 text-rose-300 border border-rose-800 px-2 py-0.5 rounded">Óptimo: 0.0</span>
-                    </div>
-                    <div class="bg-slate-950 p-2.5 rounded border border-slate-800 text-center text-xs font-mono text-rose-200">
-                        $$ \\mathrm{MAE} = \\frac{1}{N} \\sum_{i=1}^N |S_i - O_i| $$
-                    </div>
-                    <div class="text-[11.5px] text-slate-300 space-y-1.5 leading-relaxed">
-                        <p><strong>Unidades:</strong> Mismas que la variable (mm o °C).</p>
-                        <p><strong>Interpretación:</strong> Mide la magnitud típica esperada del error diario sin sobredimensionar valores extremos. Resulta más representativo del sesgo rutinario en días de régimen normal.</p>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Pondera fuertemente los errores de gran magnitud. Expresado en las unidades físicas de la variable (mm o °C).
+                    </p>
+                    <div class="mt-3 pt-2 border-t border-slate-700/60 text-[11px] space-y-1">
+                        <div>• <b>Rango Óptimo:</b> 0.0 (Menor es mejor).</div>
+                        <div>• <b>Interpretación en CA:</b> Muy sensible al efecto de doble penalización en tormentas convectivas tropicales localizadas.</div>
                     </div>
                 </div>
 
-                <!-- 5. PBIAS -->
-                <div class="plot-card space-y-3 border-l-4 border-l-purple-500">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <span class="text-[10px] font-mono uppercase text-purple-400 font-bold">Sesgo Sistemático</span>
-                            <h4 class="font-bold text-sm text-white">Sesgo Porcentual (PBIAS)</h4>
-                        </div>
-                        <span class="text-xs font-mono bg-purple-950 text-purple-300 border border-purple-800 px-2 py-0.5 rounded">Óptimo: 0.0%</span>
+                <!-- 4. PBIAS -->
+                <div class="plot-card border-slate-700">
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="font-bold text-sm text-white">Sesgo Porcentual Relativo (PBIAS)</h4>
+                        <span class="text-[10px] bg-slate-800 text-slate-300 border border-slate-700 px-2 py-0.5 rounded">Balance de Masa</span>
                     </div>
-                    <div class="bg-slate-950 p-2.5 rounded border border-slate-800 text-center text-xs font-mono text-purple-200">
-                        $$ \\mathrm{PBIAS} = \\frac{\\sum (S_i - O_i)}{\\sum O_i} \\times 100\\% $$
+                    <div class="bg-slate-950 p-2.5 rounded border border-slate-800 my-2 text-xs font-mono text-center text-slate-300">
+                        $$PBIAS = 100 \times \frac{\sum_{i=1}^N (S_i - O_i)}{\sum_{i=1}^N O_i}$$
                     </div>
-                    <div class="text-[11.5px] text-slate-300 space-y-1.5 leading-relaxed">
-                        <p><strong>Rango Aceptable:</strong> \(\\pm 10\\%\) (Excelente), \(\\pm 15\\%\) (Bueno).</p>
-                        <p><strong>Interpretación:</strong> Indica si la malla satelital sobreestima (positivo) o subestima (negativo) el volumen acumulado observado. CHIRPS crudo suele subestimar lluvia en zonas montañosas (\(-18\\%\)), corregido a \(-4\\%\) por CDT.</p>
-                    </div>
-                </div>
-
-                <!-- 6. POD -->
-                <div class="plot-card space-y-3 border-l-4 border-l-cyan-500">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <span class="text-[10px] font-mono uppercase text-cyan-400 font-bold">Habilidad Categórica</span>
-                            <h4 class="font-bold text-sm text-white">Probabilidad de Detección (POD)</h4>
-                        </div>
-                        <span class="text-xs font-mono bg-cyan-950 text-cyan-300 border border-cyan-800 px-2 py-0.5 rounded">Óptimo: 1.0 (100%)</span>
-                    </div>
-                    <div class="bg-slate-950 p-2.5 rounded border border-slate-800 text-center text-xs font-mono text-cyan-200">
-                        $$ \\mathrm{POD} = \\frac{A}{A + C} $$
-                    </div>
-                    <div class="text-[11.5px] text-slate-300 space-y-1.5 leading-relaxed">
-                        <p><strong>Definición:</strong> \(A\) = Aciertos de lluvia, \(C\) = Días lluviosos no detectados.</p>
-                        <p><strong>Interpretación:</strong> Porcentaje de eventos lluviosos reales (&gt; 1.0 mm) detectados acertadamente por la malla. Valores superiores a 0.65 garantizan detección oportuna de tormentas tropicales y ondas del este.</p>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Indica la tendencia sistemática de la malla a sobreestimar (\(PBIAS &gt; 0\)) o subestimar (\(PBIAS &lt; 0\)) el volumen o temperatura total.
+                    </p>
+                    <div class="mt-3 pt-2 border-t border-slate-700/60 text-[11px] space-y-1">
+                        <div>• <b>Rango Óptimo:</b> 0.0% (Aceptable entre \(-15\%\) y \(+15\%\)).</div>
+                        <div>• <b>Interpretación en CA:</b> Vital para la conservación de la masa de precipitación en balances hidrológicos de cuencas.</div>
                     </div>
                 </div>
 
-                <!-- 7. FAR -->
-                <div class="plot-card space-y-3 border-l-4 border-l-orange-500">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <span class="text-[10px] font-mono uppercase text-orange-400 font-bold">Habilidad Categórica</span>
-                            <h4 class="font-bold text-sm text-white">Razón de Falsa Alarma (FAR)</h4>
-                        </div>
-                        <span class="text-xs font-mono bg-orange-950 text-orange-300 border border-orange-800 px-2 py-0.5 rounded">Óptimo: 0.0 (0%)</span>
+                <!-- 5. Taylor Diagram Dynamics -->
+                <div class="plot-card border-rose-800">
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="font-bold text-sm text-white">Identidad Geométrica de Taylor</h4>
+                        <span class="text-[10px] bg-rose-950 text-rose-300 border border-rose-800 px-2 py-0.5 rounded">Espacio Polar</span>
                     </div>
-                    <div class="bg-slate-950 p-2.5 rounded border border-slate-800 text-center text-xs font-mono text-orange-200">
-                        $$ \\mathrm{FAR} = \\frac{B}{A + B} $$
+                    <div class="bg-slate-950 p-2.5 rounded border border-slate-800 my-2 text-xs font-mono text-center text-rose-300">
+                        $$E'^2 = \sigma_s^2 + \sigma_o^2 - 2\sigma_s\sigma_o r$$
                     </div>
-                    <div class="text-[11.5px] text-slate-300 space-y-1.5 leading-relaxed">
-                        <p><strong>Definición:</strong> \(B\) = Falsas alarmas (malla reporta lluvia en día seco).</p>
-                        <p><strong>Interpretación:</strong> Evita el problema común de "llovizna constante" donde el satélite simula lluvia ligera ficticia. Un FAR menor a 0.35 indica alta confiabilidad hidrológica.</p>
-                    </div>
-                </div>
-
-                <!-- 8. ETS -->
-                <div class="plot-card space-y-3 border-l-4 border-l-teal-500">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <span class="text-[10px] font-mono uppercase text-teal-400 font-bold">Habilidad Neta</span>
-                            <h4 class="font-bold text-sm text-white">Equitable Threat Score (ETS)</h4>
-                        </div>
-                        <span class="text-xs font-mono bg-teal-950 text-teal-300 border border-teal-800 px-2 py-0.5 rounded">Óptimo: 1.0</span>
-                    </div>
-                    <div class="bg-slate-950 p-2.5 rounded border border-slate-800 text-center text-xs font-mono text-teal-200">
-                        $$ \\mathrm{ETS} = \\frac{A - A_r}{A + B + C - A_r}, \\quad A_r = \\frac{(A+B)(A+C)}{N} $$
-                    </div>
-                    <div class="text-[11.5px] text-slate-300 space-y-1.5 leading-relaxed">
-                        <p><strong>Propiedad Equitativa:</strong> Elimina aciertos fortuitos por azar (\(A_r\)).</p>
-                        <p><strong>Interpretación:</strong> Evalúa la habilidad intrínseca del modelo sin verse inflado por la alta frecuencia estacional de días lluviosos en el Caribe centroamericano.</p>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Vincula analíticamente el error centrado cuadrático medio (\(E'\)), las desviaciones estándar de simulación y observación, y la correlación Pearson.
+                    </p>
+                    <div class="mt-3 pt-2 border-t border-slate-700/60 text-[11px] space-y-1">
+                        <div>• <b>Punto Óptimo:</b> Radio \(\sigma^* = 1.0\) y Ángulo \(\theta = 0^\circ\) (\(r = 1.0\)).</div>
+                        <div>• <b>Interpretación en CA:</b> Muestra qué modelos reproducen fielmente la variabilidad estacional sin atenuar picos extremos.</div>
                     </div>
                 </div>
 
-                <!-- 9. GSS -->
-                <div class="plot-card space-y-3 border-l-4 border-l-indigo-500">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <span class="text-[10px] font-mono uppercase text-indigo-400 font-bold">Índice Sintético</span>
-                            <h4 class="font-bold text-sm text-white">Global Skill Score (GSS)</h4>
-                        </div>
-                        <span class="text-xs font-mono bg-indigo-950 text-indigo-300 border border-indigo-800 px-2 py-0.5 rounded">Óptimo: 1.0</span>
+                <!-- 6. ETS & Categorical Metrics -->
+                <div class="plot-card border-sky-800">
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="font-bold text-sm text-white">Equitable Threat Score (ETS)</h4>
+                        <span class="text-[10px] bg-sky-950 text-sky-400 border border-sky-800 px-2 py-0.5 rounded">Habilidad de Lluvia</span>
                     </div>
-                    <div class="bg-slate-950 p-2.5 rounded border border-slate-800 text-center text-xs font-mono text-indigo-200">
-                        $$ \\mathrm{GSS} = 0.40 \\cdot \\mathrm{KGE} + 0.25 \\cdot r + 0.15 \\cdot S_{\\mathrm{bias}} + 0.10 \\cdot S_{\\mathrm{rmse}} + 0.10 \\cdot S_{\\mathrm{cat}} $$
+                    <div class="bg-slate-950 p-2.5 rounded border border-slate-800 my-2 text-xs font-mono text-center text-sky-300">
+                        $$ETS = \frac{Hits - Hits_{random}}{Hits + FalseAlarms + Misses - Hits_{random}}$$
                     </div>
-                    <div class="text-[11.5px] text-slate-300 space-y-1.5 leading-relaxed">
-                        <p><strong>Ponderación Multicriterio:</strong> Integra eficiencia, correlación, control de sesgo y reducción de error cuadrático.</p>
-                        <p><strong>Interpretación:</strong> Determina la jerarquía del Leaderboard final para seleccionar de manera objetiva la mejor malla candidata para producción operativa.</p>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Mide la habilidad de la malla para discriminar eventos de lluvia (&gt;1.0 mm/día) penalizando aciertos debidos al azar.
+                    </p>
+                    <div class="mt-3 pt-2 border-t border-slate-700/60 text-[11px] space-y-1">
+                        <div>• <b>Rango Óptimo:</b> 1.0 (Valores &gt; 0.20 indican destreza real en lluvia diaria tropical).</div>
+                        <div>• <b>Interpretación en CA:</b> Discrimina eficazmente entre días secos y lluviosos en el Corredor Seco Centroamericano.</div>
                     </div>
                 </div>
 
             </div>
-
         </div>
 
     </main>
 
     <!-- Footer -->
-    <footer class="border-t border-slate-800 bg-slate-950 text-slate-500 py-8 text-xs text-center">
-        <div class="max-w-7xl mx-auto px-6 space-y-2">
-            <p>CDT 8.0 Central America Benchmark & Grid Reconstruction Suite &copy; 2026. Desarrollado con Climate Data Tools (CDT) & Apache ECharts.</p>
-            <p class="font-mono text-slate-600">Validación científica cruzada con Holdout de 29 estaciones independientes (1991–2020).</p>
+    <footer class="bg-slate-900 border-t border-slate-800 py-6 text-center text-xs text-slate-400 mt-12">
+        <div class="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row justify-between items-center gap-2">
+            <div>CDT 8.0 Climate Data Tools • Suite de Reconstrucción de Mallas para Centroamérica</div>
+            <div>Validación Holdout en 29 Estaciones Ciega (1991–2020) • Generado con Apache ECharts 5</div>
         </div>
     </footer>
 
@@ -1067,19 +1518,152 @@ def generate_echarts_html_dashboard(
             if (targetBtn) targetBtn.classList.add('active');
 
             // Trigger window resize to render ECharts smoothly
-            setTimeout(() => { window.dispatchEvent(new Event('resize')); }, 50);
+            setTimeout(() => { window.dispatchEvent(new Event('resize')); }, 60);
         }
 
         // Initialize ECharts for a variable
         function initVariableCharts(prefix, payload, unit, baseColor) {
             if (!payload || !payload.experiments || payload.experiments.length === 0) return;
 
-            // 1. Scatter KGE vs RMSE
+            // Common Toolbox Configuration for Image Download
+            const commonToolbox = {
+                feature: {
+                    saveAsImage: {
+                        title: 'Descargar Gráfica',
+                        pixelRatio: 2,
+                        backgroundColor: '#0f172a'
+                    }
+                },
+                iconStyle: { borderColor: '#94a3b8' },
+                right: 15,
+                top: 5
+            };
+
+            // 1. Polar Taylor Diagram
+            const taylorDom = document.getElementById('taylor' + prefix);
+            if (taylorDom && payload.taylor_series) {
+                const taylorChart = echarts.init(taylorDom);
+                const taylorOption = {
+                    backgroundColor: 'transparent',
+                    toolbox: commonToolbox,
+                    tooltip: {
+                        backgroundColor: '#0f172a',
+                        borderColor: '#334155',
+                        textStyle: { color: '#f8fafc', fontSize: 11 },
+                        formatter: function(params) {
+                            if (params.seriesName === 'Referencia Holdout') {
+                                return '<div class="font-bold text-rose-400">Estaciones Holdout (Referencia)</div>' +
+                                       '<div class="text-xs text-slate-300">r = 1.000 | σ* = 1.00 | E\'* = 0.00</div>';
+                            }
+                            const d = params.value;
+                            if (!d || d.length < 10) return params.seriesName;
+                            const id = d[2];
+                            const is_win = d[3];
+                            const is_ctrl = d[4];
+                            const r = d[5];
+                            const kge = d[6];
+                            const rmse = d[7];
+                            const pbias = d[8];
+                            const crmse = d[9];
+                            const sigma = d[0];
+                            const tag = is_win ? '<span style="background-color:#059669;color:#fff;font-size:10px;padding:2px 6px;border-radius:4px;font-weight:bold;">🏆 ÓPTIMO</span>' :
+                                        (is_ctrl ? '<span style="background-color:#64748b;color:#fff;font-size:10px;padding:2px 6px;border-radius:4px;font-weight:bold;">⚡ CONTROL 0</span>' : '');
+                            return '<div style="font-weight:bold;margin-bottom:4px;">' + id + ' ' + tag + '</div>' +
+                                   '<div style="font-size:11px;color:#cbd5e1;line-height:1.6;">' +
+                                   '<div>• Pearson r: <b style="color:#38bdf8;">' + Number(r).toFixed(3) + '</b></div>' +
+                                   '<div>• Desv. Estándar Norm. (σ*): <b>' + Number(sigma).toFixed(3) + '</b></div>' +
+                                   '<div>• Error Centrado (E\'*): <b style="color:#fbbf24;">' + Number(crmse).toFixed(3) + '</b></div>' +
+                                   '<div>• Eficiencia KGE: <b style="color:#34d399;">' + Number(kge).toFixed(3) + '</b></div>' +
+                                   '<div>• RMSE: <b>' + Number(rmse).toFixed(2) + ' ' + unit + '</b></div>' +
+                                   '<div>• PBIAS: <b>' + (pbias > 0 ? '+' : '') + Number(pbias).toFixed(1) + '%</b></div>' +
+                                   '</div>';
+                        }
+                    },
+                    polar: {
+                        center: ['50%', '52%'],
+                        radius: '72%'
+                    },
+                    angleAxis: {
+                        type: 'value',
+                        startAngle: 0,
+                        clockwise: false,
+                        min: 0,
+                        max: 90,
+                        interval: 15,
+                        axisLine: { lineStyle: { color: '#64748b' } },
+                        splitLine: { lineStyle: { color: '#334155', type: 'dashed' } },
+                        axisLabel: {
+                            color: '#94a3b8',
+                            fontSize: 10,
+                            formatter: function(val) {
+                                const rad = val * Math.PI / 180;
+                                const r = Math.cos(rad);
+                                return r.toFixed(2);
+                            }
+                        }
+                    },
+                    radiusAxis: {
+                        type: 'value',
+                        min: 0,
+                        max: 1.6,
+                        interval: 0.2,
+                        axisLine: { lineStyle: { color: '#64748b' } },
+                        splitLine: { lineStyle: { color: '#334155', type: 'dotted' } },
+                        axisLabel: { color: '#94a3b8', fontSize: 10 }
+                    },
+                    series: payload.taylor_series
+                };
+                taylorChart.setOption(taylorOption);
+                window.addEventListener('resize', () => taylorChart.resize());
+            }
+
+            // 2. Multi-criteria Radar Chart (ALL EXPERIMENTS with Dynamic Legend)
+            const radarDom = document.getElementById('radar' + prefix);
+            if (radarDom && payload.radar_indicators.length > 0) {
+                const radarChart = echarts.init(radarDom);
+                const radarOption = {
+                    backgroundColor: 'transparent',
+                    toolbox: commonToolbox,
+                    tooltip: { backgroundColor: '#0f172a', borderColor: '#334155', textStyle: { color: '#f8fafc', fontSize: 11 } },
+                    legend: {
+                        type: 'scroll',
+                        orient: 'horizontal',
+                        top: 5,
+                        selected: payload.radar_selected,
+                        textStyle: { color: '#cbd5e1', fontSize: 10 },
+                        pageTextStyle: { color: '#94a3b8' },
+                        pageIconColor: '#38bdf8',
+                        pageIconInactiveColor: '#475569',
+                        itemWidth: 14,
+                        itemHeight: 10
+                    },
+                    radar: {
+                        indicator: payload.radar_indicators,
+                        shape: 'polygon',
+                        center: ['50%', '55%'],
+                        radius: '65%',
+                        splitNumber: 4,
+                        axisName: { color: '#cbd5e1', fontSize: 10 },
+                        splitLine: { lineStyle: { color: '#334155' } },
+                        splitArea: { show: true, areaStyle: { color: ['#0f172a', '#1e293b'] } },
+                        axisLine: { lineStyle: { color: '#475569' } }
+                    },
+                    series: [{
+                        type: 'radar',
+                        data: payload.radar_series
+                    }]
+                };
+                radarChart.setOption(radarOption);
+                window.addEventListener('resize', () => radarChart.resize());
+            }
+
+            // 3. Scatter KGE vs RMSE
             const scatterDom = document.getElementById('scatter' + prefix);
             if (scatterDom) {
                 const scatterChart = echarts.init(scatterDom);
                 const scatterOption = {
                     backgroundColor: 'transparent',
+                    toolbox: commonToolbox,
                     tooltip: {
                         trigger: 'item',
                         backgroundColor: '#0f172a',
@@ -1100,7 +1684,7 @@ def generate_echarts_html_dashboard(
                                    '<div style="color:' + (d[5] >= 0 ? '#34d399' : '#f87171') + ';">Δ KGE vs Crudo: <b>' + (d[5] >= 0 ? '+' : '') + d[5] + ' (' + (d[8] >= 0 ? '+' : '') + d[8] + '%)</b></div>';
                         }
                     },
-                    grid: { top: 30, right: 30, bottom: 50, left: 50 },
+                    grid: { top: 35, right: 30, bottom: 50, left: 50 },
                     xAxis: {
                         name: 'RMSE (' + unit + ') [Menor es mejor]',
                         nameLocation: 'middle',
@@ -1141,12 +1725,13 @@ def generate_echarts_html_dashboard(
                 window.addEventListener('resize', () => scatterChart.resize());
             }
 
-            // 2. Delta KGE Bar Chart
+            // 4. Delta KGE Bar Chart
             const barDom = document.getElementById('barDelta' + prefix);
             if (barDom) {
                 const barChart = echarts.init(barDom);
                 const barOption = {
                     backgroundColor: 'transparent',
+                    toolbox: commonToolbox,
                     tooltip: {
                         trigger: 'axis',
                         axisPointer: { type: 'shadow' },
@@ -1155,25 +1740,32 @@ def generate_echarts_html_dashboard(
                         textStyle: { color: '#f8fafc', fontSize: 11 },
                         formatter: function(params) {
                             const p = params[0];
-                            return '<b>' + p.name + '</b><br>Δ KGE vs Control 0: <b>' + (p.value >= 0 ? '+' : '') + p.value + '</b>';
+                            const val = p.value;
+                            const isCtrl = p.name.includes('00_Raw');
+                            return '<div style="font-weight:bold;">' + p.name + '</div>' +
+                                   '<div>' + (isCtrl ? 'Referencia Satélite Crudo' : 'Ganancia Neta') + ': <b>' + (val >= 0 ? '+' : '') + val + ' KGE</b></div>';
                         }
                     },
-                    grid: { top: 20, right: 20, bottom: 80, left: 50 },
+                    grid: { top: 35, right: 20, bottom: 90, left: 50 },
                     xAxis: {
                         type: 'category',
                         data: payload.bar_categories,
-                        axisLabel: { rotate: 45, fontSize: 9, color: '#94a3b8' },
+                        axisLabel: {
+                            rotate: 45,
+                            interval: 0,
+                            color: '#94a3b8',
+                            fontSize: 9,
+                            formatter: function(val) {
+                                return val.length > 18 ? val.substring(0, 16) + '..' : val;
+                            }
+                        },
                         axisLine: { lineStyle: { color: '#475569' } }
                     },
                     yAxis: {
-                        name: 'Δ KGE',
+                        name: 'Δ KGE vs Satélite Crudo',
                         axisLine: { lineStyle: { color: '#475569' } },
                         splitLine: { lineStyle: { color: '#334155', type: 'dashed' } }
                     },
-                    dataZoom: [
-                        { type: 'slider', bottom: 10, height: 18, borderColor: '#334155', textStyle: { color: '#94a3b8' } },
-                        { type: 'inside' }
-                    ],
                     series: [{
                         type: 'bar',
                         data: payload.bar_values.map((v, i) => ({
@@ -1186,35 +1778,45 @@ def generate_echarts_html_dashboard(
                 window.addEventListener('resize', () => barChart.resize());
             }
 
-            // 3. Boxplot
+            // 5. Boxplot of Station KGE
             const boxDom = document.getElementById('box' + prefix);
             if (boxDom && payload.boxplot_data.length > 0) {
                 const boxChart = echarts.init(boxDom);
                 const boxOption = {
                     backgroundColor: 'transparent',
+                    toolbox: commonToolbox,
                     tooltip: {
                         trigger: 'item',
                         backgroundColor: '#0f172a',
                         borderColor: '#334155',
                         textStyle: { color: '#f8fafc', fontSize: 11 },
-                        formatter: function(param) {
-                            return '<b>' + param.name + '</b><br>' +
-                                   'Máximo: ' + param.value[5].toFixed(3) + '<br>' +
-                                   'Q3 (P75): ' + param.value[4].toFixed(3) + '<br>' +
-                                   'Mediana: <b>' + param.value[3].toFixed(3) + '</b><br>' +
-                                   'Q1 (P25): ' + param.value[2].toFixed(3) + '<br>' +
-                                   'Mínimo: ' + param.value[1].toFixed(3);
+                        formatter: function(params) {
+                            const v = params.value;
+                            return '<div style="font-weight:bold;margin-bottom:4px;">' + params.name + '</div>' +
+                                   '<div>Máximo: <b>' + v[5] + '</b></div>' +
+                                   '<div>Percentil 75 (Q3): <b>' + v[4] + '</b></div>' +
+                                   '<div>Mediana: <b style="color:#38bdf8;">' + v[3] + '</b></div>' +
+                                   '<div>Percentil 25 (Q1): <b>' + v[2] + '</b></div>' +
+                                   '<div>Mínimo: <b>' + v[1] + '</b></div>';
                         }
                     },
-                    grid: { top: 20, right: 20, bottom: 80, left: 50 },
+                    grid: { top: 35, right: 20, bottom: 100, left: 50 },
                     xAxis: {
                         type: 'category',
                         data: payload.boxplot_categories,
-                        axisLabel: { rotate: 45, fontSize: 9, color: '#94a3b8' },
+                        axisLabel: {
+                            rotate: 45,
+                            interval: 0,
+                            color: '#94a3b8',
+                            fontSize: 9,
+                            formatter: function(val) {
+                                return val.length > 18 ? val.substring(0, 16) + '..' : val;
+                            }
+                        },
                         axisLine: { lineStyle: { color: '#475569' } }
                     },
                     yAxis: {
-                        name: 'KGE por Estación',
+                        name: 'Eficiencia KGE en Estaciones Holdout',
                         axisLine: { lineStyle: { color: '#475569' } },
                         splitLine: { lineStyle: { color: '#334155', type: 'dashed' } }
                     },
@@ -1236,37 +1838,6 @@ def generate_echarts_html_dashboard(
                 boxChart.setOption(boxOption);
                 window.addEventListener('resize', () => boxChart.resize());
             }
-
-            // 4. Radar Chart
-            const radarDom = document.getElementById('radar' + prefix);
-            if (radarDom && payload.radar_indicators.length > 0) {
-                const radarChart = echarts.init(radarDom);
-                const radarOption = {
-                    backgroundColor: 'transparent',
-                    tooltip: { backgroundColor: '#0f172a', borderColor: '#334155', textStyle: { color: '#f8fafc', fontSize: 11 } },
-                    legend: {
-                        bottom: 0,
-                        textStyle: { color: '#94a3b8', fontSize: 10 },
-                        itemWidth: 14,
-                        itemHeight: 10
-                    },
-                    radar: {
-                        indicator: payload.radar_indicators,
-                        shape: 'polygon',
-                        splitNumber: 4,
-                        axisName: { color: '#cbd5e1', fontSize: 10 },
-                        splitLine: { lineStyle: { color: '#334155' } },
-                        splitArea: { show: true, areaStyle: { color: ['#0f172a', '#1e293b'] } },
-                        axisLine: { lineStyle: { color: '#475569' } }
-                    },
-                    series: [{
-                        type: 'radar',
-                        data: payload.radar_series
-                    }]
-                };
-                radarChart.setOption(radarOption);
-                window.addEventListener('resize', () => radarChart.resize());
-            }
         }
 
         // Initialize All Dashboard Charts on DOM Ready
@@ -1276,7 +1847,7 @@ def generate_echarts_html_dashboard(
                 renderMathInElement(document.body, {
                     delimiters: [
                         {left: '$$', right: '$$', display: true},
-                        {left: '\\(', right: '\\)', display: false}
+                        {left: '\(', right: '\)', display: false}
                     ]
                 });
             }
@@ -1286,11 +1857,11 @@ def generate_echarts_html_dashboard(
             initVariableCharts('Tmax', dataTmax, '°C', '#ea580c');
             initVariableCharts('Tmin', dataTmin, '°C', '#7c3aed');
 
-            // Initialize DataTables
-            $('#tableRain').DataTable({ pageLength: 10, order: [[0, 'asc']] });
-            $('#tableTmax').DataTable({ pageLength: 10, order: [[0, 'asc']] });
-            $('#tableTmin').DataTable({ pageLength: 10, order: [[0, 'asc']] });
-            $('#tableAll').DataTable({ pageLength: 15, order: [[4, 'desc']] });
+            // Initialize DataTables (Page length 25 so all experiments fit on one page)
+            $('#tableRain').DataTable({ pageLength: 25, order: [[0, 'asc']] });
+            $('#tableTmax').DataTable({ pageLength: 25, order: [[0, 'asc']] });
+            $('#tableTmin').DataTable({ pageLength: 25, order: [[0, 'asc']] });
+            $('#tableAll').DataTable({ pageLength: 25, order: [[4, 'desc']] });
         });
     </script>
 </body>
@@ -1310,6 +1881,9 @@ def generate_echarts_html_dashboard(
         pay_tmax_json=json.dumps(payloads_tmax),
         pay_tmin_json=json.dumps(payloads_tmin),
         all_exps=df_ranked.to_dict(orient="records"),
+        fig_rain=figures_map.get("rainfall", {}),
+        fig_tmax=figures_map.get("tmax", {}),
+        fig_tmin=figures_map.get("tmin", {}),
         comp_rain=comparison_figures.get("rainfall", "figures/comparisons_winner_vs_raw/comparison_rainfall_winner_vs_raw.png"),
         comp_tmax=comparison_figures.get("tmax", "figures/comparisons_winner_vs_raw/comparison_tmax_winner_vs_raw.png"),
         comp_tmin=comparison_figures.get("tmin", "figures/comparisons_winner_vs_raw/comparison_tmin_winner_vs_raw.png"),

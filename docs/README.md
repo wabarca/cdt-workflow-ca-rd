@@ -68,8 +68,11 @@ La documentación se organiza en **5 bloques lógicos y 11 módulos secuenciales
     - Análisis de 24 experimentos térmicos (12 $T_{\max}$ y 12 $T_{\min}$), diagnóstico de la divergencia termodinámica convectiva diurna vs. desacople e inversiones nocturnas, justificación física del rechazo a la Línea Base sin DEM, y selección de ganadores oficiales (`EXP_TX11` y `EXP_TN10`).
 
 
+11. [**12. Metodología de Evaluación Estadística, Métricas y Validación Cruzada en CDT 8.0**](12_metodologia_evaluacion_metricas_y_validacion.md)
+    - Formulación matemática rigurosa en KaTeX (KGE 2012, r, R2, RMSE, MAE, PBIAS, POD, FAR, ETS, HSS), distinción entre métricas puntuales de estación y agregación regional (promedio vs mediana), fundamento del Diagrama de Taylor e interpretación física del desempeño en Centroamérica y el Caribe.
+
 ### Bloque V: Auditoría del Código Fuente en R y Ejecución Desatendida (*Headless*)
-11. [**11. Modificaciones al Código Fuente R de CDT y Resolución de la Paralelización**](11_modificaciones_codigo_fuente_r_y_paralelizacion.md)
+12. [**11. Modificaciones al Código Fuente R de CDT y Resolución de la Paralelización**](11_modificaciones_codigo_fuente_r_y_paralelizacion.md)
    - Diagnóstico del bucle de ventanas en Tcl/Tk (`tcltk`), desactivación fija del paralelismo en la interfaz original, aislamiento de memoria en procesos secundarios (clústeres locales PSOCK), aceleración de cuantiles empíricos mediante nudos ordenados (`stats::knots`), omisión inteligente de archivos ya calculados (*smart file skip*) e inventario detallado de ajustes en `R/`.
 ---
 

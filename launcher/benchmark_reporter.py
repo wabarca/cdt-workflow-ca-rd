@@ -14,7 +14,15 @@ import argparse
 import datetime
 import json
 import math
+import os
+import re
+import sys
 from pathlib import Path
+
+# Ensure root directory is on sys.path
+root_dir = Path(__file__).resolve().parent.parent
+if str(root_dir) not in sys.path:
+    sys.path.insert(0, str(root_dir))
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
@@ -214,6 +222,7 @@ def compute_leaderboard_ranking(df_summaries: pd.DataFrame) -> pd.DataFrame:
             df["delta_ets_vs_base"] = df["ets"] - base_ets
 
         df["is_winner"] = df["rank"] == 1
+        df["is_control"] = df["experiment_id"].str.contains(r"00_Raw|_Raw_", regex=True)
         ranked_dfs.append(df)
 
     final_df = pd.concat(ranked_dfs, ignore_index=True)
@@ -290,15 +299,41 @@ def generate_taylor_diagram(
         color = palette[idx % len(palette)]
         marker = markers[idx % len(markers)]
         is_win = row.get("is_winner", False)
-        
+        is_ctrl = row.get("is_control", False)
+
+        if is_win:
+            pt_col = "#059669"
+            pt_edge = "#fbbf24"
+            pt_size = 12
+            pt_ew = 2.2
+            pt_marker = "*"
+            pt_z = 10
+            lbl_tag = " [ÓPTIMO]"
+        elif is_ctrl:
+            pt_col = "#64748b"
+            pt_edge = "#0f172a"
+            pt_size = 10
+            pt_ew = 1.8
+            pt_marker = "s"
+            pt_z = 9
+            lbl_tag = " [CONTROL 0]"
+        else:
+            pt_col = color
+            pt_edge = "#ffffff"
+            pt_size = 7
+            pt_ew = 0.8
+            pt_marker = marker
+            pt_z = 5
+            lbl_tag = ""
+
         ax.plot(
             theta_pt, std_norm,
-            marker=marker, markersize=11 if is_win else 7,
-            color="#e11d48" if is_win else color,
-            markeredgecolor="#fbbf24" if is_win else "#ffffff",
-            markeredgewidth=2.2 if is_win else 0.8,
-            label=f"{row['experiment_id']}{' [ÓPTIMO]' if is_win else ''}",
-            zorder=9 if is_win else 5
+            marker=pt_marker, markersize=pt_size,
+            color=pt_col,
+            markeredgecolor=pt_edge,
+            markeredgewidth=pt_ew,
+            label=f"{row['experiment_id']}{lbl_tag}",
+            zorder=pt_z
         )
 
     ax.set_ylim(0, 1.5)
