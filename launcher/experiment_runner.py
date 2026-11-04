@@ -135,23 +135,34 @@ def pack_intermediate_daily_grids(exp_dir: Path | str, force: bool = False) -> D
     has_assembled = any(f.is_file() and f.stat().st_size > 10_000 for f in assembled_files)
 
     steps_to_pack = [
-        ("downscaled", "downscaled_daily_grids.zip", "*_down_*.nc"),
-        ("bias_adjusted", "bias_adjusted_daily_grids.zip", "*_adj_*.nc"),
-        ("merged", "merged_daily_grids.zip", "*_mrg_*.nc"),
+        ("downscaled", "downscaled_daily_grids.zip", ["downscaled", "*downscaled*"]),
+        ("bias_adjusted", "bias_adjusted_daily_grids.zip", ["bias_adjusted", "*bias_adj*"]),
+        ("merged", "merged_daily_grids.zip", ["merged", "MERGED*", "*merged*"]),
     ]
 
-    for dir_name, zip_name, file_pattern in steps_to_pack:
-        target_dir = exp_p / dir_name
-        zip_file = exp_p / zip_name
+    for step_key, zip_name, patterns in steps_to_pack:
+        target_dir = None
+        for pat in patterns:
+            if "*" in pat:
+                matches = [p for p in exp_p.glob(pat) if p.is_dir()]
+                if matches:
+                    target_dir = matches[0]
+                    break
+            else:
+                p = exp_p / pat
+                if p.exists() and p.is_dir():
+                    target_dir = p
+                    break
 
-        if not target_dir.exists() or not target_dir.is_dir():
+        if not target_dir or not target_dir.exists():
             continue
 
+        zip_file = exp_p / zip_name
         nc_files = sorted(list(target_dir.rglob("*.nc")))
         if not nc_files:
             continue
 
-        print(f"      [Empaquetador] Empaquetando {len(nc_files):,} archivos diarios de {dir_name}/ en {zip_name} (modo almacenamiento)...")
+        print(f"      [Empaquetador] Empaquetando {len(nc_files):,} archivos diarios de {target_dir.name}/ en {zip_name} (modo almacenamiento)...")
         try:
             # Crear zip con compresión ZIP_STORED (rápido, sin sobrecarga de CPU)
             with zipfile.ZipFile(zip_file, "w", compression=zipfile.ZIP_STORED, allowZip64=True) as zf:
@@ -174,15 +185,15 @@ def pack_intermediate_daily_grids(exp_dir: Path | str, force: bool = False) -> D
                 except Exception:
                     pass
 
-            results["packed"][dir_name] = {
+            results["packed"][target_dir.name] = {
                 "zip_file": str(zip_file),
                 "files_count": len(nc_files),
                 "deleted_count": deleted_count,
                 "zip_size_mb": round(zip_file.stat().st_size / (1024 * 1024), 2),
             }
-            print(f"      [Empaquetador] [OK] {len(nc_files):,} archivos de {dir_name}/ empaquetados en {zip_name} ({results['packed'][dir_name]['zip_size_mb']} MB). Archivos individuales eliminados.")
+            print(f"      [Empaquetador] [OK] {len(nc_files):,} archivos de {target_dir.name}/ empaquetados en {zip_name} ({results['packed'][target_dir.name]['zip_size_mb']} MB). Archivos individuales eliminados.")
         except Exception as e:
-            print(f"      [Empaquetador] [!] Error al empaquetar {dir_name}: {e}")
+            print(f"      [Empaquetador] [!] Error al empaquetar {target_dir.name}: {e}")
             results["errors"].append(str(e))
             if zip_file.exists() and len(list(target_dir.rglob("*.nc"))) == len(nc_files):
                 try:
