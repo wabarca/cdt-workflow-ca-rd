@@ -118,7 +118,7 @@ def generate_pareto_scatter_figure(
 ) -> str:
     """
     Generates Pareto frontier scatter plot of Precision (RMSE) vs Efficiency (KGE).
-    Per user feedback: marker text labels are removed since experiments are identified in the legend.
+    Per user feedback: all marker text labels and arrows are removed; only markers and legend are kept.
     """
     if df_var.empty or "rmse" not in df_var.columns or "kge" not in df_var.columns:
         return ""
@@ -129,7 +129,6 @@ def generate_pareto_scatter_figure(
     fig, ax = plt.subplots(figsize=(9.5, 6.2), dpi=300)
     base_color = "#0284c7" if var_type == "rainfall" else ("#ea580c" if var_type == "tmax" else "#7c3aed")
 
-    # Separate candidates, winner, and control for clean layered plotting
     candidates_df = df_var[~df_var["is_winner"] & ~df_var["is_control"]]
     win_row = df_var[df_var["is_winner"]].iloc[0] if not df_var[df_var["is_winner"]].empty else None
     ctrl_row = df_var[df_var["is_control"]].iloc[0] if not df_var[df_var["is_control"]].empty else None
@@ -154,7 +153,6 @@ def generate_pareto_scatter_figure(
 
     # 3. Winner (Optimo) point
     if win_row is not None:
-        # Glow ring
         ax.scatter(
             win_row["rmse"], win_row["kge"],
             color="#fbbf24", s=280, alpha=0.5,
@@ -166,22 +164,6 @@ def generate_pareto_scatter_figure(
             edgecolor="#ffffff", linewidth=2.2,
             zorder=8, label=f"Modelo Optimo [{win_row['experiment_id']}] (RMSE={win_row['rmse']:.2f}, KGE={win_row['kge']:.3f})"
         )
-
-    # Optimal direction arrow
-    min_rmse, max_rmse = df_var["rmse"].min(), df_var["rmse"].max()
-    min_kge, max_kge = df_var["kge"].min(), df_var["kge"].max()
-    arrow_start_x = max_rmse - (max_rmse - min_rmse) * 0.15
-    arrow_start_y = min_kge + (max_kge - min_kge) * 0.25
-    arrow_end_x = min_rmse + (max_rmse - min_rmse) * 0.10
-    arrow_end_y = max_kge - (max_kge - min_kge) * 0.08
-
-    ax.annotate(
-        "DIRECCION OPTIMA\n(Menor RMSE, Mayor KGE)",
-        xy=(arrow_end_x, arrow_end_y),
-        xytext=(arrow_start_x, arrow_start_y),
-        arrowprops=dict(facecolor="#059669", edgecolor="#059669", width=1.8, headwidth=7.5),
-        fontsize=8.5, fontweight="bold", color="#059669", ha="center"
-    )
 
     var_title = "Precipitacion Diaria" if var_type == "rainfall" else ("Temperatura Maxima" if var_type == "tmax" else "Temperatura Minima")
     ax.set_title(f"Figura 2: Espacio Bi-Criterio de Precision (RMSE vs. KGE)\nFrontera de Pareto en 29 Estaciones Holdout • {var_title}", fontsize=11, fontweight="bold", pad=12)
@@ -327,7 +309,7 @@ def generate_heatmap_matrix_figure(
     fig_width = max(9.0, len(metric_cols) * 1.25 + 2.0)
     fig, ax = plt.subplots(figsize=(fig_width, fig_height), dpi=300)
 
-    # Use RdYlGn (Green=1.0 Best, Yellow=0.5 Medium, Red=0.0 Worst)
+    # RdYlGn colormap (Green=1.0 Optimo, Red=0.0 Deficiente)
     sns.heatmap(
         norm_arr,
         annot=text_arr,
@@ -372,7 +354,8 @@ def generate_spatial_gain_map(
 ) -> str:
     """
     Generates geographic map of Central America with country borders, lat/lon axis labels,
-    and station delta KGE dots. Station text labels are omitted to prevent overlap.
+    and station delta KGE dots.
+    NOTE: bbox_inches='tight' MUST NOT be used on Cartopy GeoAxes as it crops out the map.
     """
     if df_win_stn.empty or df_raw_stn.empty:
         return ""
@@ -448,7 +431,8 @@ def generate_spatial_gain_map(
     ax.set_title(f"Figura 5: Distribucion Espacial de la Ganancia Neta (Δ KGE) en las 29 Estaciones Holdout\n{winner_name} vs. Rejilla Original • {var_title} en Centroamerica", 
                  fontsize=11, fontweight="bold", pad=16)
 
-    plt.savefig(out_p, dpi=300, bbox_inches="tight")
+    # Save without bbox_inches='tight' so the map is preserved at 1500x975
+    plt.savefig(out_p, dpi=300)
     plt.close()
     return str(out_p)
 

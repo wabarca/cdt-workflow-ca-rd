@@ -239,7 +239,7 @@ def generate_taylor_diagram(
     var_type: str = "rainfall",
     title: Optional[str] = None
 ):
-    """Generates a polar Taylor Diagram for a specific variable with prominent winner callout and clean non-overlapping labels."""
+    """Generates a polar Taylor Diagram for a specific variable with prominent winner callout, 2-line correlation label, and larger text."""
     df_var = df_summaries[df_summaries["variable"] == var_type].copy() if not df_summaries.empty else pd.DataFrame()
     if df_var.empty:
         return
@@ -251,7 +251,7 @@ def generate_taylor_diagram(
     }
     plot_title = title or var_titles.get(var_type, f"Diagrama Polar de Taylor: {var_type.upper()}")
 
-    fig = plt.figure(figsize=(9.2, 8.5), dpi=300)
+    fig = plt.figure(figsize=(9.5, 8.8), dpi=300)
     ax = fig.add_subplot(111, projection="polar")
 
     ax.set_thetamin(0)
@@ -261,29 +261,29 @@ def generate_taylor_diagram(
     angles = np.arccos(r_ticks)
 
     ax.set_xticks(angles)
-    ax.set_xticklabels([f"{v:.2f}" for v in r_ticks], fontsize=8, color="#334155")
-    ax.tick_params(pad=8)
+    ax.set_xticklabels([f"{v:.2f}" for v in r_ticks], fontsize=9, color="#1e293b", fontweight="semibold")
+    ax.tick_params(pad=9)
 
-    # Position correlation label along the outer arc safely separated from title
+    # 2-line correlation label along the outer arc safely separated from title
     plt.text(
-        np.pi / 4, 1.58, "Coeficiente de Correlacion de Pearson (r)",
+        np.pi / 4, 1.60, "Coeficiente de Correlacion\nde Pearson (r)",
         horizontalalignment="center", verticalalignment="bottom",
-        rotation=-45, fontsize=9.5, fontweight="bold", color="#1e293b"
+        rotation=-45, fontsize=10.5, fontweight="bold", color="#0f172a"
     )
 
     # Holdout Reference Observation Point at (theta=0, r=1.0)
-    ax.plot(0, 1.0, marker="*", markersize=16, color="#dc2626", markeredgecolor="#ffffff", markeredgewidth=1.5,
+    ax.plot(0, 1.0, marker="*", markersize=17, color="#dc2626", markeredgecolor="#ffffff", markeredgewidth=1.8,
             label="Estaciones Holdout (Referencia)", zorder=12)
 
-    # Concentric isolines of Centered RMS Error (E'*)
+    # Concentric isolines of Centered RMS Error
     radii = np.linspace(0, 1.5, 100)
     theta = np.linspace(0, np.pi / 2, 100)
     R, TH = np.meshgrid(radii, theta)
     X = R * np.sin(TH)
     Y = R * np.cos(TH)
     E_rms = np.sqrt(X ** 2 + (Y - 1.0) ** 2)
-    contours = ax.contour(TH, R, E_rms, levels=[0.25, 0.5, 0.75, 1.0, 1.25], colors="#94a3b8", linestyles="--", linewidths=0.8)
-    ax.clabel(contours, inline=True, fontsize=7.5, fmt="RMSE=%.2f")
+    contours = ax.contour(TH, R, E_rms, levels=[0.25, 0.5, 0.75, 1.0, 1.25], colors="#94a3b8", linestyles="--", linewidths=0.85)
+    ax.clabel(contours, inline=True, fontsize=8, fmt="RMSE=%.2f")
 
     var_colors = {
         "rainfall": ["#0369a1", "#0284c7", "#38bdf8", "#0891b2", "#0d9488", "#16a34a"],
@@ -345,37 +345,34 @@ def generate_taylor_diagram(
             zorder=pt_z
         )
 
-    # Highlight Winner with Halo and Callout pointer to stand out inside the crowded cloud
+    # Highlight Winner with Outer Halo and Callout Pointer to stand out clearly in the cluster
     if win_point is not None:
         w_theta, w_std, w_id, w_r = win_point
-        # Outer golden halo
-        ax.plot(w_theta, w_std, marker="o", markersize=24, color="#fbbf24", alpha=0.55, zorder=18)
-        # Clear pointer annotation
+        ax.plot(w_theta, w_std, marker="o", markersize=26, color="#fbbf24", alpha=0.55, zorder=18)
         ax.annotate(
             f"★ OPTIMO: {w_id}\n(r={w_r:.3f}, σ*={w_std:.2f})",
             xy=(w_theta, w_std),
             xytext=(w_theta + 0.14, w_std + 0.22),
-            arrowprops=dict(facecolor="#059669", edgecolor="#059669", width=1.6, headwidth=6),
-            fontsize=8, fontweight="bold", color="#065f46",
+            arrowprops=dict(facecolor="#059669", edgecolor="#059669", width=1.8, headwidth=6.5),
+            fontsize=8.5, fontweight="bold", color="#065f46",
             bbox=dict(boxstyle="round,pad=0.25", facecolor="#ecfdf5", edgecolor="#059669", linewidth=1.2, alpha=0.95),
             zorder=25
         )
 
-    # Highlight Control 00 point
     if ctrl_point is not None:
         c_theta, c_std, c_id, c_r = ctrl_point
         ax.plot(c_theta, c_std, marker="s", markersize=14, color="#0f172a", alpha=0.4, zorder=14)
 
     ax.set_ylim(0, 1.5)
-    ax.set_ylabel("Desviacion Estandar Normalizada (σ*)", labelpad=30, fontsize=9.5, fontweight="bold", color="#1e293b")
+    ax.set_ylabel("Desviacion Estandar Normalizada (σ*)", labelpad=32, fontsize=10.5, fontweight="bold", color="#0f172a")
     ax.grid(True, linestyle=":", color="#cbd5e1", alpha=0.8)
 
-    # Explicit base axis title: Horizontal axis label explaining RMSE isolines
+    # Base axis label with larger font
     ax.set_xlabel("Desviacion Estandar Normalizada (σ*) [Base]  •  Isolineas Curvas: Error Centrado (RMSE)", 
-                  fontsize=9, fontweight="bold", color="#1e293b", labelpad=15)
+                  fontsize=10, fontweight="bold", color="#0f172a", labelpad=18)
 
-    # Title with generous padding to prevent any collision with Pearson label
-    plt.title(plot_title, fontsize=11, fontweight="bold", color="#0f172a", pad=42)
+    # Title with larger font and generous padding
+    plt.title(plot_title, fontsize=13, fontweight="bold", color="#0f172a", pad=48)
     plt.legend(bbox_to_anchor=(1.30, 1.0), loc="upper left", frameon=True, fontsize=8)
 
     out_p = Path(output_png)
