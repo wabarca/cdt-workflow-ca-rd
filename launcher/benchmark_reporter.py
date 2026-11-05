@@ -1910,7 +1910,18 @@ def run_full_benchmark_suite(
         json.dump(df_ranked.to_dict(orient="records"), jf, indent=2)
     print(f"  [CSV] Summary table saved: {csv_path}")
 
-    # 3. Generate static figures segregated by variable
+    # 3. Generate high-resolution static diagnostic figures per variable
+    from launcher.benchmark_figures import (
+        generate_kge_boxplots_figure,
+        generate_pareto_scatter_figure,
+        generate_divergent_bars_figure,
+        generate_heatmap_matrix_figure,
+        generate_spatial_gain_map,
+        generate_elevation_strata_figure,
+    )
+    from launcher.benchmark_comparisons import generate_all_comparisons_suite, clean_figures_root
+    from launcher.benchmark_static_dashboard import generate_static_html_dashboard
+
     figures_base = out_path / "figures"
     figures_map: Dict[str, Dict[str, str]] = {}
 
@@ -1919,38 +1930,65 @@ def run_full_benchmark_suite(
     for var in unique_vars:
         var_fig_dir = figures_base / var
         var_fig_dir.mkdir(parents=True, exist_ok=True)
+        df_var = df_ranked[df_ranked["variable"] == var].copy()
 
-        taylor_path = var_fig_dir / "figure_1_taylor_diagram.png"
-        kge_path = var_fig_dir / "figure_2_kge_boxplots_by_station.png"
-        strata_path = var_fig_dir / "figure_3_elevation_strata_performance.png"
-        radar_path = var_fig_dir / "figure_4_radar_skill_chart.png"
-        heatmap_path = var_fig_dir / "figure_5_metrics_heatmap.png"
-        roc_path = var_fig_dir / "figure_6_roc_pod_vs_far.png"
+        # Identify winner and raw control
+        win_rows = df_var[df_var["is_winner"]]
+        winner_id = win_rows["experiment_id"].values[0] if not win_rows.empty else df_var.iloc[0]["experiment_id"]
+        ctrl_rows = df_var[df_var["is_control"]]
+        ctrl_id = ctrl_rows["experiment_id"].values[0] if not ctrl_rows.empty else ""
 
-        generate_taylor_diagram(df_ranked, taylor_path, var_type=var)
-        generate_radar_skill_chart(df_ranked, radar_path, var_type=var)
-        generate_metrics_heatmap(df_ranked, heatmap_path, var_type=var)
+        unit = "mm" if var in ("rainfall", "precip", "rain") else "°C"
 
-        if not df_stations.empty:
-            generate_kge_boxplots(df_stations, kge_path, var_type=var)
-            generate_strata_performance_chart(df_stations, strata_path, var_type=var)
+        # Station metrics for this variable
+        st_var = df_stations[df_stations["variable"] == var].copy() if not df_stations.empty and "variable" in df_stations.columns else pd.DataFrame()
+        if st_var.empty and not df_stations.empty:
+            prefix = "EXP_R" if var in ("rainfall", "precip", "rain") else ("EXP_TX" if var == "tmax" else "EXP_TN")
+            st_var = df_stations[df_stations["experiment_id"].str.startswith(prefix)].copy()
 
-        if var in ("rainfall", "precip", "rain"):
-            generate_roc_pod_vs_far(df_ranked, roc_path)
+        # Figure 1: Boxplots
+        p_box = var_fig_dir / "figure_1_kge_boxplots_by_station.png"
+        generate_kge_boxplots_figure(st_var, p_box, var_type=var, winner_id=winner_id)
+
+        # Figure 2: Scatter Pareto
+        p_pareto = var_fig_dir / "figure_2_scatter_pareto_kge_vs_rmse.png"
+        generate_pareto_scatter_figure(df_var, p_pareto, var_type=var, unit=unit)
+
+        # Figure 3: Divergent Bars Δ KGE
+        p_div = var_fig_dir / "figure_3_barras_divergentes_delta_kge.png"
+        generate_divergent_bars_figure(df_var, p_div, var_type=var)
+
+        # Figure 4: Metrics Heatmap (including Control 00)
+        p_heat = var_fig_dir / "figure_4_metrics_heatmap.png"
+        generate_heatmap_matrix_figure(df_var, p_heat, var_type=var)
+
+        # Figure 5: Spatial Gain Map on Central America (without station text clutter)
+        p_map = var_fig_dir / "figure_5_mapa_espacial_ganancia_estaciones.png"
+        df_win_stn = st_var[st_var["experiment_id"] == winner_id] if not st_var.empty else pd.DataFrame()
+        df_raw_stn = st_var[st_var["experiment_id"] == ctrl_id] if not st_var.empty else pd.DataFrame()
+        if not df_win_stn.empty and not df_raw_stn.empty:
+            generate_spatial_gain_map(df_win_stn, df_raw_stn, p_map, var_type=var, winner_name=winner_id)
+
+        # Figure 6: Elevation Strata Performance
+        p_strata = var_fig_dir / "figure_6_elevation_strata_performance.png"
+        if not df_win_stn.empty and not df_raw_stn.empty:
+            generate_elevation_strata_figure(df_win_stn, df_raw_stn, p_strata, var_type=var, winner_name=winner_id)
+
+        # Figure 7: Classic Taylor Diagram
+        p_taylor = var_fig_dir / "figure_7_taylor_diagram.png"
+        generate_taylor_diagram(df_ranked, p_taylor, var_type=var)
 
         figures_map[var] = {
-            "taylor": f"figures/{var}/figure_1_taylor_diagram.png",
-            "kge_boxplots": f"figures/{var}/figure_2_kge_boxplots_by_station.png",
-            "strata": f"figures/{var}/figure_3_elevation_strata_performance.png",
-            "radar": f"figures/{var}/figure_4_radar_skill_chart.png",
-            "heatmap": f"figures/{var}/figure_5_metrics_heatmap.png",
-            "roc": f"figures/{var}/figure_6_roc_pod_vs_far.png" if var in ("rainfall", "precip", "rain") else "",
+            "kge_boxplots": f"figures/{var}/figure_1_kge_boxplots_by_station.png",
+            "pareto": f"figures/{var}/figure_2_scatter_pareto_kge_vs_rmse.png",
+            "divergent": f"figures/{var}/figure_3_barras_divergentes_delta_kge.png",
+            "heatmap": f"figures/{var}/figure_4_metrics_heatmap.png",
+            "map": f"figures/{var}/figure_5_mapa_espacial_ganancia_estaciones.png",
+            "strata": f"figures/{var}/figure_6_elevation_strata_performance.png",
+            "taylor": f"figures/{var}/figure_7_taylor_diagram.png",
         }
 
     # 4. Clean root figures and generate high-resolution Winner vs Raw comparisons
-    from launcher.benchmark_comparisons import generate_all_comparisons_suite, clean_figures_root
-    from launcher.benchmark_echarts_dashboard import generate_echarts_html_dashboard
-
     clean_figures_root(figures_base)
     comp_figures = generate_all_comparisons_suite(
         df_ranked=df_ranked,
@@ -1958,9 +1996,9 @@ def run_full_benchmark_suite(
         output_dir=figures_base / "comparisons_winner_vs_raw"
     )
 
-    # 5. Generate Interactive HTML Dashboard powered by Apache ECharts
+    # 5. Generate Static HTML Dashboard (Data-First, sortable tables, 300 DPI figures)
     html_path = out_path / "benchmark_report.html"
-    generate_echarts_html_dashboard(
+    generate_static_html_dashboard(
         df_ranked=df_ranked,
         figures_map=figures_map,
         comparison_figures=comp_figures,
