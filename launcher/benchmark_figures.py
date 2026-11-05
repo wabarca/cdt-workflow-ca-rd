@@ -1,7 +1,7 @@
 """
 CDT 8.0 - Benchmark Static Publication Figures Generator
 Generates high-resolution (300 DPI) publication-ready diagnostic figures
-for climate grid reconstruction and bias correction benchmarking.
+for climate grid reconstruction and bias correction benchmarking in Central America.
 """
 
 from pathlib import Path
@@ -55,7 +55,7 @@ def generate_kge_boxplots_figure(
             ylabels.append(f"[OPTIMO] {e}")
         elif is_ctrl:
             palette[e] = "#1e293b" # Dark Slate
-            ylabels.append(f"[CONTROL 00] {e}")
+            ylabels.append(f"[REJILLA ORIGINAL] {e}")
         else:
             palette[e] = "#38bdf8" if var_type == "rainfall" else ("#ea580c" if var_type == "tmax" else "#8b5cf6")
             ylabels.append(e)
@@ -69,6 +69,8 @@ def generate_kge_boxplots_figure(
         x="kge",
         order=ordered_exps,
         palette=palette,
+        hue="experiment_id",
+        legend=False,
         ax=ax,
         fliersize=3,
         linewidth=1.0,
@@ -76,12 +78,12 @@ def generate_kge_boxplots_figure(
         boxprops=dict(alpha=0.85)
     )
 
-    # Control 00 median reference line
+    # Rejilla Original median reference line
     ctrl_rows = df_stations_var[df_stations_var["experiment_id"].str.contains(r"00|Raw", regex=True)]
     if not ctrl_rows.empty:
         ctrl_median = ctrl_rows["kge"].median()
         ax.axvline(ctrl_median, color="#e11d48", linestyle="--", linewidth=1.2,
-                   label=f"Mediana Satelite Crudo [00]: {ctrl_median:.3f}")
+                   label=f"Mediana Rejilla Original [00]: {ctrl_median:.3f}")
         ax.legend(loc="upper left", frameon=True, facecolor="white", framealpha=0.9, fontsize=8.5)
 
     ax.set_yticks(range(len(ordered_exps)))
@@ -92,7 +94,7 @@ def generate_kge_boxplots_figure(
         if "[OPTIMO]" in text:
             tick_label.set_color("#059669")
             tick_label.set_fontweight("bold")
-        elif "[CONTROL 00]" in text:
+        elif "[REJILLA ORIGINAL]" in text:
             tick_label.set_color("#0f172a")
             tick_label.set_fontweight("bold")
 
@@ -114,7 +116,10 @@ def generate_pareto_scatter_figure(
     var_type: str = "rainfall",
     unit: str = "mm"
 ) -> str:
-    """Generates Pareto frontier scatter plot of Precision (RMSE) vs Efficiency (KGE)."""
+    """
+    Generates Pareto frontier scatter plot of Precision (RMSE) vs Efficiency (KGE).
+    Per user feedback: marker text labels are removed since experiments are identified in the legend.
+    """
     if df_var.empty or "rmse" not in df_var.columns or "kge" not in df_var.columns:
         return ""
 
@@ -124,45 +129,65 @@ def generate_pareto_scatter_figure(
     fig, ax = plt.subplots(figsize=(9.5, 6.2), dpi=300)
     base_color = "#0284c7" if var_type == "rainfall" else ("#ea580c" if var_type == "tmax" else "#7c3aed")
 
-    for _, row in df_var.iterrows():
-        is_win = bool(row.get("is_winner", False))
-        is_ctrl = bool(row.get("is_control", False)) or ("00" in row["experiment_id"] or "Raw" in row["experiment_id"])
+    # Separate candidates, winner, and control for clean layered plotting
+    candidates_df = df_var[~df_var["is_winner"] & ~df_var["is_control"]]
+    win_row = df_var[df_var["is_winner"]].iloc[0] if not df_var[df_var["is_winner"]].empty else None
+    ctrl_row = df_var[df_var["is_control"]].iloc[0] if not df_var[df_var["is_control"]].empty else None
 
-        if is_win:
-            ax.scatter(row["rmse"], row["kge"], color="#059669", s=170, edgecolor="#fbbf24", linewidth=2.5, zorder=6, label=f"Optimo ({row['experiment_id']})")
-            ax.annotate(f"[OPTIMO] {row['experiment_id']}\n(KGE={row['kge']:.3f}, RMSE={row['rmse']:.2f} {unit})",
-                        (row["rmse"], row["kge"]), xytext=(10, -5), textcoords="offset points",
-                        fontsize=8.5, fontweight="bold", color="#065f46",
-                        bbox=dict(boxstyle="round,pad=0.2", facecolor="#ecfdf5", edgecolor="#059669", alpha=0.9))
-        elif is_ctrl:
-            ax.scatter(row["rmse"], row["kge"], color="#1e293b", s=140, marker="s", edgecolor="#ffffff", linewidth=1.5, zorder=6, label=f"Control Satelite ({row['experiment_id']})")
-            ax.annotate(f"[CONTROL 00] {row['experiment_id']}\n(KGE={row['kge']:.3f}, RMSE={row['rmse']:.2f} {unit})",
-                        (row["rmse"], row["kge"]), xytext=(10, 5), textcoords="offset points",
-                        fontsize=8.5, fontweight="bold", color="#1e293b",
-                        bbox=dict(boxstyle="round,pad=0.2", facecolor="#f1f5f9", edgecolor="#64748b", alpha=0.9))
-        else:
-            ax.scatter(row["rmse"], row["kge"], color=base_color, s=65, alpha=0.8, edgecolor="#ffffff", linewidth=0.8, zorder=4)
-            if row.get("rank", 99) <= 3:
-                ax.annotate(f"#{row['rank']} {row['experiment_id']}", (row["rmse"], row["kge"]),
-                            xytext=(8, -8), textcoords="offset points", fontsize=7.5, color="#475569")
+    # 1. Candidate points
+    if not candidates_df.empty:
+        ax.scatter(
+            candidates_df["rmse"], candidates_df["kge"],
+            color=base_color, s=70, alpha=0.75,
+            edgecolor="#ffffff", linewidth=0.8,
+            zorder=4, label="Modelos Candidatos"
+        )
+
+    # 2. Control (Rejilla Original) point
+    if ctrl_row is not None:
+        ax.scatter(
+            ctrl_row["rmse"], ctrl_row["kge"],
+            color="#1e293b", s=150, marker="s",
+            edgecolor="#ffffff", linewidth=1.8,
+            zorder=6, label=f"Rejilla Original [{ctrl_row['experiment_id']}] (RMSE={ctrl_row['rmse']:.2f}, KGE={ctrl_row['kge']:.3f})"
+        )
+
+    # 3. Winner (Optimo) point
+    if win_row is not None:
+        # Glow ring
+        ax.scatter(
+            win_row["rmse"], win_row["kge"],
+            color="#fbbf24", s=280, alpha=0.5,
+            zorder=7
+        )
+        ax.scatter(
+            win_row["rmse"], win_row["kge"],
+            color="#059669", s=180, marker="o",
+            edgecolor="#ffffff", linewidth=2.2,
+            zorder=8, label=f"Modelo Optimo [{win_row['experiment_id']}] (RMSE={win_row['rmse']:.2f}, KGE={win_row['kge']:.3f})"
+        )
 
     # Optimal direction arrow
     min_rmse, max_rmse = df_var["rmse"].min(), df_var["rmse"].max()
     min_kge, max_kge = df_var["kge"].min(), df_var["kge"].max()
-    arrow_start_x = max_rmse - (max_rmse - min_rmse) * 0.2
-    arrow_start_y = min_kge + (max_kge - min_kge) * 0.3
-    arrow_end_x = min_rmse + (max_rmse - min_rmse) * 0.1
-    arrow_end_y = max_kge - (max_kge - min_kge) * 0.1
+    arrow_start_x = max_rmse - (max_rmse - min_rmse) * 0.15
+    arrow_start_y = min_kge + (max_kge - min_kge) * 0.25
+    arrow_end_x = min_rmse + (max_rmse - min_rmse) * 0.10
+    arrow_end_y = max_kge - (max_kge - min_kge) * 0.08
 
-    ax.annotate("DIRECCION OPTIMA\n(Menor RMSE, Mayor KGE)", xy=(arrow_end_x, arrow_end_y), xytext=(arrow_start_x, arrow_start_y),
-                arrowprops=dict(facecolor="#059669", edgecolor="#059669", width=1.5, headwidth=7),
-                fontsize=8.5, fontweight="bold", color="#059669", ha="center")
+    ax.annotate(
+        "DIRECCION OPTIMA\n(Menor RMSE, Mayor KGE)",
+        xy=(arrow_end_x, arrow_end_y),
+        xytext=(arrow_start_x, arrow_start_y),
+        arrowprops=dict(facecolor="#059669", edgecolor="#059669", width=1.8, headwidth=7.5),
+        fontsize=8.5, fontweight="bold", color="#059669", ha="center"
+    )
 
     var_title = "Precipitacion Diaria" if var_type == "rainfall" else ("Temperatura Maxima" if var_type == "tmax" else "Temperatura Minima")
     ax.set_title(f"Figura 2: Espacio Bi-Criterio de Precision (RMSE vs. KGE)\nFrontera de Pareto en 29 Estaciones Holdout • {var_title}", fontsize=11, fontweight="bold", pad=12)
     ax.set_xlabel(f"Raiz del Error Cuadratico Medio (RMSE en {unit}) [Menor es mejor]", fontsize=9.5, fontweight="bold")
     ax.set_ylabel("Kling-Gupta Efficiency (KGE) [Mayor es mejor]", fontsize=9.5, fontweight="bold")
-    ax.legend(frameon=True, facecolor="white", framealpha=0.9, loc="lower left", fontsize=8.5)
+    ax.legend(frameon=True, facecolor="white", framealpha=0.92, loc="lower left", fontsize=8.5)
 
     plt.tight_layout()
     plt.savefig(out_p, dpi=300)
@@ -175,7 +200,7 @@ def generate_divergent_bars_figure(
     output_png: Path | str,
     var_type: str = "rainfall"
 ) -> str:
-    """Generates divergent horizontal bars showing net gain in KGE vs raw satellite control."""
+    """Generates divergent horizontal bars showing net gain in KGE vs raw grid control."""
     if df_var.empty or "kge" not in df_var.columns:
         return ""
 
@@ -217,9 +242,9 @@ def generate_divergent_bars_figure(
             ax.text(w - 0.005, y, f"{w:.3f}", ha="right", va=va, fontsize=8, color="#e11d48")
 
     var_title = "Precipitacion Diaria" if var_type == "rainfall" else ("Temperatura Maxima" if var_type == "tmax" else "Temperatura Minima")
-    ctrl_name = ctrl_rows["experiment_id"].values[0] if not ctrl_rows.empty else "Control 00"
-    ax.set_title(f"Figura 3: Ganancia Neta de Eficiencia (Δ KGE) respecto al Satelite Crudo [{ctrl_name}]\n{var_title} (1991-2020) • Evaluacion en 29 Estaciones Holdout", fontsize=11, fontweight="bold", pad=12)
-    ax.set_xlabel("Ganancia Neta en Eficiencia (Δ KGE) [> 0 indica mejora respecto a la malla satelital sin corregir]", fontsize=9.5, fontweight="bold")
+    ctrl_name = ctrl_rows["experiment_id"].values[0] if not ctrl_rows.empty else "Rejilla Original [00]"
+    ax.set_title(f"Figura 3: Ganancia Neta de Eficiencia (Δ KGE) respecto a la Rejilla Original [{ctrl_name}]\n{var_title} (1991-2020) • Evaluacion en 29 Estaciones Holdout", fontsize=11, fontweight="bold", pad=12)
+    ax.set_xlabel("Ganancia Neta en Eficiencia (Δ KGE) [> 0 indica mejora respecto a la rejilla original sin corregir]", fontsize=9.5, fontweight="bold")
     ax.set_xlim(df_sorted["delta_kge"].min() - 0.04, df_sorted["delta_kge"].max() + 0.05)
 
     plt.tight_layout()
@@ -233,7 +258,10 @@ def generate_heatmap_matrix_figure(
     output_png: Path | str,
     var_type: str = "rainfall"
 ) -> str:
-    """Generates an annotated multi-metric performance matrix/heatmap including Control 00."""
+    """
+    Generates an annotated multi-metric performance matrix/heatmap.
+    Per user feedback: colormap is RdYlGn (green = best, red = worst).
+    """
     if df_var.empty:
         return ""
 
@@ -269,7 +297,7 @@ def generate_heatmap_matrix_figure(
         if is_win:
             row_labels.append(f"[OPTIMO #01] {row['experiment_id']}")
         elif is_ctrl:
-            row_labels.append(f"[CONTROL 00] {row['experiment_id']}")
+            row_labels.append(f"[REJILLA ORIGINAL] {row['experiment_id']}")
         else:
             row_labels.append(f"#{row['rank']:02d} {row['experiment_id']}")
 
@@ -299,14 +327,15 @@ def generate_heatmap_matrix_figure(
     fig_width = max(9.0, len(metric_cols) * 1.25 + 2.0)
     fig, ax = plt.subplots(figsize=(fig_width, fig_height), dpi=300)
 
+    # Use RdYlGn (Green=1.0 Best, Yellow=0.5 Medium, Red=0.0 Worst)
     sns.heatmap(
         norm_arr,
         annot=text_arr,
         fmt="",
-        cmap="YlGn",
+        cmap="RdYlGn",
         linewidths=0.8,
         linecolor="#ffffff",
-        cbar_kws={"label": "Rendimiento Normalizado (0.0 = Peor, 1.0 = Optimo)", "shrink": 0.65},
+        cbar_kws={"label": "Rendimiento Normalizado (Verde = Optimo, Rojo = Deficiente)", "shrink": 0.65},
         xticklabels=[c[1] for c in metric_cols],
         yticklabels=row_labels,
         ax=ax,
@@ -316,7 +345,7 @@ def generate_heatmap_matrix_figure(
 
     for tick_label in ax.get_yticklabels():
         t = tick_label.get_text()
-        if "[CONTROL 00]" in t:
+        if "[REJILLA ORIGINAL]" in t:
             tick_label.set_color("#0f172a")
             tick_label.set_fontweight("bold")
         elif "[OPTIMO" in t:
@@ -324,7 +353,7 @@ def generate_heatmap_matrix_figure(
             tick_label.set_fontweight("bold")
 
     var_title = "Precipitacion Diaria" if var_type == "rainfall" else ("Temperatura Maxima" if var_type == "tmax" else "Temperatura Minima")
-    ax.set_title(f"Figura 4: Matriz Multicriterio de Rendimiento Climatologico\nValores exactos impresos • Color verde intenso indica optimo relativo • {var_title}", fontsize=11, fontweight="bold", pad=14)
+    ax.set_title(f"Figura 4: Matriz Multicriterio de Rendimiento Climatologico\nValores exactos impresos • Escala de color: Verde (Optimo) a Rojo (Deficiente) • {var_title}", fontsize=11, fontweight="bold", pad=14)
     plt.xticks(rotation=20, ha="right", fontsize=9, fontweight="bold")
     plt.yticks(fontsize=8)
 
@@ -342,8 +371,8 @@ def generate_spatial_gain_map(
     winner_name: str = "Modelo Optimo"
 ) -> str:
     """
-    Generates geographic map of Central America with country borders and station delta KGE dots.
-    Per user requirement: station text labels are excluded so they do not overlap.
+    Generates geographic map of Central America with country borders, lat/lon axis labels,
+    and station delta KGE dots. Station text labels are omitted to prevent overlap.
     """
     if df_win_stn.empty or df_raw_stn.empty:
         return ""
@@ -351,7 +380,6 @@ def generate_spatial_gain_map(
     out_p = Path(output_png)
     out_p.parent.mkdir(parents=True, exist_ok=True)
 
-    # Merge winner and raw stations
     if "elev" in df_raw_stn.columns:
         df_merged = pd.merge(df_win_stn[["station_id", "lon", "lat", "kge"]],
                              df_raw_stn[["station_id", "elev", "kge"]],
@@ -370,11 +398,20 @@ def generate_spatial_gain_map(
     # Regional extent: Central America (Guatemala to Panama)
     ax.set_extent([-93.0, -77.0, 7.2, 18.8], crs=ccrs.PlateCarree())
 
-    # Geographic features with high contrast and elegance
+    # Geographic features
     ax.add_feature(cfeature.OCEAN, facecolor="#e0f2fe", zorder=1)
     ax.add_feature(cfeature.LAND, facecolor="#f8fafc", edgecolor="none", zorder=2)
     ax.add_feature(cfeature.COASTLINE, edgecolor="#1e293b", linewidth=1.0, zorder=3)
     ax.add_feature(cfeature.BORDERS, edgecolor="#475569", linestyle="-", linewidth=0.8, zorder=3)
+
+    # Gridlines with explicit Latitude and Longitude labels
+    gl = ax.gridlines(draw_labels=True, linewidth=0.5, color="#cbd5e1", linestyle="--", alpha=0.7, zorder=4)
+    gl.top_labels = False
+    gl.right_labels = False
+    gl.left_labels = True
+    gl.bottom_labels = True
+    gl.xlabel_style = {"size": 8.5, "color": "#1e293b", "weight": "bold"}
+    gl.ylabel_style = {"size": 8.5, "color": "#1e293b", "weight": "bold"}
 
     # Country names for regional orientation
     countries = [
@@ -405,13 +442,12 @@ def generate_spatial_gain_map(
     )
 
     cbar = plt.colorbar(sc, ax=ax, fraction=0.032, pad=0.03, shrink=0.75)
-    cbar.set_label("Ganancia Neta en Eficiencia (Δ KGE = KGE_Ganador - KGE_Crudo)", fontsize=9, fontweight="bold")
+    cbar.set_label("Ganancia Neta en Eficiencia (Δ KGE = KGE_Ganador - KGE_Rejilla_Original)", fontsize=9, fontweight="bold")
 
     var_title = "Precipitacion Diaria" if var_type == "rainfall" else ("Temperatura Maxima" if var_type == "tmax" else "Temperatura Minima")
-    ax.set_title(f"Figura 5: Distribucion Espacial de la Ganancia Neta (Δ KGE) en las 29 Estaciones Holdout\n{winner_name} vs. Satelite Crudo • {var_title} en Centroamerica", 
-                 fontsize=11, fontweight="bold", pad=14)
+    ax.set_title(f"Figura 5: Distribucion Espacial de la Ganancia Neta (Δ KGE) en las 29 Estaciones Holdout\n{winner_name} vs. Rejilla Original • {var_title} en Centroamerica", 
+                 fontsize=11, fontweight="bold", pad=16)
 
-    # Do not call tight_layout on cartopy GeoAxes to prevent boundary errors
     plt.savefig(out_p, dpi=300, bbox_inches="tight")
     plt.close()
     return str(out_p)
@@ -452,7 +488,7 @@ def generate_elevation_strata_figure(
     width = 0.35
 
     rects1 = ax.bar(x - width/2, elev_agg[("kge_raw", "mean")], width, yerr=elev_agg[("kge_raw", "std")],
-                    label="Satelite Crudo [Control 00]", color="#94a3b8", edgecolor="#475569", capsize=5)
+                    label="Rejilla Original [Control 00]", color="#94a3b8", edgecolor="#475569", capsize=5)
     rects2 = ax.bar(x + width/2, elev_agg[("kge_win", "mean")], width, yerr=elev_agg[("kge_win", "std")],
                     label=f"Ganador [{winner_name}]", color="#059669", edgecolor="#065f46", capsize=5)
 

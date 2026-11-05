@@ -262,7 +262,7 @@ def generate_static_html_dashboard(
                                 <th class="sortable-th" onclick="sortTable('tableAll', 7, 'num')">RMSE <span class="sort-icon">⇅</span></th>
                                 <th class="sortable-th" onclick="sortTable('tableAll', 8, 'num')">MAE <span class="sort-icon">⇅</span></th>
                                 <th class="sortable-th" onclick="sortTable('tableAll', 9, 'num')">PBIAS (%) <span class="sort-icon">⇅</span></th>
-                                <th class="sortable-th" onclick="sortTable('tableAll', 10, 'num')">Δ KGE vs Crudo <span class="sort-icon">⇅</span></th>
+                                <th class="sortable-th" onclick="sortTable('tableAll', 10, 'num')">Δ KGE vs Rejilla Original <span class="sort-icon">⇅</span></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -275,7 +275,7 @@ def generate_static_html_dashboard(
                                     {% if e.is_winner %}
                                     <span class="bg-emerald-500/20 text-emerald-400 text-[10px] px-2 py-0.5 rounded border border-emerald-500/30 font-bold">ÓPTIMO</span>
                                     {% elif e.is_control %}
-                                    <span class="bg-slate-700 text-slate-300 text-[10px] px-2 py-0.5 rounded font-bold">CONTROL 00</span>
+                                    <span class="bg-slate-700 text-slate-300 text-[10px] px-2 py-0.5 rounded font-bold">REJILLA ORIGINAL</span>
                                     {% else %}
                                     <span class="text-slate-400 text-[10px]">Candidato</span>
                                     {% endif %}
@@ -296,7 +296,7 @@ def generate_static_html_dashboard(
                 </div>
             </div>
 
-            <!-- Fichas Comparativas Ganador vs Satélite Crudo de Publicación -->
+            <!-- Fichas Comparativas Ganador vs Rejilla Original de Publicación -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div class="fig-card">
                     <div>
@@ -411,7 +411,7 @@ def generate_static_html_dashboard(
                                 <th class="sortable-th" onclick="sortTable('tableRain', 6, 'num')">MAE (mm) <span class="sort-icon">⇅</span></th>
                                 <th class="sortable-th" onclick="sortTable('tableRain', 7, 'num')">PBIAS (%) <span class="sort-icon">⇅</span></th>
                                 <th class="sortable-th" onclick="sortTable('tableRain', 8, 'num')">ETS (Lluvia) <span class="sort-icon">⇅</span></th>
-                                <th class="sortable-th" onclick="sortTable('tableRain', 9, 'num')">Δ KGE vs Crudo <span class="sort-icon">⇅</span></th>
+                                <th class="sortable-th" onclick="sortTable('tableRain', 9, 'num')">Δ KGE vs Rejilla Original <span class="sort-icon">⇅</span></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -451,7 +451,7 @@ def generate_static_html_dashboard(
                         <div>
                             <div class="text-[10px] font-bold text-sky-400 uppercase tracking-wider mb-1">Figura 1 • Dispersión</div>
                             <h4 class="font-bold text-sm text-white">Distribución de Eficiencia KGE en las 29 Estaciones Holdout</h4>
-                            <p class="text-xs text-slate-400 mt-1">Cajas muestran percentiles 25–75, línea central la mediana. Línea roja discontinua indica el Satélite Crudo [00].</p>
+                            <p class="text-xs text-slate-400 mt-1">Cajas muestran percentiles 25–75, línea central la mediana. Línea roja discontinua indica el Rejilla Original [00].</p>
                         </div>
                         <div class="mt-3 cursor-pointer" onclick="openModal('{{ fig_rain.kge_boxplots }}', 'Figura 1: Boxplots de KGE por Estación (Precipitación)')">
                             <img src="{{ fig_rain.kge_boxplots }}" alt="Boxplots KGE Lluvia" class="rounded border border-slate-700 max-h-72 object-contain w-full bg-slate-950">
@@ -482,8 +482,8 @@ def generate_static_html_dashboard(
                     <div class="fig-card">
                         <div>
                             <div class="text-[10px] font-bold text-emerald-400 uppercase tracking-wider mb-1">Figura 3 • Ganancia Neta</div>
-                            <h4 class="font-bold text-sm text-white">Ganancia Neta (Δ KGE) respecto al Satélite Crudo [CHIRPS 00]</h4>
-                            <p class="text-xs text-slate-400 mt-1">CHIRPS Crudo = 0.0 de referencia. Barras verdes indican mejora sobre el satélite; barras rojas degradación.</p>
+                            <h4 class="font-bold text-sm text-white">Ganancia Neta (Δ KGE) respecto al Rejilla Original [CHIRPS 00]</h4>
+                            <p class="text-xs text-slate-400 mt-1">CHIRPS Crudo = 0.0 de referencia. Barras verdes indican mejora sobre el rejilla original; barras rojas degradación.</p>
                         </div>
                         <div class="mt-3 cursor-pointer" onclick="openModal('{{ fig_rain.divergent }}', 'Figura 3: Barras Divergentes Δ KGE (Precipitación)')">
                             <img src="{{ fig_rain.divergent }}" alt="Barras Divergentes Lluvia" class="rounded border border-slate-700 max-h-72 object-contain w-full bg-slate-950">
@@ -499,7 +499,7 @@ def generate_static_html_dashboard(
                         <div>
                             <div class="text-[10px] font-bold text-amber-400 uppercase tracking-wider mb-1">Figura 4 • Síntesis Multicriterio</div>
                             <h4 class="font-bold text-sm text-white">Matriz Diagnóstica de Rendimiento Climatológico</h4>
-                            <p class="text-xs text-slate-400 mt-1">Cuadrícula ordenada con valores numéricos impresos para todos los experimentos, incluyendo a [CONTROL 00] CHIRPS.</p>
+                            <p class="text-xs text-slate-400 mt-1">Cuadrícula ordenada con valores numéricos impresos para todos los experimentos, incluyendo a [REJILLA ORIGINAL] CHIRPS.</p>
                         </div>
                         <div class="mt-3 cursor-pointer" onclick="openModal('{{ fig_rain.heatmap }}', 'Figura 4: Matriz Heatmap Multimétrica (Precipitación)')">
                             <img src="{{ fig_rain.heatmap }}" alt="Heatmap Multimétrica Lluvia" class="rounded border border-slate-700 max-h-72 object-contain w-full bg-slate-950">
@@ -531,7 +531,7 @@ def generate_static_html_dashboard(
                         <div>
                             <div class="text-[10px] font-bold text-violet-400 uppercase tracking-wider mb-1">Figura 6 • Orografía</div>
                             <h4 class="font-bold text-sm text-white">Rendimiento por Estratos Topográficos de Elevación</h4>
-                            <p class="text-xs text-slate-400 mt-1">Evaluación estratificada (Costas &lt;200m, Valles 200–800m, Montañas &gt;800m) comparando el Satélite Crudo vs. Ganador.</p>
+                            <p class="text-xs text-slate-400 mt-1">Evaluación estratificada (Costas &lt;200m, Valles 200–800m, Montañas &gt;800m) comparando el Rejilla Original vs. Ganador.</p>
                         </div>
                         <div class="mt-3 cursor-pointer" onclick="openModal('{{ fig_rain.strata }}', 'Figura 6: Estratos de Elevación (Precipitación)')">
                             <img src="{{ fig_rain.strata }}" alt="Estratos Elevación Lluvia" class="rounded border border-slate-700 max-h-72 object-contain w-full bg-slate-950">
@@ -625,7 +625,7 @@ def generate_static_html_dashboard(
                                 <th class="sortable-th" onclick="sortTable('tableTmax', 5, 'num')">RMSE (°C) <span class="sort-icon">⇅</span></th>
                                 <th class="sortable-th" onclick="sortTable('tableTmax', 6, 'num')">MAE (°C) <span class="sort-icon">⇅</span></th>
                                 <th class="sortable-th" onclick="sortTable('tableTmax', 7, 'num')">PBIAS (%) <span class="sort-icon">⇅</span></th>
-                                <th class="sortable-th" onclick="sortTable('tableTmax', 8, 'num')">Δ KGE vs Crudo <span class="sort-icon">⇅</span></th>
+                                <th class="sortable-th" onclick="sortTable('tableTmax', 8, 'num')">Δ KGE vs Rejilla Original <span class="sort-icon">⇅</span></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -685,7 +685,7 @@ def generate_static_html_dashboard(
                     <div>
                         <div class="text-[10px] font-bold text-amber-400 uppercase tracking-wider mb-1">Figura 3 • Ganancia Neta</div>
                         <h4 class="font-bold text-sm text-white">Ganancia Neta (Δ KGE) vs. CHIRTS Crudo [TX00]</h4>
-                        <p class="text-xs text-slate-400 mt-1">Comparación directa frente al satélite crudo sin corrección.</p>
+                        <p class="text-xs text-slate-400 mt-1">Comparación directa frente al rejilla original sin corrección.</p>
                     </div>
                     <div class="mt-3 cursor-pointer" onclick="openModal('{{ fig_tmax.divergent }}', 'Figura 3: Barras Divergentes Δ KGE (Temp. Máxima)')">
                         <img src="{{ fig_tmax.divergent }}" alt="Barras Divergentes Tmax" class="rounded border border-slate-700 max-h-72 object-contain w-full bg-slate-950">
@@ -807,7 +807,7 @@ def generate_static_html_dashboard(
                                 <th class="sortable-th" onclick="sortTable('tableTmin', 5, 'num')">RMSE (°C) <span class="sort-icon">⇅</span></th>
                                 <th class="sortable-th" onclick="sortTable('tableTmin', 6, 'num')">MAE (°C) <span class="sort-icon">⇅</span></th>
                                 <th class="sortable-th" onclick="sortTable('tableTmin', 7, 'num')">PBIAS (%) <span class="sort-icon">⇅</span></th>
-                                <th class="sortable-th" onclick="sortTable('tableTmin', 8, 'num')">Δ KGE vs Crudo <span class="sort-icon">⇅</span></th>
+                                <th class="sortable-th" onclick="sortTable('tableTmin', 8, 'num')">Δ KGE vs Rejilla Original <span class="sort-icon">⇅</span></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -852,7 +852,7 @@ def generate_static_html_dashboard(
                     <div>
                         <div class="text-[10px] font-bold text-emerald-400 uppercase tracking-wider mb-1">Figura 2 • Pareto</div>
                         <h4 class="font-bold text-sm text-white">Espacio de Precisión: RMSE vs. KGE (Temp. Mínima)</h4>
-                        <p class="text-xs text-slate-400 mt-1">Frontera de Pareto destacando a Empirical ECDF frente al satélite crudo.</p>
+                        <p class="text-xs text-slate-400 mt-1">Frontera de Pareto destacando a Empirical ECDF frente al rejilla original.</p>
                     </div>
                     <div class="mt-3 cursor-pointer" onclick="openModal('{{ fig_tmin.pareto }}', 'Figura 2: Scatter Pareto (Temp. Mínima)')">
                         <img src="{{ fig_tmin.pareto }}" alt="Scatter Pareto Tmin" class="rounded border border-slate-700 max-h-72 object-contain w-full bg-slate-950">
@@ -867,7 +867,7 @@ def generate_static_html_dashboard(
                     <div>
                         <div class="text-[10px] font-bold text-violet-400 uppercase tracking-wider mb-1">Figura 3 • Ganancia Neta</div>
                         <h4 class="font-bold text-sm text-white">Ganancia Neta (Δ KGE) vs. CHIRTS Crudo [TN00]</h4>
-                        <p class="text-xs text-slate-400 mt-1">Mejora neta sobre el satélite crudo en temperatura mínima.</p>
+                        <p class="text-xs text-slate-400 mt-1">Mejora neta sobre el rejilla original en temperatura mínima.</p>
                     </div>
                     <div class="mt-3 cursor-pointer" onclick="openModal('{{ fig_tmin.divergent }}', 'Figura 3: Barras Divergentes Δ KGE (Temp. Mínima)')">
                         <img src="{{ fig_tmin.divergent }}" alt="Barras Divergentes Tmin" class="rounded border border-slate-700 max-h-72 object-contain w-full bg-slate-950">
@@ -882,7 +882,7 @@ def generate_static_html_dashboard(
                     <div>
                         <div class="text-[10px] font-bold text-violet-400 uppercase tracking-wider mb-1">Figura 4 • Heatmap</div>
                         <h4 class="font-bold text-sm text-white">Matriz Multicriterio de Desempeño (Temp. Mínima)</h4>
-                        <p class="text-xs text-slate-400 mt-1">Matriz con valores exactos impresos incluyendo el satélite crudo.</p>
+                        <p class="text-xs text-slate-400 mt-1">Matriz con valores exactos impresos incluyendo el rejilla original.</p>
                     </div>
                     <div class="mt-3 cursor-pointer" onclick="openModal('{{ fig_tmin.heatmap }}', 'Figura 4: Heatmap Multimétrica (Temp. Mínima)')">
                         <img src="{{ fig_tmin.heatmap }}" alt="Heatmap Tmin" class="rounded border border-slate-700 max-h-72 object-contain w-full bg-slate-950">
