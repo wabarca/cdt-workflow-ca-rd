@@ -66,10 +66,20 @@ def generate_static_html_dashboard(
     <!-- Tailwind CSS (CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- KaTeX for Mathematics -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <!-- MathJax 3 for Robust Scientific Typography -->
+    <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true
+      },
+      options: {
+        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+      }
+    };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
@@ -285,7 +295,9 @@ def generate_static_html_dashboard(
                                 <td class="font-mono text-left font-medium">{{ e.experiment_id }}</td>
                                 <td>
                                     {% if e.is_winner %}
-                                    <span class="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded border border-emerald-300 font-bold">ÓPTIMO</span>
+                                    <span class="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded border border-emerald-300 font-bold">GANADOR OFICIAL</span>
+                                    {% elif "Baseline" in e.experiment_id %}
+                                    <span class="bg-amber-100 text-amber-800 text-[10px] px-2 py-0.5 rounded border border-amber-300 font-bold">LÍNEA BASE 2D</span>
                                     {% elif e.is_control %}
                                     <span class="bg-slate-200 text-slate-700 text-[10px] px-2 py-0.5 rounded font-bold">REJILLA ORIGINAL</span>
                                     {% else %}
@@ -381,7 +393,7 @@ def generate_static_html_dashboard(
                         <tbody>
                             {% for e in list_rain %}
                             <tr class="{% if e.is_winner %}bg-emerald-50 text-emerald-950 font-bold{% elif e.is_control %}bg-slate-100 text-slate-800 font-semibold{% endif %}">
-                                <td>{% if e.is_winner %}🏆 #{{ e.rank }}{% elif e.is_control %}⚡ [00]{% else %}#{{ e.rank }}{% endif %}</td>
+                                <td>{% if e.is_winner %}🏆 #{{ e.rank }} [Ganador Físico]{% elif "Baseline" in e.experiment_id %}📐 #{{ e.rank }} [Línea Base]{% elif e.is_control %}⚡ [00]{% else %}#{{ e.rank }}{% endif %}</td>
                                 <td class="font-mono text-left font-medium">{{ e.experiment_id }}</td>
                                 <td>{{ "%.3f"|format(e.global_skill_score) }}</td>
                                 <td>{{ "%.3f"|format(e.kge) }}</td>
@@ -541,6 +553,9 @@ def generate_static_html_dashboard(
                         </div>
                         <h2 class="text-2xl font-black text-slate-900 tracking-tight">{{ win_tmax.experiment_id }}</h2>
                         <p class="text-xs text-slate-600 max-w-2xl mt-1 leading-relaxed">{{ win_tmax.description }}</p>
+                        <div class="mt-3 inline-block bg-emerald-100 text-emerald-900 text-[11px] font-bold px-3 py-1 rounded border border-emerald-300">
+                            ✓ Ganador Físico Oficial de CDT • Validación Topográfica Ciega en 29 Estaciones
+                        </div>
                     </div>
                     <div class="grid grid-cols-4 gap-3 bg-white rounded-lg p-3 border border-amber-200 text-center shadow-sm">
                         <div class="px-2">
@@ -563,6 +578,17 @@ def generate_static_html_dashboard(
                 </div>
             </div>
             {% endif %}
+
+            <!-- Nota Metodológica de Selección de Ganador -->
+            <div class="bg-amber-50/80 border-l-4 border-amber-500 p-4 rounded-r-xl text-xs text-amber-950 space-y-1.5 shadow-sm">
+                <div class="flex items-center gap-2 font-bold text-amber-900">
+                    <span>⚠️</span>
+                    <span>Dictamen Metodológico sobre la Línea Base vs. Modelo Ganador en Temperatura Máxima</span>
+                </div>
+                <p class="leading-relaxed">
+                    Aunque la línea base plana bidimensional (<code class="bg-white/80 px-1 py-0.5 rounded font-mono font-bold text-slate-800">EXP_TX01_SBA_IDW_Baseline</code>) reporta un puntaje estadístico puntual alto en estaciones de validación debido a que la gran mayoría de estaciones meteorológicas se encuentran en valles y planicies bajas, <b>carece de acoplamiento orográfico con el DEM continental</b>. En terrenos montañosos no monitoreados (Sierra Madre, Cordillera de Talamanca, Cordillera Central de RD), este método genera un severo <i>aplanamiento orográfico</i> (+4 a +8 °C de sobreestimación artificial en cumbres). Conforme a las conclusiones del Documento 10, <code class="bg-white/80 px-1 py-0.5 rounded font-mono font-bold text-slate-800">EXP_TX01</code> fue rechazado como producto operativo y <b><code class="bg-emerald-100 text-emerald-950 px-1.5 py-0.5 rounded font-mono font-bold border border-emerald-300">EXP_TX11_RK_Barnes_Hybrid</code></b> es adoptado como el <b>Ganador Físico Oficial</b>.
+                </p>
+            </div>
 
             <!-- Table for Tmax -->
             <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
@@ -595,7 +621,7 @@ def generate_static_html_dashboard(
                         <tbody>
                             {% for e in list_tmax %}
                             <tr class="{% if e.is_winner %}bg-emerald-50 text-emerald-950 font-bold{% elif e.is_control %}bg-slate-100 text-slate-800 font-semibold{% endif %}">
-                                <td>{% if e.is_winner %}🏆 #{{ e.rank }}{% elif e.is_control %}⚡ [00]{% else %}#{{ e.rank }}{% endif %}</td>
+                                <td>{% if e.is_winner %}🏆 #{{ e.rank }} [Ganador Físico]{% elif "Baseline" in e.experiment_id %}📐 #{{ e.rank }} [Línea Base]{% elif e.is_control %}⚡ [00]{% else %}#{{ e.rank }}{% endif %}</td>
                                 <td class="font-mono text-left font-medium">{{ e.experiment_id }}</td>
                                 <td>{{ "%.3f"|format(e.global_skill_score) }}</td>
                                 <td>{{ "%.3f"|format(e.kge) }}</td>
@@ -793,7 +819,7 @@ def generate_static_html_dashboard(
                         <tbody>
                             {% for e in list_tmin %}
                             <tr class="{% if e.is_winner %}bg-emerald-50 text-emerald-950 font-bold{% elif e.is_control %}bg-slate-100 text-slate-800 font-semibold{% endif %}">
-                                <td>{% if e.is_winner %}🏆 #{{ e.rank }}{% elif e.is_control %}⚡ [00]{% else %}#{{ e.rank }}{% endif %}</td>
+                                <td>{% if e.is_winner %}🏆 #{{ e.rank }} [Ganador Físico]{% elif "Baseline" in e.experiment_id %}📐 #{{ e.rank }} [Línea Base]{% elif e.is_control %}⚡ [00]{% else %}#{{ e.rank }}{% endif %}</td>
                                 <td class="font-mono text-left font-medium">{{ e.experiment_id }}</td>
                                 <td>{{ "%.3f"|format(e.global_skill_score) }}</td>
                                 <td>{{ "%.3f"|format(e.kge) }}</td>
@@ -923,135 +949,367 @@ def generate_static_html_dashboard(
         </div>
 
         <!-- ========================================================================= -->
-        <!-- TAB 5: DEFINICIÓN E INTERPRETACIÓN DE ESTADÍSTICOS -->
+        <!-- TAB 5: GUÍA METODOLÓGICA COMPLETA DE EVALUACIÓN Y VALIDACIÓN (DOCUMENTO 12) -->
         <!-- ========================================================================= -->
         <div id="tab-content-glossary" class="tab-panel hidden space-y-8">
-            <div class="bg-gradient-to-r from-sky-50 via-white to-sky-50 border border-sky-300 rounded-xl p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <span class="bg-sky-600 text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded">Documentación Oficial</span>
-                    <h3 class="text-xl font-bold text-slate-900 mt-1">Guía Metodológica Completa de Evaluación y Validación</h3>
-                    <p class="text-xs text-slate-600 max-w-2xl mt-1 leading-relaxed">
-                        Consulte el documento técnico oficial para el desglose exhaustivo de las formulaciones matemáticas en KaTeX,
-                        la partición espacial de las 29 estaciones holdout y los criterios físicos para Centroamérica.
-                    </p>
-                </div>
-                <a href="docs/12_metodologia_evaluacion_metricas_y_validacion.md" target="_blank" class="inline-flex items-center gap-2 bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold px-4 py-2.5 rounded-lg transition shadow-sm">
-                    <span>📖 Ver Documento 12 en Markdown</span>
-                </a>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <!-- KGE -->
-                <div class="fig-card border-sky-300">
-                    <div class="flex items-center justify-between mb-2">
-                        <h4 class="font-bold text-sm text-slate-900">Eficiencia de Kling-Gupta (KGE)</h4>
-                        <span class="text-[10px] bg-sky-100 text-sky-800 border border-sky-300 px-2 py-0.5 rounded font-bold">Métrica Principal</span>
+            
+            <!-- Document Header Banner -->
+            <div class="bg-gradient-to-r from-sky-50 via-white to-sky-50 border border-sky-300 rounded-xl p-6 shadow-sm">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="bg-sky-600 text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded">Manual Técnico Integrado</span>
+                            <span class="text-xs text-sky-800 font-mono font-bold">Documento Oficial 12</span>
+                        </div>
+                        <h2 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Metodología de Evaluación Estadística, Métricas y Validación Cruzada en CDT 8.0</h2>
+                        <p class="text-xs text-slate-600 max-w-3xl mt-1 leading-relaxed">
+                            Marco metodológico, formulaciones matemáticas rigurosas e interpretación física de las métricas estadísticas implementadas para la validación ciega de los productos climáticos reconstruidos de precipitación y temperatura en América Central y República Dominicana (1991–2020).
+                        </p>
                     </div>
-                    <div class="bg-slate-50 p-2.5 rounded border border-slate-200 my-2 text-xs font-mono text-center text-sky-800">
-                        $$KGE = 1 - \sqrt{(r - 1)^2 + (\beta - 1)^2 + (\gamma - 1)^2}$$
-                    </div>
-                    <p class="text-xs text-slate-600 leading-relaxed">
-                        Descompone el error en tres componentes ortogonales: correlación lineal (\(r\)), sesgo medio (\(\beta = \mu_s / \mu_o\)) y dispersión relativa (\(\gamma = \text{CV}_s / \text{CV}_o\)).
-                    </p>
-                    <div class="mt-3 pt-2 border-t border-slate-100 text-[11px] space-y-1 text-slate-500">
-                        <div>• <b>Rango Óptimo:</b> 1.0 (KGE &gt; 0.3 indica habilidad superior al promedio climatológico).</div>
-                        <div>• <b>En Centroamérica:</b> Penaliza el desplazamiento temporal de frentes fríos y la sobreestimación orográfica.</div>
-                    </div>
-                </div>
-
-                <!-- Pearson r -->
-                <div class="fig-card">
-                    <div class="flex items-center justify-between mb-2">
-                        <h4 class="font-bold text-sm text-slate-900">Coeficiente de Correlación (r)</h4>
-                        <span class="text-[10px] bg-slate-100 text-slate-700 border border-slate-300 px-2 py-0.5 rounded font-bold">Dinámica Temporal</span>
-                    </div>
-                    <div class="bg-slate-50 p-2.5 rounded border border-slate-200 my-2 text-xs font-mono text-center text-slate-800">
-                        $$r = \frac{\sum (S_i - \bar{S})(O_i - \bar{O})}{\sqrt{\sum (S_i - \bar{S})^2 \sum (O_i - \bar{O})^2}}$$
-                    </div>
-                    <p class="text-xs text-slate-600 leading-relaxed">
-                        Mide la covariación temporal y sincronía de fase entre las observaciones de estaciones y las mallas diarias.
-                    </p>
-                    <div class="mt-3 pt-2 border-t border-slate-100 text-[11px] space-y-1 text-slate-500">
-                        <div>• <b>Rango Óptimo:</b> 1.0 (\(r &gt; 0.45\) en lluvia; \(r &gt; 0.85\) en temperatura).</div>
-                        <div>• <b>En Centroamérica:</b> Refleja la capacidad de capturar el ciclo anual y las ondas tropicales del este.</div>
-                    </div>
-                </div>
-
-                <!-- RMSE -->
-                <div class="fig-card">
-                    <div class="flex items-center justify-between mb-2">
-                        <h4 class="font-bold text-sm text-slate-900">Raíz del Error Cuadrático Medio (RMSE)</h4>
-                        <span class="text-[10px] bg-slate-100 text-slate-700 border border-slate-300 px-2 py-0.5 rounded font-bold">Magnitud de Error</span>
-                    </div>
-                    <div class="bg-slate-50 p-2.5 rounded border border-slate-200 my-2 text-xs font-mono text-center text-slate-800">
-                        $$RMSE = \sqrt{\frac{1}{N} \sum_{i=1}^N (S_i - O_i)^2}$$
-                    </div>
-                    <p class="text-xs text-slate-600 leading-relaxed">
-                        Pondera fuertemente los errores de gran magnitud. Expresado en unidades físicas de la variable (mm o °C).
-                    </p>
-                    <div class="mt-3 pt-2 border-t border-slate-100 text-[11px] space-y-1 text-slate-500">
-                        <div>• <b>Rango Óptimo:</b> 0.0 (Menor es mejor).</div>
-                        <div>• <b>En Centroamérica:</b> Sensible al efecto de doble penalización en tormentas convectivas tropicales.</div>
-                    </div>
-                </div>
-
-                <!-- PBIAS -->
-                <div class="fig-card">
-                    <div class="flex items-center justify-between mb-2">
-                        <h4 class="font-bold text-sm text-slate-900">Sesgo Porcentual Relativo (PBIAS)</h4>
-                        <span class="text-[10px] bg-slate-100 text-slate-700 border border-slate-300 px-2 py-0.5 rounded font-bold">Balance de Masa</span>
-                    </div>
-                    <div class="bg-slate-50 p-2.5 rounded border border-slate-200 my-2 text-xs font-mono text-center text-slate-800">
-                        $$PBIAS = 100 \times \frac{\sum (S_i - O_i)}{\sum O_i}$$
-                    </div>
-                    <p class="text-xs text-slate-600 leading-relaxed">
-                        Indica la tendencia sistemática de la malla a sobreestimar (\(&gt;0\)) o subestimar (\(&lt;0\)) los acumulados totales.
-                    </p>
-                    <div class="mt-3 pt-2 border-t border-slate-100 text-[11px] space-y-1 text-slate-500">
-                        <div>• <b>Rango Óptimo:</b> 0.0% (Aceptable entre \(-15\%\) y \(+15\%\)).</div>
-                        <div>• <b>En Centroamérica:</b> Vital para la conservación de la masa de precipitación en balances de cuencas.</div>
-                    </div>
-                </div>
-
-                <!-- Taylor Identity -->
-                <div class="fig-card border-rose-300">
-                    <div class="flex items-center justify-between mb-2">
-                        <h4 class="font-bold text-sm text-slate-900">Identidad Geométrica de Taylor</h4>
-                        <span class="text-[10px] bg-rose-100 text-rose-800 border border-rose-300 px-2 py-0.5 rounded font-bold">Espacio Polar</span>
-                    </div>
-                    <div class="bg-slate-50 p-2.5 rounded border border-slate-200 my-2 text-xs font-mono text-center text-rose-800">
-                        $$E'^2 = \sigma_s^2 + \sigma_o^2 - 2\sigma_s\sigma_o r$$
-                    </div>
-                    <p class="text-xs text-slate-600 leading-relaxed">
-                        Vincula el error centrado RMS (\(E'\)), las desviaciones estándar de simulación y observación, y la correlación Pearson.
-                    </p>
-                    <div class="mt-3 pt-2 border-t border-slate-100 text-[11px] space-y-1 text-slate-500">
-                        <div>• <b>Punto Óptimo:</b> Radio \(\sigma^* = 1.0\) y Ángulo \(\theta = 0^\circ\) (\(r = 1.0\)).</div>
-                        <div>• <b>En Centroamérica:</b> Muestra qué modelos reproducen la variabilidad estacional sin amortiguar picos.</div>
-                    </div>
-                </div>
-
-                <!-- ETS -->
-                <div class="fig-card border-sky-300">
-                    <div class="flex items-center justify-between mb-2">
-                        <h4 class="font-bold text-sm text-slate-900">Equitable Threat Score (ETS)</h4>
-                        <span class="text-[10px] bg-sky-100 text-sky-800 border border-sky-300 px-2 py-0.5 rounded font-bold">Habilidad de Lluvia</span>
-                    </div>
-                    <div class="bg-slate-50 p-2.5 rounded border border-slate-200 my-2 text-xs font-mono text-center text-sky-800">
-                        $$ETS = \frac{Hits - Hits_{random}}{Hits + FalseAlarms + Misses - Hits_{random}}$$
-                    </div>
-                    <p class="text-xs text-slate-600 leading-relaxed">
-                        Mide la habilidad de la malla para discriminar días lluviosos (&gt;1 mm/día) penalizando aciertos al azar.
-                    </p>
-                    <div class="mt-3 pt-2 border-t border-slate-100 text-[11px] space-y-1 text-slate-500">
-                        <div>• <b>Rango Óptimo:</b> 1.0 (Valores &gt; 0.20 indican destreza real en lluvia diaria tropical).</div>
-                        <div>• <b>En Centroamérica:</b> Discrimina días secos y lluviosos en el Corredor Seco Centroamericano.</div>
+                    <div class="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-sky-200 shadow-sm text-xs text-slate-700">
+                        <span class="text-emerald-600 font-bold">✓ 29 Estaciones Holdout</span>
+                        <span class="text-slate-300">|</span>
+                        <span class="text-sky-600 font-bold">30 Años (10,958 Días)</span>
                     </div>
                 </div>
             </div>
+
+            <!-- SECCIÓN 1: ESQUEMA DE VALIDACIÓN CROSSLINK -->
+            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
+                <div class="border-b border-slate-100 pb-3">
+                    <span class="text-[10px] font-bold text-sky-700 uppercase tracking-wider">Sección 1</span>
+                    <h3 class="text-base font-bold text-slate-900">1. Esquema de Validación Cruzada Ciega (Holdout Validation)</h3>
+                </div>
+                <p class="text-xs text-slate-600 leading-relaxed">
+                    Para garantizar una evaluación científica imparcial, reproducible y evitar el sobreajuste (<i>overfitting</i> o memorización de datos), el pipeline implementa una partición estricta de las redes de estaciones meteorológicas:
+                </p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 my-3">
+                    <div class="bg-slate-50 border border-slate-200 p-4 rounded-lg">
+                        <div class="font-bold text-xs text-slate-800 flex items-center gap-1.5 mb-1">
+                            <span class="text-sky-600">●</span> Estaciones de Entrenamiento (Training Stations)
+                        </div>
+                        <p class="text-[11px] text-slate-600 leading-relaxed">
+                            Utilizadas activamente por CDT para el cálculo de coeficientes de sesgo (<i>bias coefficients</i>), regresiones multivariadas contra el DEM y la fusión espacial (<i>merging</i>).
+                        </p>
+                    </div>
+                    <div class="bg-sky-50 border border-sky-200 p-4 rounded-lg">
+                        <div class="font-bold text-xs text-sky-900 flex items-center gap-1.5 mb-1">
+                            <span class="text-emerald-600">★</span> Estaciones de Validación Ciega (Holdout Stations)
+                        </div>
+                        <p class="text-[11px] text-sky-800 leading-relaxed">
+                            Estaciones reservadas que <b>nunca intervienen</b> en ninguna fase del ajuste de sesgo ni de la interpolación. La grilla reconstruida se evalúa a ciegas contra estas estaciones.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto mt-4">
+                    <table class="data-table w-full text-xs">
+                        <thead>
+                            <tr>
+                                <th>Variable Climática</th>
+                                <th>Total Red de Superficie</th>
+                                <th>Estaciones de Entrenamiento</th>
+                                <th>Estaciones Holdout (Ciegas)</th>
+                                <th>Porcentaje de Reserva</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="font-semibold text-slate-800">Precipitación Diaria (CHIRPS)</td>
+                                <td>266</td>
+                                <td>237</td>
+                                <td class="font-bold text-sky-700">29</td>
+                                <td>~11%</td>
+                            </tr>
+                            <tr>
+                                <td class="font-semibold text-slate-800">Temperatura Máxima (CHIRTS)</td>
+                                <td>266</td>
+                                <td>237</td>
+                                <td class="font-bold text-amber-700">29</td>
+                                <td>~11%</td>
+                            </tr>
+                            <tr>
+                                <td class="font-semibold text-slate-800">Temperatura Mínima (CHIRTS)</td>
+                                <td>266</td>
+                                <td>237</td>
+                                <td class="font-bold text-purple-700">29</td>
+                                <td>~11%</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="bg-slate-50 border-l-4 border-sky-500 p-3 rounded-r text-xs text-slate-700 mt-2">
+                    <b>Criterios Geográficos de Representatividad:</b> Las 29 estaciones de validación cubren sistemáticamente: (1) Vertientes contrastantes Pacífico vs. Mar Caribe / Golfo de México; (2) Gradientes altitudinales desde el nivel del mar (0 m) hasta alta montaña (>2,000 msnm); (3) Regímenes del Corredor Seco Centroamericano (<i>Dry Corridor</i>) y selvas tropicales húmedas.
+                </div>
+            </div>
+
+            <!-- SECCIÓN 2: NIVELES DE CÁLCULO PUNTUAL VS REGIONAL -->
+            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
+                <div class="border-b border-slate-100 pb-3">
+                    <span class="text-[10px] font-bold text-sky-700 uppercase tracking-wider">Sección 2</span>
+                    <h3 class="text-base font-bold text-slate-900">2. Niveles de Cálculo: Puntual vs. Agregación Regional</h3>
+                </div>
+                <p class="text-xs text-slate-600 leading-relaxed">
+                    Una consulta frecuente en la auditoría climatológica es cómo se calculan las métricas y si el resultado reportado es un promedio por estación o una evaluación agregada:
+                </p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 my-2">
+                    <div class="border border-slate-200 rounded-lg p-4 bg-slate-50/50 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-xs text-slate-900">Nivel 1: Métricas Puntuales por Estación</span>
+                            <span class="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded font-mono">validation_metrics_by_station.csv</span>
+                        </div>
+                        <p class="text-[11px] text-slate-600 leading-relaxed">
+                            Para cada una de las 29 estaciones independientes ($i = 1, \dots, 29$), se extrae la serie temporal diaria de la celda de la grilla más cercana ($S_{i,t}$) y se compara directamente contra la serie observada en superficie ($O_{i,t}$) durante los 10,958 días del periodo 1991–2020. Todas las fórmulas estadísticas (KGE, RMSE, MAE, r, PBIAS, ETS, HSS) se evalúan <b>primero de forma individual e independiente en cada estación</b>.
+                        </p>
+                    </div>
+
+                    <div class="border border-sky-200 rounded-lg p-4 bg-sky-50/40 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-xs text-sky-950">Nivel 2: Agregación Regional Centroamericana</span>
+                            <span class="text-[10px] bg-sky-200 text-sky-800 px-2 py-0.5 rounded font-mono">Leaderboard & Resumen</span>
+                        </div>
+                        <p class="text-[11px] text-slate-600 leading-relaxed">
+                            El valor escalar que figura en la tabla principal de cada experimento representa el <b>promedio aritmético regional</b> de las 29 estaciones:
+                        </p>
+                        <div class="bg-white p-2 rounded border border-sky-200 text-center font-mono text-xs text-sky-900 my-1">
+                            $$\overline{M} = \frac{1}{N} \sum_{i=1}^{N} M_i \quad (N = 29)$$
+                        </div>
+                        <p class="text-[11px] text-slate-600 leading-relaxed">
+                            Para evaluar la dispersión geográfica (si el modelo funciona homogéneamente en toda Centroamérica o solo en algunas estaciones), se emplean los <b>diagramas de caja y bigotes (Boxplots, Figura 1)</b> y la <b>mediana regional</b>.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECCIÓN 3: FORMULACIÓN MATEMÁTICA DE MÉTRICAS CONTINUAS -->
+            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-6">
+                <div class="border-b border-slate-100 pb-3">
+                    <span class="text-[10px] font-bold text-sky-700 uppercase tracking-wider">Sección 3</span>
+                    <h3 class="text-base font-bold text-slate-900">3. Formulación Matemática de las Métricas Continuas</h3>
+                </div>
+
+                <!-- KGE Detailed -->
+                <div class="border border-sky-200 rounded-xl p-5 bg-sky-50/20 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h4 class="font-bold text-sm text-sky-950">3.1. Eficiencia de Kling-Gupta (KGE, Gupta et al. 2009; Kling et al. 2012)</h4>
+                        <span class="text-[10px] bg-sky-600 text-white font-bold px-2 py-0.5 rounded">Métrica Primaria de Optimización</span>
+                    </div>
+                    <p class="text-xs text-slate-700 leading-relaxed">
+                        Es el índice integrador estándar en hidroclimatología. A diferencia del Nash-Sutcliffe (NSE), el KGE descompone el error cuadrático medio en tres componentes físicamente ortogonales e independientes (correlación, sesgo medio y dispersión relativa):
+                    </p>
+                    <div class="bg-white p-3 rounded-lg border border-sky-200 text-center text-sm font-mono text-sky-900 shadow-sm">
+                        $$\text{KGE} = 1 - \sqrt{(r - 1)^2 + (\beta - 1)^2 + (\gamma - 1)^2}$$
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                        <div class="bg-white p-3 rounded border border-slate-200 space-y-1">
+                            <span class="font-bold text-slate-800">1. Correlación de Pearson ($r$):</span>
+                            <div class="font-mono text-[11px] text-slate-700">$$r = \frac{\sum (O_t - \mu_o)(S_t - \mu_s)}{\sqrt{\sum (O_t - \mu_o)^2 \sum (S_t - \mu_s)^2}}$$</div>
+                            <p class="text-[11px] text-slate-500">Mide la sincronía temporal y el ciclo estacional.</p>
+                        </div>
+                        <div class="bg-white p-3 rounded border border-slate-200 space-y-1">
+                            <span class="font-bold text-slate-800">2. Razón de Sesgo ($\beta$):</span>
+                            <div class="font-mono text-[11px] text-slate-700">$$\beta = \frac{\mu_s}{\mu_o}$$</div>
+                            <p class="text-[11px] text-slate-500">Evalúa la conservación de la media observada (óptimo = 1.0).</p>
+                        </div>
+                        <div class="bg-white p-3 rounded border border-slate-200 space-y-1">
+                            <span class="font-bold text-slate-800">3. Razón de Dispersión ($\gamma$):</span>
+                            <div class="font-mono text-[11px] text-slate-700">$$\gamma = \frac{\text{CV}_s}{\text{CV}_o} = \frac{\sigma_s / \mu_s}{\sigma_o / \mu_o}$$</div>
+                            <p class="text-[11px] text-slate-500">Mide la variabilidad relativa sin confundirla con el sesgo.</p>
+                        </div>
+                    </div>
+                    <div class="bg-white p-3 rounded border border-sky-200 text-[11px] text-slate-600 space-y-1">
+                        <div>• <b>Interpretación:</b> $\text{KGE} = 1.0$ (concordancia perfecta); $\text{KGE} &gt; 0.30$ (habilidad diagnóstica superior al promedio climatológico en series diarias out-of-sample); $\text{KGE} &lt; -0.41$ (el promedio histórico observado supera en habilidad a la grilla).</div>
+                    </div>
+                </div>
+
+                <!-- Grid for RMSE, MAE, PBIAS, r -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- RMSE -->
+                    <div class="border border-slate-200 rounded-lg p-4 bg-slate-50/50 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <h4 class="font-bold text-xs text-slate-900">3.2. Raíz del Error Cuadrático Medio (RMSE)</h4>
+                            <span class="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded font-mono">mm/día o °C</span>
+                        </div>
+                        <div class="bg-white p-2.5 rounded border border-slate-200 text-center text-xs font-mono text-slate-800">
+                            $$\text{RMSE} = \sqrt{\frac{1}{T} \sum_{t=1}^T (S_t - O_t)^2}$$
+                        </div>
+                        <p class="text-[11px] text-slate-600 leading-relaxed">
+                            Cuantifica la magnitud absoluta del error promedio, penalizando cuadráticamente los errores de gran magnitud. Sensible a eventos meteorológicos extremos (tormentas tropicales y olas de calor).
+                        </p>
+                    </div>
+
+                    <!-- MAE -->
+                    <div class="border border-slate-200 rounded-lg p-4 bg-slate-50/50 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <h4 class="font-bold text-xs text-slate-900">3.3. Error Absoluto Medio (MAE)</h4>
+                            <span class="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded font-mono">mm/día o °C</span>
+                        </div>
+                        <div class="bg-white p-2.5 rounded border border-slate-200 text-center text-xs font-mono text-slate-800">
+                            $$\text{MAE} = \frac{1}{T} \sum_{t=1}^T |S_t - O_t|$$
+                        </div>
+                        <p class="text-[11px] text-slate-600 leading-relaxed">
+                            Ofrece una lectura lineal intuitiva de la incertidumbre cotidiana habitual del producto en superficie, sin sobrerreaccionar a valores atípicos aislados.
+                        </p>
+                    </div>
+
+                    <!-- PBIAS -->
+                    <div class="border border-slate-200 rounded-lg p-4 bg-slate-50/50 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <h4 class="font-bold text-xs text-slate-900">3.4. Sesgo Porcentual Relativo (PBIAS)</h4>
+                            <span class="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded font-mono">%</span>
+                        </div>
+                        <div class="bg-white p-2.5 rounded border border-slate-200 text-center text-xs font-mono text-slate-800">
+                            $$\text{PBIAS} = 100 \times \frac{\sum_{t=1}^T (S_t - O_t)}{\sum_{t=1}^T O_t}$$
+                        </div>
+                        <p class="text-[11px] text-slate-600 leading-relaxed">
+                            Mide la tendencia volumétrica acumulada a sobreestimar ($&gt;0$) o subestimar ($&lt;0$) el volumen hídrico o térmico total. Rango excelente en balances de cuencas: $[-10\%, +10\%]$.
+                        </p>
+                    </div>
+
+                    <!-- Pearson r -->
+                    <div class="border border-slate-200 rounded-lg p-4 bg-slate-50/50 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <h4 class="font-bold text-xs text-slate-900">3.5. Coeficiente de Correlación de Pearson (r)</h4>
+                            <span class="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded font-mono">Adimensional [-1, 1]</span>
+                        </div>
+                        <div class="bg-white p-2.5 rounded border border-slate-200 text-center text-xs font-mono text-slate-800">
+                            $$r = \frac{\text{Cov}(S, O)}{\sigma_s \sigma_o}$$
+                        </div>
+                        <p class="text-[11px] text-slate-600 leading-relaxed">
+                            Mide la asociación lineal y coherencia de fase temporal. En Centroamérica, captura la alternancia entre la época seca (noviembre-abril) y lluviosa (mayo-octubre).
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECCIÓN 4: MÉTRICAS CATEGÓRICAS DE LLUVIA (MATRIZ DE CONTINGENCIA) -->
+            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
+                <div class="border-b border-slate-100 pb-3">
+                    <span class="text-[10px] font-bold text-sky-700 uppercase tracking-wider">Sección 4</span>
+                    <h3 class="text-base font-bold text-slate-900">4. Formulación de Métricas Categóricas de Lluvia Diaria (Matriz de Contingencia)</h3>
+                </div>
+                <p class="text-xs text-slate-600 leading-relaxed">
+                    Para la precipitación diaria, un modelo puede presentar buena correlación pero fallar al discriminar cuándo llueve y cuándo no. Se aplica un umbral físico de lluvia de $1.0\text{ mm/día}$ para construir la matriz de contingencia $2 \times 2$:
+                </p>
+
+                <div class="overflow-x-auto my-2">
+                    <table class="data-table w-full text-xs max-w-2xl mx-auto">
+                        <thead>
+                            <tr>
+                                <th>Evento de Lluvia ($\ge 1.0\text{ mm}$)</th>
+                                <th class="text-center">Observado = SÍ</th>
+                                <th class="text-center">Observado = NO</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="font-semibold text-slate-800">Simulado / Grilla = SÍ</td>
+                                <td class="text-center bg-emerald-50 text-emerald-900 font-bold">Aciertos ($a$, <i>Hits</i>)</td>
+                                <td class="text-center bg-rose-50 text-rose-900 font-semibold">Falsas Alarmas ($b$, <i>False Alarms</i>)</td>
+                            </tr>
+                            <tr>
+                                <td class="font-semibold text-slate-800">Simulado / Grilla = NO</td>
+                                <td class="text-center bg-amber-50 text-amber-900 font-semibold">Omisiones ($c$, <i>Misses</i>)</td>
+                                <td class="text-center bg-slate-50 text-slate-800 font-semibold">Negativos Correctos ($d$, <i>Correct Rejections</i>)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-1">
+                        <div class="font-bold text-xs text-slate-900">POD (Prob. de Detección)</div>
+                        <div class="font-mono text-xs text-sky-800 text-center py-1">$$\text{POD} = \frac{a}{a + c}$$</div>
+                        <p class="text-[10px] text-slate-500">Fracción de días lluviosos reales capturados por la malla (óptimo = 1.0).</p>
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-1">
+                        <div class="font-bold text-xs text-slate-900">FAR (Falsa Alarma)</div>
+                        <div class="font-mono text-xs text-rose-800 text-center py-1">$$\text{FAR} = \frac{b}{a + b}$$</div>
+                        <p class="text-[10px] text-slate-500">Fracción de días que la malla reportó lluvia pero en tierra estuvo seco (óptimo = 0.0).</p>
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-1">
+                        <div class="font-bold text-xs text-slate-900">ETS (Equitable Threat)</div>
+                        <div class="font-mono text-xs text-sky-800 text-center py-1">$$\text{ETS} = \frac{a - a_{\text{azar}}}{a + b + c - a_{\text{azar}}}$$</div>
+                        <p class="text-[10px] text-slate-500">Habilidad neta descontando aciertos esperados por puro azar $a_{\text{azar}}$.</p>
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-1">
+                        <div class="font-bold text-xs text-slate-900">HSS (Heidke Skill Score)</div>
+                        <div class="font-mono text-xs text-emerald-800 text-center py-1">$$\text{HSS} = \frac{2(ad - bc)}{(a+c)(c+d) + (a+b)(b+d)}$$</div>
+                        <p class="text-[10px] text-slate-500">Exactitud global sobre el pronóstico aleatorio ($\text{HSS} &gt; 0.40$ es destreza alta).</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECCIÓN 5: EL DIAGRAMA DE TAYLOR -->
+            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
+                <div class="border-b border-slate-100 pb-3">
+                    <span class="text-[10px] font-bold text-sky-700 uppercase tracking-wider">Sección 5</span>
+                    <h3 class="text-base font-bold text-slate-900">5. El Diagrama de Taylor: Síntesis Geométrica Polar</h3>
+                </div>
+                <p class="text-xs text-slate-600 leading-relaxed">
+                    El Diagrama de Taylor (Taylor, 2001) resume en un solo gráfico polar la correspondencia geométrica tridimensional entre la correlación de Pearson ($r$), la desviación estándar normalizada ($\sigma^*$) y el error cuadrático medio centrado ($E'^*$):
+                </p>
+                <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 text-center text-xs font-mono text-slate-800 my-2">
+                    $${E'}^2 = \sigma_{\text{sim}}^2 + \sigma_{\text{obs}}^2 - 2 \sigma_{\text{sim}} \sigma_{\text{obs}} r \quad \implies \quad {E'^*}^2 = {\sigma^*}^2 + 1 - 2 \sigma^* r$$
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                    <div class="border border-slate-200 rounded p-3 bg-white">
+                        <span class="font-bold text-slate-800">1. Coordenada Radial ($R = \sigma^*$):</span>
+                        <p class="text-[11px] text-slate-600 mt-1">Razón $\sigma_{\text{sim}} / \sigma_{\text{obs}}$. $\sigma^* = 1.0$ indica amplitud idéntica a las estaciones. $\sigma^* &lt; 1.0$ representa subestimación de picos (malla suavizada); $\sigma^* &gt; 1.0$ ruido excesivo.</p>
+                    </div>
+                    <div class="border border-slate-200 rounded p-3 bg-white">
+                        <span class="font-bold text-slate-800">2. Coordenada Angular ($\theta = \arccos r$):</span>
+                        <p class="text-[11px] text-slate-600 mt-1">El ángulo respecto a la base horizontal representa la correlación. $\theta = 0^\circ \implies r = 1.0$; $\theta = 60^\circ \implies r = 0.5$; $\theta = 90^\circ \implies r = 0.0$.</p>
+                    </div>
+                    <div class="border border-slate-200 rounded p-3 bg-white">
+                        <span class="font-bold text-slate-800">3. Distancia al Punto Observado:</span>
+                        <p class="text-[11px] text-slate-600 mt-1">La distancia euclidiana entre el modelo y el punto $(1.0, 0^\circ)$ equivale directamente al error centrado RMS ($E'^*$). El modelo ganador es el más cercano al objetivo.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECCIÓN 6: INTERPRETACIÓN FÍSICA CENTROAMERICANA -->
+            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
+                <div class="border-b border-slate-100 pb-3">
+                    <span class="text-[10px] font-bold text-sky-700 uppercase tracking-wider">Sección 6</span>
+                    <h3 class="text-base font-bold text-slate-900">6. Interpretación Física en el Contexto Centroamericano</h3>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs text-slate-700">
+                    <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-2">
+                        <div class="font-bold text-sm text-slate-900">Efecto de "Doble Penalización" (Double Penalty) en Lluvia</div>
+                        <p class="text-[11px] leading-relaxed text-slate-600">
+                            En el istmo centroamericano, gran parte de la precipitación proviene de sistemas convectivos de mesoescala (tormentas locales vespertinas de 3 a 10 km de diámetro) y ondas tropicales del este. Si una tormenta descarga $60\text{ mm}$ sobre la estación, pero el satélite la ubicó a solo $8\text{ km}$ (en la celda contigua): la estación reporta omisión ($0\text{ mm}$) y la celda vecina falsa alarma ($60\text{ mm}$). Este fenómeno penaliza fuertemente el KGE y RMSE diario puntual. Por tanto, un $\text{KGE}$ diario de $0.35$ a $0.40$ en validación independiente representa un producto de <b>altísima fidelidad física</b>.
+                        </p>
+                    </div>
+
+                    <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-2">
+                        <div class="font-bold text-sm text-slate-900">Factor Orográfico y Filtro Lluvia-No-Lluvia (RnoR)</div>
+                        <p class="text-[11px] leading-relaxed text-slate-600">
+                            En relieves montañosos escarpados (Cordillera de Talamanca, Sierra Madre, Sierra de Sulaco, Cordillera Central de RD), los satélites infrarrojos confunden los topes fríos de nubes estratiformes orográficas con núcleos de lluvia convectiva, sobreestimando los días lluviosos. El algoritmo $RnoR$ con umbral logit calibrado elimina las lloviznas espurias (<i>drizzle</i>), contrayendo el sesgo volumétrico (PBIAS) a niveles cercanos a cero.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECCIÓN 7: REFERENCIAS BIBLIOGRÁFICAS -->
+            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-3">
+                <div class="border-b border-slate-100 pb-2">
+                    <span class="text-[10px] font-bold text-sky-700 uppercase tracking-wider">Sección 7</span>
+                    <h3 class="text-sm font-bold text-slate-900">7. Referencias Bibliográficas Oficiales</h3>
+                </div>
+                <ol class="list-decimal list-inside text-[11px] text-slate-600 space-y-1.5 leading-relaxed">
+                    <li><b>Gupta, H. V., Kling, H., Yilmaz, K. K., & Martinez, G. F. (2009).</b> <i>Decomposition of the mean squared error and NSE performance criteria: Implications for improving hydrological modelling.</i> Journal of Hydrology, 377(1-2), 80-91.</li>
+                    <li><b>Kling, H., Fuchs, M., & Paulin, M. (2012).</b> <i>Runoff conditions in the upper Danube basin under an ensemble of climate change scenarios.</i> Journal of Hydrology, 424-425, 264-277.</li>
+                    <li><b>Taylor, K. E. (2001).</b> <i>Summarizing multiple aspects of model performance in a single diagram.</i> Journal of Geophysical Research: Atmospheres, 106(D7), 7183-7192.</li>
+                    <li><b>Dinku, T., et al. (2018).</b> <i>Validation of the CHIRP and CHIRPS precipitation estimates over eastern Africa.</i> International Journal of Climatology, 38(7), 2928-2942.</li>
+                    <li><b>Faniriantsoa, R., & Dinku, T. (2022).</b> <i>Climate Data Tools (CDT): An R package for data quality control, homogenization and merging station data with satellite and reanalysis data.</i> IRI Technical Report, Columbia University.</li>
+                </ol>
+            </div>
+
         </div>
 
-    </main>
+</main>
 
     <!-- Footer (Light Theme) -->
     <footer class="bg-slate-100 border-t border-slate-200 py-6 text-center text-xs text-slate-600 mt-12">
@@ -1072,6 +1330,10 @@ def generate_static_html_dashboard(
             const targetBtn = document.getElementById('tab-btn-' + tabId);
             if (targetPanel) targetPanel.classList.remove('hidden');
             if (targetBtn) targetBtn.classList.add('active');
+
+            if (window.MathJax && window.MathJax.typesetPromise) {
+                setTimeout(() => { window.MathJax.typesetPromise(); }, 50);
+            }
         }
 
         // Table Column Sorter (Works on any table by column index)

@@ -427,11 +427,15 @@ def generate_spatial_gain_map(
     cbar = plt.colorbar(sc, ax=ax, fraction=0.032, pad=0.03, shrink=0.75)
     cbar.set_label("Ganancia Neta en Eficiencia (Δ KGE = KGE_Ganador - KGE_Rejilla_Original)", fontsize=9, fontweight="bold")
 
-    var_title = "Precipitacion Diaria" if var_type == "rainfall" else ("Temperatura Maxima" if var_type == "tmax" else "Temperatura Minima")
-    ax.set_title(f"Figura 5: Distribucion Espacial de la Ganancia Neta (Δ KGE) en las 29 Estaciones Holdout\n{winner_name} vs. Rejilla Original • {var_title} en Centroamerica", 
-                 fontsize=11, fontweight="bold", pad=16)
+    var_title = "Precipitación Diaria" if var_type == "rainfall" else ("Temperatura Máxima" if var_type == "tmax" else "Temperatura Mínima")
+    fig.suptitle(
+        f"Figura 5: Distribución Espacial de la Ganancia Neta (Δ KGE) en las 29 Estaciones de Validación\n"
+        f"{winner_name} vs. Rejilla Original • {var_title} en Centroamérica",
+        fontsize=12.5, fontweight="bold", y=0.965, color="#0f172a"
+    )
+    fig.subplots_adjust(top=0.89, bottom=0.08, left=0.06, right=0.92)
 
-    # Save without bbox_inches='tight' so the map is preserved at 1500x975
+    # Save without bbox_inches='tight' so the map is preserved at 3300x2160
     plt.savefig(out_p, dpi=300)
     plt.close()
     return str(out_p)
