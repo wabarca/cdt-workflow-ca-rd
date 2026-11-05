@@ -127,7 +127,8 @@ def generate_pareto_scatter_figure(
 ) -> str:
     """
     Generates Pareto frontier scatter plot of Precision (RMSE) vs Efficiency (KGE).
-    Features orthogonal dotted projection lines to X and Y axes and short Exp_XX labels.
+    Features orthogonal dotted projection lines to X and Y axes, dynamic y-axis scaling
+    tailored to the actual metric range (no large empty gaps), and collision-aware Exp_XX labels.
     """
     if df_var.empty or "rmse" not in df_var.columns or "kge" not in df_var.columns:
         return ""
@@ -135,18 +136,27 @@ def generate_pareto_scatter_figure(
     out_p = Path(output_png)
     out_p.parent.mkdir(parents=True, exist_ok=True)
 
-    fig, ax = plt.subplots(figsize=(10.5, 6.8), dpi=300)
+    fig, ax = plt.subplots(figsize=(10.5, 7.0), dpi=300)
     base_color = "#0284c7" if var_type == "rainfall" else ("#ea580c" if var_type == "tmax" else "#7c3aed")
 
-    candidates_df = df_var[~df_var["is_winner"] & ~df_var["is_control"]]
+    candidates_df = df_var[~df_var["is_winner"] & ~df_var["is_control"]].copy()
     win_row = df_var[df_var["is_winner"]].iloc[0] if not df_var[df_var["is_winner"]].empty else None
     ctrl_row = df_var[df_var["is_control"]].iloc[0] if not df_var[df_var["is_control"]].empty else None
 
-    # Calculate axis limits with padding for clean projection lines
-    x_min = max(0.0, df_var["rmse"].min() * 0.94)
-    x_max = df_var["rmse"].max() * 1.05
-    y_min = min(-0.1, df_var["kge"].min() - 0.05)
-    y_max = max(0.95, df_var["kge"].max() + 0.05)
+    # Dynamic axis limits tailored tightly to actual data range (avoids large empty top gap)
+    kge_min = float(df_var["kge"].min())
+    kge_max = float(df_var["kge"].max())
+    kge_span = max(kge_max - kge_min, 0.12)
+
+    y_min = kge_min - 0.08 * kge_span
+    y_max = kge_max + 0.14 * kge_span
+
+    rmse_min = float(df_var["rmse"].min())
+    rmse_max = float(df_var["rmse"].max())
+    rmse_span = max(rmse_max - rmse_min, 0.4)
+
+    x_min = max(0.0, rmse_min - 0.08 * rmse_span)
+    x_max = rmse_max + 0.08 * rmse_span
 
     ax.set_xlim(x_min, x_max)
     ax.set_ylim(y_min, y_max)
@@ -169,30 +179,21 @@ def generate_pareto_scatter_figure(
             z = 2
         else:
             line_color = "#94a3b8"
-            alpha = 0.45
+            alpha = 0.40
             lw = 0.8
             z = 1
 
         ax.plot([xi, xi], [y_min, yi], linestyle=":", color=line_color, alpha=alpha, linewidth=lw, zorder=z)
         ax.plot([x_min, xi], [yi, yi], linestyle=":", color=line_color, alpha=alpha, linewidth=lw, zorder=z)
 
-    # 2. Candidate points with short Exp_XX annotations
+    # 2. Candidate points
     if not candidates_df.empty:
         ax.scatter(
             candidates_df["rmse"], candidates_df["kge"],
-            color=base_color, s=80, alpha=0.85,
-            edgecolor="#ffffff", linewidth=0.9,
+            color=base_color, s=85, alpha=0.85,
+            edgecolor="#ffffff", linewidth=1.0,
             zorder=5, label="Experimentos Candidatos"
         )
-        for _, row in candidates_df.iterrows():
-            lbl = _extract_exp_short_label(row["experiment_id"])
-            ax.annotate(
-                lbl, (row["rmse"], row["kge"]),
-                xytext=(4, 4), textcoords="offset points",
-                fontsize=7.5, color="#1e293b", fontweight="normal",
-                bbox=dict(boxstyle="round,pad=0.15", facecolor="white", edgecolor="#cbd5e1", alpha=0.8),
-                zorder=6
-            )
 
     # 3. Control (Rejilla Original) point
     if ctrl_row is not None:
@@ -201,13 +202,6 @@ def generate_pareto_scatter_figure(
             color="#1e293b", s=150, marker="s",
             edgecolor="#ffffff", linewidth=1.8,
             zorder=7, label=f"Rejilla Original [Control] (RMSE={ctrl_row['rmse']:.2f}, KGE={ctrl_row['kge']:.3f})"
-        )
-        ax.annotate(
-            "Exp_00 [Control]", (ctrl_row["rmse"], ctrl_row["kge"]),
-            xytext=(6, -14), textcoords="offset points",
-            fontsize=8.5, color="#0f172a", fontweight="bold",
-            bbox=dict(boxstyle="round,pad=0.2", facecolor="#f1f5f9", edgecolor="#334155", alpha=0.9),
-            zorder=8
         )
 
     # 4. Winner (Optimo) point
@@ -224,12 +218,79 @@ def generate_pareto_scatter_figure(
             edgecolor="#ffffff", linewidth=2.2,
             zorder=8, label=f"Ganador Físico [{lbl_w}] (RMSE={win_row['rmse']:.2f}, KGE={win_row['kge']:.3f})"
         )
+
+    # 5. Collision-aware smart label positioning
+    sorted_df = df_var.sort_values(by=["rmse", "kge"]).copy()
+    offset_options = [
+        (6, 6),      # top-right
+        (-44, 6),    # top-left
+        (6, -16),    # bottom-right
+        (-44, -16),  # bottom-left
+        (0, 12),     # top-center
+        (0, -20),    # bottom-center
+    ]
+    used_positions = []
+
+    for idx, row in sorted_df.iterrows():
+        xi, yi = float(row["rmse"]), float(row["kge"])
+        is_w = row.get("is_winner", False)
+        is_c = row.get("is_control", False)
+        lbl = _extract_exp_short_label(row["experiment_id"])
+
+        if is_w:
+            ax.annotate(
+                f"{lbl} [ÓPTIMO]", (xi, yi),
+                xytext=(-15, 14), textcoords="offset points",
+                fontsize=8.5, color="#065f46", fontweight="bold",
+                bbox=dict(boxstyle="round,pad=0.25", facecolor="#ecfdf5", edgecolor="#059669", alpha=0.95),
+                zorder=10
+            )
+            continue
+
+        if is_c:
+            ax.annotate(
+                "Exp_00 [Control]", (xi, yi),
+                xytext=(8, -14), textcoords="offset points",
+                fontsize=8.5, color="#0f172a", fontweight="bold",
+                bbox=dict(boxstyle="round,pad=0.2", facecolor="#f1f5f9", edgecolor="#334155", alpha=0.9),
+                zorder=9
+            )
+            continue
+
+        best_offset = offset_options[0]
+        min_clash = float("inf")
+
+        for opt in offset_options:
+            dx_pt, dy_pt = opt
+            cand_x = xi + (dx_pt / 100.0) * rmse_span
+            cand_y = yi + (dy_pt / 100.0) * kge_span
+
+            dist = 9999.0
+            for px, py in used_positions:
+                d = np.hypot((cand_x - px) / rmse_span, (cand_y - py) / kge_span)
+                if d < dist:
+                    dist = d
+            if dist > 0.12:
+                best_offset = opt
+                break
+            elif dist > min_clash or min_clash == float("inf"):
+                min_clash = dist
+                best_offset = opt
+
+        dx_pt, dy_pt = best_offset
+        used_positions.append((xi + (dx_pt / 100.0) * rmse_span, yi + (dy_pt / 100.0) * kge_span))
+
+        # Add thin hair pointer if offset is displaced
+        use_arrow = abs(dx_pt) > 15 or abs(dy_pt) > 12
+        arr_props = dict(arrowstyle="-", color="#94a3b8", lw=0.6, alpha=0.6) if use_arrow else None
+
         ax.annotate(
-            f"{lbl_w} [ÓPTIMO]", (win_row["rmse"], win_row["kge"]),
-            xytext=(-15, 12), textcoords="offset points",
-            fontsize=9, color="#065f46", fontweight="bold",
-            bbox=dict(boxstyle="round,pad=0.25", facecolor="#ecfdf5", edgecolor="#059669", alpha=0.95),
-            zorder=9
+            lbl, (xi, yi),
+            xytext=best_offset, textcoords="offset points",
+            arrowprops=arr_props,
+            fontsize=7.5, color="#1e293b", fontweight="medium",
+            bbox=dict(boxstyle="round,pad=0.15", facecolor="white", edgecolor="#cbd5e1", alpha=0.88),
+            zorder=6
         )
 
     var_title = "Precipitacion Diaria" if var_type == "rainfall" else ("Temperatura Maxima" if var_type == "tmax" else "Temperatura Minima")
