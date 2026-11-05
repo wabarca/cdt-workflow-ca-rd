@@ -139,7 +139,7 @@ def generate_pareto_scatter_figure(
             candidates_df["rmse"], candidates_df["kge"],
             color=base_color, s=70, alpha=0.75,
             edgecolor="#ffffff", linewidth=0.8,
-            zorder=4, label="Modelos Candidatos"
+            zorder=4, label="Experimentos Candidatos"
         )
 
     # 2. Control (Rejilla Original) point
@@ -162,7 +162,7 @@ def generate_pareto_scatter_figure(
             win_row["rmse"], win_row["kge"],
             color="#059669", s=180, marker="o",
             edgecolor="#ffffff", linewidth=2.2,
-            zorder=8, label=f"Modelo Optimo [{win_row['experiment_id']}] (RMSE={win_row['rmse']:.2f}, KGE={win_row['kge']:.3f})"
+            zorder=8, label=f"Experimento Optimo [{win_row['experiment_id']}] (RMSE={win_row['rmse']:.2f}, KGE={win_row['kge']:.3f})"
         )
 
     var_title = "Precipitacion Diaria" if var_type == "rainfall" else ("Temperatura Maxima" if var_type == "tmax" else "Temperatura Minima")
@@ -350,7 +350,7 @@ def generate_spatial_gain_map(
     df_raw_stn: pd.DataFrame,
     output_png: Path | str,
     var_type: str = "rainfall",
-    winner_name: str = "Modelo Optimo"
+    winner_name: str = "Experimento Optimo"
 ) -> str:
     """
     Generates geographic map of Central America with country borders, lat/lon axis labels,
@@ -446,7 +446,7 @@ def generate_elevation_strata_figure(
     df_raw_stn: pd.DataFrame,
     output_png: Path | str,
     var_type: str = "rainfall",
-    winner_name: str = "Modelo Optimo"
+    winner_name: str = "Experimento Optimo"
 ) -> str:
     """Generates grouped bar chart of KGE by elevation strata: Coast (<200m), Valleys (200-800m), Mountains (>800m)."""
     if df_win_stn.empty or df_raw_stn.empty:

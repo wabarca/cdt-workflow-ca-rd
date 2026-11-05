@@ -66,20 +66,10 @@ def generate_static_html_dashboard(
     <!-- Tailwind CSS (CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- MathJax 3 for Robust Scientific Typography -->
-    <script>
-    window.MathJax = {
-      tex: {
-        inlineMath: [['$', '$'], ['\\(', '\\)']],
-        displayMath: [['$$', '$$'], ['\\[', '\\]']],
-        processEscapes: true
-      },
-      options: {
-        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
-      }
-    };
-    </script>
-    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+        <!-- KaTeX for Scientific Mathematics Typography (Synchronous Load) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
@@ -263,7 +253,7 @@ def generate_static_html_dashboard(
                     <div>
                         <h3 class="font-bold text-sm text-slate-900 flex items-center gap-2">
                             <span>📋 Tabla Maestra Consolidada: Los 42 Experimentos de Centroamérica</span>
-                            <span class="bg-slate-100 text-slate-700 text-[10px] font-mono px-2 py-0.5 rounded border border-slate-300">42 Modelos</span>
+                            <span class="bg-slate-100 text-slate-700 text-[10px] font-mono px-2 py-0.5 rounded border border-slate-300">42 Experimentos de Corrección</span>
                         </h3>
                         <p class="text-[11px] text-slate-500">Haga clic en el encabezado de cualquier columna para ordenar de forma ascendente o descendente.</p>
                     </div>
@@ -333,7 +323,7 @@ def generate_static_html_dashboard(
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative z-10">
                     <div>
                         <div class="flex items-center gap-2 mb-1">
-                            <span class="bg-sky-600 text-white text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded">Candidato Óptimo Seleccionado</span>
+                            <span class="bg-sky-600 text-white text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded">Experimento Óptimo Seleccionado</span>
                             <span class="text-xs text-sky-800 font-mono font-bold">Rango #01 en Precipitación Diaria</span>
                         </div>
                         <h2 class="text-2xl font-black text-slate-900 tracking-tight">{{ win_rain.experiment_id }}</h2>
@@ -366,12 +356,12 @@ def generate_static_html_dashboard(
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                     <div>
                         <h3 class="font-bold text-sm text-slate-900 flex items-center gap-2">
-                            <span>📋 Tabla Maestra de Rendimiento: Precipitación Diaria</span>
-                            <span class="bg-sky-100 text-sky-800 border border-sky-300 text-[10px] font-mono px-2 py-0.5 rounded">16 Modelos</span>
+                            <span>📋 Tabla Maestra de Experimentos de Corrección: Precipitación Diaria</span>
+                            <span class="bg-sky-100 text-sky-800 border border-sky-300 text-[10px] font-mono px-2 py-0.5 rounded">16 Experimentos de Corrección</span>
                         </h3>
                         <p class="text-[11px] text-slate-500">Haga clic en el encabezado de cualquier columna para ordenar ascendentemente o descendentemente.</p>
                     </div>
-                    <input type="text" id="searchRain" onkeyup="filterTable('tableRain', 'searchRain')" placeholder="🔍 Filtrar modelo..." class="bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:bg-white transition">
+                    <input type="text" id="searchRain" onkeyup="filterTable('tableRain', 'searchRain')" placeholder="🔍 Filtrar experimento..." class="bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:bg-white transition">
                 </div>
 
                 <div class="overflow-x-auto">
@@ -443,7 +433,7 @@ def generate_static_html_dashboard(
                         <div>
                             <div class="text-[10px] font-bold text-emerald-700 uppercase tracking-wider mb-1">Figura 2 • Frontera Pareto</div>
                             <h4 class="font-bold text-sm text-slate-900">Espacio de Precisión: Error (RMSE) vs. Eficiencia (KGE)</h4>
-                            <p class="text-xs text-slate-600 mt-1">El modelo óptimo se ubica en el extremo superior izquierdo (mínimo error y máxima habilidad). Identificación en leyenda.</p>
+                            <p class="text-xs text-slate-600 mt-1">El experimento óptimo se ubica en el extremo superior izquierdo (mínimo error y máxima habilidad). Identificación en leyenda.</p>
                         </div>
                         <div class="mt-3 cursor-pointer bg-slate-50 p-2 rounded-lg border border-slate-200" onclick="openModal('{{ fig_rain.pareto }}', 'Figura 2: Scatter Pareto KGE vs. RMSE (Precipitación)')">
                             <img src="{{ fig_rain.pareto }}" alt="Scatter Pareto Lluvia" class="max-h-72 object-contain w-full">
@@ -475,7 +465,7 @@ def generate_static_html_dashboard(
                         <div>
                             <div class="text-[10px] font-bold text-amber-700 uppercase tracking-wider mb-1">Figura 4 • Síntesis Multicriterio</div>
                             <h4 class="font-bold text-sm text-slate-900">Matriz Diagnóstica de Rendimiento Climatológico</h4>
-                            <p class="text-xs text-slate-600 mt-1">Cuadrícula con valores numéricos impresos para todos los modelos. Escala de color: Verde (Óptimo) a Rojo (Deficiente).</p>
+                            <p class="text-xs text-slate-600 mt-1">Cuadrícula con valores numéricos impresos para todos los experimentos de corrección. Escala de color: Verde (Óptimo) a Rojo (Deficiente).</p>
                         </div>
                         <div class="mt-3 cursor-pointer bg-slate-50 p-2 rounded-lg border border-slate-200" onclick="openModal('{{ fig_rain.heatmap }}', 'Figura 4: Matriz Heatmap Multimétrica (Precipitación)')">
                             <img src="{{ fig_rain.heatmap }}" alt="Heatmap Multimétrica Lluvia" class="max-h-72 object-contain w-full">
@@ -523,7 +513,7 @@ def generate_static_html_dashboard(
                         <div>
                             <div class="text-[10px] font-bold text-rose-700 uppercase tracking-wider mb-1">Figura 7 • Espacio Polar</div>
                             <h4 class="font-bold text-sm text-slate-900">Diagrama Polar Clásico de Taylor: Precipitación Diaria</h4>
-                            <p class="text-xs text-slate-600 mt-1">Modelo óptimo claramente destacado con llamada y aureola dorada. Eje base explicativo de RMSE y ángulo de correlación en 2 líneas.</p>
+                            <p class="text-xs text-slate-600 mt-1">Experimento óptimo claramente destacado con llamada y aureola dorada. Eje base explicativo de RMSE y ángulo de correlación en 2 líneas.</p>
                         </div>
                         <div class="mt-3 cursor-pointer flex justify-center bg-slate-50 p-3 rounded-lg border border-slate-200" onclick="openModal('{{ fig_rain.taylor }}', 'Figura 7: Diagrama Polar de Taylor (Precipitación)')">
                             <img src="{{ fig_rain.taylor }}" alt="Taylor Diagram Lluvia" class="max-h-84 object-contain">
@@ -548,7 +538,7 @@ def generate_static_html_dashboard(
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative z-10">
                     <div>
                         <div class="flex items-center gap-2 mb-1">
-                            <span class="bg-amber-600 text-white text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded">Candidato Óptimo Seleccionado</span>
+                            <span class="bg-amber-600 text-white text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded">Experimento Óptimo Seleccionado</span>
                             <span class="text-xs text-amber-800 font-mono font-bold">Rango #01 en Temp. Máxima</span>
                         </div>
                         <h2 class="text-2xl font-black text-slate-900 tracking-tight">{{ win_tmax.experiment_id }}</h2>
@@ -583,7 +573,7 @@ def generate_static_html_dashboard(
             <div class="bg-amber-50/80 border-l-4 border-amber-500 p-4 rounded-r-xl text-xs text-amber-950 space-y-1.5 shadow-sm">
                 <div class="flex items-center gap-2 font-bold text-amber-900">
                     <span>⚠️</span>
-                    <span>Dictamen Metodológico sobre la Línea Base vs. Modelo Ganador en Temperatura Máxima</span>
+                    <span>Dictamen Metodológico sobre la Línea Base vs. Experimento Ganador en Temperatura Máxima</span>
                 </div>
                 <p class="leading-relaxed">
                     Aunque la línea base plana bidimensional (<code class="bg-white/80 px-1 py-0.5 rounded font-mono font-bold text-slate-800">EXP_TX01_SBA_IDW_Baseline</code>) reporta un puntaje estadístico puntual alto en estaciones de validación debido a que la gran mayoría de estaciones meteorológicas se encuentran en valles y planicies bajas, <b>carece de acoplamiento orográfico con el DEM continental</b>. En terrenos montañosos no monitoreados (Sierra Madre, Cordillera de Talamanca, Cordillera Central de RD), este método genera un severo <i>aplanamiento orográfico</i> (+4 a +8 °C de sobreestimación artificial en cumbres). Conforme a las conclusiones del Documento 10, <code class="bg-white/80 px-1 py-0.5 rounded font-mono font-bold text-slate-800">EXP_TX01</code> fue rechazado como producto operativo y <b><code class="bg-emerald-100 text-emerald-950 px-1.5 py-0.5 rounded font-mono font-bold border border-emerald-300">EXP_TX11_RK_Barnes_Hybrid</code></b> es adoptado como el <b>Ganador Físico Oficial</b>.
@@ -595,12 +585,12 @@ def generate_static_html_dashboard(
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                     <div>
                         <h3 class="font-bold text-sm text-slate-900 flex items-center gap-2">
-                            <span>📋 Tabla Maestra de Rendimiento: Temperatura Máxima</span>
-                            <span class="bg-amber-100 text-amber-800 border border-amber-300 text-[10px] font-mono px-2 py-0.5 rounded">13 Modelos</span>
+                            <span>📋 Tabla Maestra de Experimentos de Corrección: Temperatura Máxima</span>
+                            <span class="bg-amber-100 text-amber-800 border border-amber-300 text-[10px] font-mono px-2 py-0.5 rounded">13 Experimentos de Corrección</span>
                         </h3>
                         <p class="text-[11px] text-slate-500">Haga clic en el encabezado de cualquier columna para ordenar ascendentemente o descendentemente.</p>
                     </div>
-                    <input type="text" id="searchTmax" onkeyup="filterTable('tableTmax', 'searchTmax')" placeholder="🔍 Filtrar modelo..." class="bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-amber-500 focus:bg-white transition">
+                    <input type="text" id="searchTmax" onkeyup="filterTable('tableTmax', 'searchTmax')" placeholder="🔍 Filtrar experimento..." class="bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-amber-500 focus:bg-white transition">
                 </div>
 
                 <div class="overflow-x-auto">
@@ -645,7 +635,7 @@ def generate_static_html_dashboard(
                     <div>
                         <div class="text-[10px] font-bold text-amber-700 uppercase tracking-wider mb-1">Figura 1 • Dispersión</div>
                         <h4 class="font-bold text-sm text-slate-900">Distribución de KGE en Estaciones (Temp. Máxima)</h4>
-                        <p class="text-xs text-slate-600 mt-1">Dispersión de eficiencia en las 29 estaciones para los 13 modelos de temperatura máxima.</p>
+                        <p class="text-xs text-slate-600 mt-1">Dispersión de eficiencia en las 29 estaciones para los 13 experimentos de corrección de temperatura máxima.</p>
                     </div>
                     <div class="mt-3 cursor-pointer bg-slate-50 p-2 rounded-lg border border-slate-200" onclick="openModal('{{ fig_tmax.kge_boxplots }}', 'Figura 1: Boxplots de KGE (Temp. Máxima)')">
                         <img src="{{ fig_tmax.kge_boxplots }}" alt="Boxplots Tmax" class="max-h-72 object-contain w-full">
@@ -660,7 +650,7 @@ def generate_static_html_dashboard(
                     <div>
                         <div class="text-[10px] font-bold text-emerald-700 uppercase tracking-wider mb-1">Figura 2 • Pareto</div>
                         <h4 class="font-bold text-sm text-slate-900">Espacio de Precisión: RMSE vs. KGE (Temp. Máxima)</h4>
-                        <p class="text-xs text-slate-600 mt-1">Convergencia de modelos hacia el óptimo en temperatura máxima.</p>
+                        <p class="text-xs text-slate-600 mt-1">Convergencia de experimentos hacia el óptimo en temperatura máxima.</p>
                     </div>
                     <div class="mt-3 cursor-pointer bg-slate-50 p-2 rounded-lg border border-slate-200" onclick="openModal('{{ fig_tmax.pareto }}', 'Figura 2: Scatter Pareto (Temp. Máxima)')">
                         <img src="{{ fig_tmax.pareto }}" alt="Scatter Pareto Tmax" class="max-h-72 object-contain w-full">
@@ -736,7 +726,7 @@ def generate_static_html_dashboard(
                     <div>
                         <div class="text-[10px] font-bold text-rose-700 uppercase tracking-wider mb-1">Figura 7 • Espacio Polar</div>
                         <h4 class="font-bold text-sm text-slate-900">Diagrama Polar Clásico de Taylor: Temperatura Máxima</h4>
-                        <p class="text-xs text-slate-600 mt-1">Modelo óptimo claramente destacado con llamada y aureola dorada.</p>
+                        <p class="text-xs text-slate-600 mt-1">Experimento óptimo claramente destacado con llamada y aureola dorada.</p>
                     </div>
                     <div class="mt-3 cursor-pointer flex justify-center bg-slate-50 p-3 rounded-lg border border-slate-200" onclick="openModal('{{ fig_tmax.taylor }}', 'Figura 7: Diagrama Polar de Taylor (Temp. Máxima)')">
                         <img src="{{ fig_tmax.taylor }}" alt="Taylor Diagram Tmax" class="max-h-84 object-contain">
@@ -760,7 +750,7 @@ def generate_static_html_dashboard(
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative z-10">
                     <div>
                         <div class="flex items-center gap-2 mb-1">
-                            <span class="bg-violet-600 text-white text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded">Candidato Óptimo Seleccionado</span>
+                            <span class="bg-violet-600 text-white text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded">Experimento Óptimo Seleccionado</span>
                             <span class="text-xs text-violet-800 font-mono font-bold">Rango #01 en Temp. Mínima</span>
                         </div>
                         <h2 class="text-2xl font-black text-slate-900 tracking-tight">{{ win_tmin.experiment_id }}</h2>
@@ -793,12 +783,12 @@ def generate_static_html_dashboard(
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                     <div>
                         <h3 class="font-bold text-sm text-slate-900 flex items-center gap-2">
-                            <span>📋 Tabla Maestra de Rendimiento: Temperatura Mínima</span>
-                            <span class="bg-violet-100 text-violet-800 border border-violet-300 text-[10px] font-mono px-2 py-0.5 rounded">13 Modelos</span>
+                            <span>📋 Tabla Maestra de Experimentos de Corrección: Temperatura Mínima</span>
+                            <span class="bg-violet-100 text-violet-800 border border-violet-300 text-[10px] font-mono px-2 py-0.5 rounded">13 Experimentos de Corrección</span>
                         </h3>
                         <p class="text-[11px] text-slate-500">Haga clic en el encabezado de cualquier columna para ordenar ascendentemente o descendentemente.</p>
                     </div>
-                    <input type="text" id="searchTmin" onkeyup="filterTable('tableTmin', 'searchTmin')" placeholder="🔍 Filtrar modelo..." class="bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-violet-500 focus:bg-white transition">
+                    <input type="text" id="searchTmin" onkeyup="filterTable('tableTmin', 'searchTmin')" placeholder="🔍 Filtrar experimento..." class="bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-violet-500 focus:bg-white transition">
                 </div>
 
                 <div class="overflow-x-auto">
@@ -843,7 +833,7 @@ def generate_static_html_dashboard(
                     <div>
                         <div class="text-[10px] font-bold text-violet-700 uppercase tracking-wider mb-1">Figura 1 • Dispersión</div>
                         <h4 class="font-bold text-sm text-slate-900">Distribución de KGE en Estaciones (Temp. Mínima)</h4>
-                        <p class="text-xs text-slate-600 mt-1">Dispersión de eficiencia en las 29 estaciones holdout para los 13 modelos de temperatura mínima.</p>
+                        <p class="text-xs text-slate-600 mt-1">Dispersión de eficiencia en las 29 estaciones holdout para los 13 experimentos de corrección de temperatura mínima.</p>
                     </div>
                     <div class="mt-3 cursor-pointer bg-slate-50 p-2 rounded-lg border border-slate-200" onclick="openModal('{{ fig_tmin.kge_boxplots }}', 'Figura 1: Boxplots de KGE (Temp. Mínima)')">
                         <img src="{{ fig_tmin.kge_boxplots }}" alt="Boxplots Tmin" class="max-h-72 object-contain w-full">
@@ -934,7 +924,7 @@ def generate_static_html_dashboard(
                     <div>
                         <div class="text-[10px] font-bold text-rose-700 uppercase tracking-wider mb-1">Figura 7 • Espacio Polar</div>
                         <h4 class="font-bold text-sm text-slate-900">Diagrama Polar Clásico de Taylor: Temperatura Mínima</h4>
-                        <p class="text-xs text-slate-600 mt-1">Modelo óptimo claramente destacado con llamada y aureola dorada.</p>
+                        <p class="text-xs text-slate-600 mt-1">Experimento óptimo claramente destacado con llamada y aureola dorada.</p>
                     </div>
                     <div class="mt-3 cursor-pointer flex justify-center bg-slate-50 p-3 rounded-lg border border-slate-200" onclick="openModal('{{ fig_tmin.taylor }}', 'Figura 7: Diagrama Polar de Taylor (Temp. Mínima)')">
                         <img src="{{ fig_tmin.taylor }}" alt="Taylor Diagram Tmin" class="max-h-84 object-contain">
@@ -963,7 +953,7 @@ def generate_static_html_dashboard(
                         </div>
                         <h2 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Metodología de Evaluación Estadística, Métricas y Validación Cruzada en CDT 8.0</h2>
                         <p class="text-xs text-slate-600 max-w-3xl mt-1 leading-relaxed">
-                            Marco metodológico, formulaciones matemáticas rigurosas e interpretación física de las métricas estadísticas implementadas para la validación ciega de los productos climáticos reconstruidos de precipitación y temperatura en América Central y República Dominicana (1991–2020).
+                            Marco metodológico, formulaciones matemáticas rigurosas e interpretación física de las métricas estadísticas implementadas para la validación ciega de los experimentos de corrección de precipitación y temperatura en América Central y República Dominicana (1991–2020).
                         </p>
                     </div>
                     <div class="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-sky-200 shadow-sm text-xs text-slate-700">
@@ -974,7 +964,7 @@ def generate_static_html_dashboard(
                 </div>
             </div>
 
-            <!-- SECCIÓN 1: ESQUEMA DE VALIDACIÓN CROSSLINK -->
+            <!-- SECCIÓN 1: ESQUEMA DE VALIDACIÓN -->
             <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
                 <div class="border-b border-slate-100 pb-3">
                     <span class="text-[10px] font-bold text-sky-700 uppercase tracking-wider">Sección 1</span>
@@ -1051,7 +1041,7 @@ def generate_static_html_dashboard(
                     <h3 class="text-base font-bold text-slate-900">2. Niveles de Cálculo: Puntual vs. Agregación Regional</h3>
                 </div>
                 <p class="text-xs text-slate-600 leading-relaxed">
-                    Una consulta frecuente en la auditoría climatológica es cómo se calculan las métricas y si el resultado reportado es un promedio por estación o una evaluación agregada:
+                    Una consulta fundamental en la auditoría climatológica es cómo se calculan las métricas y si el resultado reportado es un promedio por estación o una evaluación agregada:
                 </p>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 my-2">
                     <div class="border border-slate-200 rounded-lg p-4 bg-slate-50/50 space-y-2">
@@ -1076,7 +1066,7 @@ def generate_static_html_dashboard(
                             $$\overline{M} = \frac{1}{N} \sum_{i=1}^{N} M_i \quad (N = 29)$$
                         </div>
                         <p class="text-[11px] text-slate-600 leading-relaxed">
-                            Para evaluar la dispersión geográfica (si el modelo funciona homogéneamente en toda Centroamérica o solo en algunas estaciones), se emplean los <b>diagramas de caja y bigotes (Boxplots, Figura 1)</b> y la <b>mediana regional</b>.
+                            Para evaluar la dispersión geográfica (si la corrección funciona homogéneamente en toda Centroamérica o solo en algunas estaciones), se emplean los <b>diagramas de caja y bigotes (Boxplots, Figura 1)</b> y la <b>mediana regional</b>.
                         </p>
                     </div>
                 </div>
@@ -1190,7 +1180,7 @@ def generate_static_html_dashboard(
                     <h3 class="text-base font-bold text-slate-900">4. Formulación de Métricas Categóricas de Lluvia Diaria (Matriz de Contingencia)</h3>
                 </div>
                 <p class="text-xs text-slate-600 leading-relaxed">
-                    Para la precipitación diaria, un modelo puede presentar buena correlación pero fallar al discriminar cuándo llueve y cuándo no. Se aplica un umbral físico de lluvia de $1.0\text{ mm/día}$ para construir la matriz de contingencia $2 \times 2$:
+                    Para la precipitación diaria, un experimento de corrección puede presentar buena correlación pero fallar al discriminar cuándo llueve y cuándo no. Se aplica un umbral físico de lluvia de $1.0\text{ mm/día}$ para construir la matriz de contingencia $2 \times 2$:
                 </p>
 
                 <div class="overflow-x-auto my-2">
@@ -1264,7 +1254,7 @@ def generate_static_html_dashboard(
                     </div>
                     <div class="border border-slate-200 rounded p-3 bg-white">
                         <span class="font-bold text-slate-800">3. Distancia al Punto Observado:</span>
-                        <p class="text-[11px] text-slate-600 mt-1">La distancia euclidiana entre el modelo y el punto $(1.0, 0^\circ)$ equivale directamente al error centrado RMS ($E'^*$). El modelo ganador es el más cercano al objetivo.</p>
+                        <p class="text-[11px] text-slate-600 mt-1">La distancia euclidiana entre el experimento y el punto $(1.0, 0^\circ)$ equivale directamente al error centrado RMS ($E'^*$). El experimento ganador es el más cercano al objetivo.</p>
                     </div>
                 </div>
             </div>
@@ -1330,6 +1320,7 @@ def generate_static_html_dashboard(
             const targetBtn = document.getElementById('tab-btn-' + tabId);
             if (targetPanel) targetPanel.classList.remove('hidden');
             if (targetBtn) targetBtn.classList.add('active');
+            setTimeout(renderMath, 20);
 
             if (window.MathJax && window.MathJax.typesetPromise) {
                 setTimeout(() => { window.MathJax.typesetPromise(); }, 50);
@@ -1415,22 +1406,29 @@ def generate_static_html_dashboard(
             if (e.key === 'Escape') closeModal();
         });
 
-        // Initialize KaTeX math rendering safely
-        document.addEventListener('DOMContentLoaded', function() {
+        // KaTeX Math Rendering Engine
+        function renderMath() {
             if (window.renderMathInElement) {
                 try {
                     renderMathInElement(document.body, {
                         delimiters: [
                             {left: '$$', right: '$$', display: true},
-                            {left: '\\\\(', right: '\\\\)', display: false}
+                            {left: '\\[', right: '\\]', display: true},
+                            {left: '$', right: '$', display: false},
+                            {left: '\\(', right: '\\)', display: false}
                         ],
+                        ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code", "option"],
                         throwOnError: false
                     });
                 } catch(e) {
-                    console.warn('KaTeX skipped:', e);
+                    console.error('KaTeX error:', e);
                 }
             }
-        });
+        }
+
+        // Render on page load
+        document.addEventListener('DOMContentLoaded', renderMath);
+        window.addEventListener('load', renderMath);
     </script>
 </body>
 </html>
