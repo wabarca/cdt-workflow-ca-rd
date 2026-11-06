@@ -588,6 +588,42 @@ class ExperimentRunner:
         print(f"  CDT EXPERIMENT EXECUTION SUITE: {len(experiments)} EXPERIMENT(S) DETECTED")
         print("=" * 80)
 
+        # Auto-evaluar la rejilla satelital original sin corregir (Experimento 00 de Control)
+        # para cada variable presente en la suite antes de correr los experimentos de CDT.
+        if not self.is_production:
+            evaluated_raw_vars = set()
+            for exp_item in experiments:
+                v_type = exp_item.get("variable_type", "rainfall").lower()
+                v_key = "rainfall" if v_type in ("rainfall", "rain", "precip") else ("tmax" if "tmax" in v_type else "tmin")
+                if v_key in evaluated_raw_vars:
+                    continue
+                evaluated_raw_vars.add(v_key)
+                try:
+                    from launcher.evaluate_raw_baseline import evaluate_raw_grid
+                    p_cfg = exp_item.get("paths", {})
+                    raw_nc = (
+                        p_cfg.get(f"raw_3d_netcdf_{v_key}")
+                        or p_cfg.get("raw_3d_netcdf_rainfall" if v_key == "rainfall" else f"raw_3d_netcdf_{v_key}")
+                    )
+                    stn_f = p_cfg.get("stations_file") or p_cfg.get(f"stations_{v_key}_file")
+                    hold_f = (
+                        p_cfg.get("holdout_stations_file")
+                        or p_cfg.get("omitted_stations_file")
+                        or exp_item.get("validation", {}).get("holdout_stations_file")
+                    )
+                    out_root_dir = Path(p_cfg.get("output_dir", f"output/experiments_{self.region}/EXP_00")).resolve().parent
+                    evaluate_raw_grid(
+                        var_type=v_key,
+                        netcdf_path=raw_nc,
+                        station_file=stn_f,
+                        holdout_ids_file=hold_f,
+                        output_root=out_root_dir,
+                        mock_if_missing=True,
+                        force=force,
+                    )
+                except Exception as e_raw:
+                    print(f"  [!] Advertencia al evaluar Experimento 00 de control para {v_key}: {e_raw}")
+
         for i, exp in enumerate(experiments, start=1):
             exp_id = exp.get("experiment_id", exp.get("id", f"EXP_{i:02d}"))
             exp_desc = exp.get("description", "No description provided")
@@ -738,17 +774,35 @@ class ExperimentRunner:
                 raw_key = f"raw_3d_netcdf_{var_type}" if var_type in ("rainfall", "precip") else f"raw_3d_netcdf_{var_type}"
                 raw_path_str = paths.get(raw_key) or paths.get("raw_3d_netcdf_rainfall" if var_type in ("rainfall", "precip") else "raw_3d_netcdf_tmax")
                 if not raw_path_str or not Path(raw_path_str).exists():
-                    cand_3d_files = list(Path("data/raw_netcdf").glob("*.nc")) if Path("data/raw_netcdf").exists() else []
+                    cand_3d_files = sorted(list(Path("data/raw_netcdf").glob("*.nc"))) if Path("data/raw_netcdf").exists() else []
+                    reg_keywords = ("la_espanola", "rd", "dominicana") if self.region == "rd" else ("centroamerica", "ca", "ac")
+                    # First pass: match variable AND region keyword
                     for cf in cand_3d_files:
-                        if var_type in ("rainfall", "precip") and "chirps" in cf.name.lower():
+                        cname = cf.name.lower()
+                        if not any(rk in cname for rk in reg_keywords):
+                            continue
+                        if var_type in ("rainfall", "precip") and ("chirps" in cname or "precip" in cname):
                             raw_path_str = str(cf)
                             break
-                        elif "tmax" in var_type and "tmax" in cf.name.lower():
+                        elif "tmax" in var_type and "tmax" in cname:
                             raw_path_str = str(cf)
                             break
-                        elif "tmin" in var_type and "tmin" in cf.name.lower():
+                        elif "tmin" in var_type and "tmin" in cname:
                             raw_path_str = str(cf)
                             break
+                    # Second pass fallback: match variable only
+                    if not raw_path_str or not Path(raw_path_str).exists():
+                        for cf in cand_3d_files:
+                            cname = cf.name.lower()
+                            if var_type in ("rainfall", "precip") and ("chirps" in cname or "precip" in cname):
+                                raw_path_str = str(cf)
+                                break
+                            elif "tmax" in var_type and "tmax" in cname:
+                                raw_path_str = str(cf)
+                                break
+                            elif "tmin" in var_type and "tmin" in cname:
+                                raw_path_str = str(cf)
+                                break
                 if raw_path_str and Path(raw_path_str).exists():
                     from launcher.data_preprocessor import split_3d_netcdf_to_daily_parallel
                     if current_nc_count > 0:

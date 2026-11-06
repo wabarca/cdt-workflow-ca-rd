@@ -184,8 +184,10 @@ def evaluate_raw_grid(
     var_type: str,
     netcdf_path: Optional[Path | str] = None,
     station_file: Optional[Path | str] = None,
+    holdout_ids_file: Optional[Path | str] = None,
     output_root: Path | str = "output/experiments_ca",
     mock_if_missing: bool = True,
+    force: bool = False,
 ) -> Tuple[Dict[str, Any], pd.DataFrame]:
     """Evalúa la malla original sin corregir para una variable o genera el control."""
     var_key = "rainfall" if "rain" in var_type.lower() or "precip" in var_type.lower() else (
@@ -196,30 +198,78 @@ def evaluate_raw_grid(
     out_dir = Path(output_root) / exp_id
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    sum_json = out_dir / "validation_summary.json"
+    st_csv = out_dir / "validation_metrics_by_station.csv"
+
+    # Si ya está calculado y no se pide --force, reutilizar caché
+    if not force and sum_json.exists() and st_csv.exists():
+        try:
+            with open(sum_json, "r", encoding="utf-8") as sf:
+                cached_sum = json.load(sf)
+            cached_df = pd.read_csv(st_csv)
+            if len(cached_df) > 0 and "mean_kge" in cached_sum:
+                print(f"  --> [Control 00] {exp_id} ya evaluado en caché (KGE medio: {cached_sum['mean_kge']:.3f}).")
+                return cached_sum, cached_df
+        except Exception:
+            pass
+
     nc_file = Path(netcdf_path) if netcdf_path else None
     stn_file = Path(station_file) if station_file else None
+    h_file = Path(holdout_ids_file) if holdout_ids_file else None
+
+    # Si station_file es una lista simple de IDs (1 columna) o no tiene series CDT, generar stations_holdout.csv
+    effective_stn_file = stn_file
+    if stn_file and stn_file.exists():
+        try:
+            with open(stn_file, "r", encoding="utf-8") as f_chk:
+                first_line = f_chk.readline().strip().lower()
+            if first_line.startswith("station_id") and h_file is None:
+                # stn_file es en realidad la lista de IDs holdout; buscar el archivo completo de estaciones CDT
+                h_file = stn_file
+                cand_full = (
+                    Path("data/stations/precip_stations_ca.csv") if var_key == "rainfall"
+                    else Path(f"data/stations/{var_key}_stations_ca.csv")
+                )
+                if not cand_full.exists():
+                    cand_full = (
+                        Path("data/stations/precip_stations_all.csv") if var_key == "rainfall"
+                        else Path(f"data/stations/{var_key}_stations_all.csv")
+                    )
+                if cand_full.exists():
+                    stn_file = cand_full
+        except Exception:
+            pass
+
+    if stn_file and stn_file.exists() and h_file and h_file.exists():
+        try:
+            from launcher.station_manager import split_cdt_station_file
+            split_dir = out_dir / "station_split"
+            split_info = split_cdt_station_file(stn_file, h_file, split_dir)
+            effective_stn_file = Path(split_info["holdout_stations_file"])
+        except Exception as e_sp:
+            print(f"  [!] Advertencia al preparar estaciones holdout para {exp_id}: {e_sp}")
 
     # Intentar evaluación real si los archivos físicos existen
-    if nc_file and nc_file.exists() and stn_file and stn_file.exists():
-        print(f"[*] Evaluando físicamente NetCDF crudo: {nc_file} contra {stn_file}...")
+    if nc_file and nc_file.exists() and effective_stn_file and effective_stn_file.exists():
+        print(f"  --> [Control 00] Evaluando físicamente NetCDF crudo ({nc_file.name}) contra estaciones holdout...")
         df_metrics, summary = evaluate_netcdf_against_stations(
             netcdf_path=nc_file,
-            station_file=stn_file,
+            station_file=effective_stn_file,
             var_type=var_key,
         )
         summary["experiment_id"] = exp_id
         summary["description"] = default_meta["description"]
         summary["variable_type"] = var_key
     elif mock_if_missing:
-        print(f"[*] Archivo NetCDF crudo no presente localmente. Generando métricas de referencia para {exp_id}...")
+        print(f"  --> [Control 00] Archivo NetCDF crudo no presente localmente. Generando métricas de referencia para {exp_id}...")
         summary = dict(default_meta)
         df_metrics = generate_mock_station_metrics(
             summary=summary,
-            station_file=stn_file or f"data/stations/validation_holdout_stations_{'rainfall' if var_key == 'rainfall' else 'temperature'}.csv",
+            station_file=effective_stn_file or f"data/stations/validation_holdout_stations_{'rainfall' if var_key == 'rainfall' else 'temperature'}.csv",
             var_type=var_key,
         )
     else:
-        raise FileNotFoundError(f"No se encontró el archivo NetCDF original en {nc_file} ni estaciones en {stn_file}")
+        raise FileNotFoundError(f"No se encontró el archivo NetCDF original en {nc_file} ni estaciones en {effective_stn_file}")
 
     # Guardar manifest.json
     manifest = {
@@ -412,18 +462,29 @@ def main():
         description="Evaluador de Malla Satelital Cruda Original Sin Corregir (Experimento 0 de Control)"
     )
     parser.add_argument("--config", default="config/global_config.yaml", help="Ruta al archivo global_config.yaml")
+    parser.add_argument("--region", choices=["ca", "rd"], default="ca", help="Dominio territorial ('ca' o 'rd')")
     parser.add_argument("--variable", choices=["rainfall", "tmax", "tmin", "all"], default="all", help="Variable a evaluar")
     parser.add_argument("--rainfall-nc", default=None, help="Ruta opcional al archivo NetCDF 3D de CHIRPS crudo")
     parser.add_argument("--tmax-nc", default=None, help="Ruta opcional al archivo NetCDF 3D de CHIRTS Tmax crudo")
     parser.add_argument("--tmin-nc", default=None, help="Ruta opcional al archivo NetCDF 3D de CHIRTS Tmin crudo")
-    parser.add_argument("--output-root", default="output/experiments_ca", help="Directorio raíz para guardar los experimentos")
+    parser.add_argument("--output-root", default=None, help="Directorio raíz para guardar los experimentos")
     parser.add_argument("--mock-if-missing", action="store_true", default=True, help="Generar métricas de control de referencia si faltan los NetCDFs")
-    parser.add_argument("--benchmark-dir", default="output/benchmark_ca", help="Directorio del leaderboard y dashboard")
+    parser.add_argument("--benchmark-dir", default=None, help="Directorio del leaderboard y dashboard")
     parser.add_argument("--update-leaderboard", action="store_true", default=True, help="Actualizar el leaderboard y dashboard con el control")
+    parser.add_argument("--force", action="store_true", default=False, help="Forzar recálculo de Experimento 00 ignorando caché")
 
     args = parser.parse_args()
     cfg = load_config(args.config)
-    paths_cfg = cfg.get("paths", {})
+    paths_cfg = dict(cfg.get("paths", {}))
+    reg_cfg = cfg.get("regions", {}).get(args.region, {})
+    for k, v in reg_cfg.items():
+        if k not in ("name",):
+            paths_cfg[k] = v
+
+    if not args.output_root:
+        args.output_root = paths_cfg.get("output_root", f"output/experiments_{args.region}")
+    if not args.benchmark_dir:
+        args.benchmark_dir = paths_cfg.get("benchmark_dir", f"output/benchmark_{args.region}")
 
     variables = ["rainfall", "tmax", "tmin"] if args.variable == "all" else [args.variable]
 
@@ -444,6 +505,7 @@ def main():
             station_file=stn,
             output_root=args.output_root,
             mock_if_missing=args.mock_if_missing,
+            force=args.force,
         )
 
     if args.update_leaderboard:

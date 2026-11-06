@@ -699,8 +699,12 @@ def validate_project_inputs(
             raw_found = raw_path_obj.exists() and raw_path_obj.is_file()
 
         if not raw_found and Path("data/raw_netcdf").exists():
-            for cf in Path("data/raw_netcdf").glob("*.nc"):
+            reg_keywords = ("la_espanola", "rd", "dominicana") if active_region == "rd" else ("centroamerica", "ca", "ac")
+            cand_3d = sorted(list(Path("data/raw_netcdf").glob("*.nc")))
+            for cf in cand_3d:
                 c_name = cf.name.lower()
+                if active_region in ("ca", "rd") and not any(rk in c_name for rk in reg_keywords):
+                    continue
                 if "tmin" in raw_3d_key and "tmin" in c_name:
                     raw_path_obj = cf.resolve()
                     raw_found = True

@@ -33,21 +33,21 @@ period:
 paths:
   # --- Opción A: Archivos NetCDF 3D Únicos (Multi-temporales 1991-2020) ---
   # Si se especifican estas rutas, el lanzador los dividirá automáticamente en paralelo:
-  raw_3d_netcdf_rainfall: "data/raw_netcdf/chirps-AC.nc"     # Ej: "data/raw_netcdf/chirps_daily_1991_2020.nc"
-  raw_3d_netcdf_tmax: "data/raw_netcdf/CHIRTS-ERA5.daily_Tmax.1991-2020.nc"         # Ej: "data/raw_netcdf/chirts_tmax_daily_1991_2020.nc"
-  raw_3d_netcdf_tmin: "data/raw_netcdf/CHIRTS-ERA5.daily_Tmin.1991-2020.nc"         # Ej: "data/raw_netcdf/chirts_tmin_daily_1991_2020.nc"
+  raw_3d_netcdf_rainfall: "data/raw_netcdf/chirpsv2_ca-rd_1991-2020_centroamerica.nc"
+  raw_3d_netcdf_tmax: "data/raw_netcdf/CHIRTS-ERA5.daily_Tmax.1991-2020_centroamerica.nc"
+  raw_3d_netcdf_tmin: "data/raw_netcdf/CHIRTS-ERA5.daily_Tmin.1991-2020_centroamerica.nc"
 
   # --- Opción B: Directorios con Grillas Diarias 2D en Formato CDT (0.05° ~5.5 km) ---
-  satellite_rainfall_dir: "data/chirps_daily"                # Directorio con archivos NetCDF diarios de CHIRPS v2.0
+  satellite_rainfall_dir: "data/chirps_daily/ca"             # Directorio con archivos NetCDF diarios de CHIRPS
   satellite_rainfall_format: "chirps_%s%s%s.nc"             # Patrón de nombres de archivo (%s%s%s = YYYY MM DD)
 
-  satellite_tmax_dir: "data/chirts_daily/tmax"              # Directorio con archivos NetCDF diarios de CHIRTS Tmax
+  satellite_tmax_dir: "data/chirts_daily/ca/tmax"           # Directorio con archivos NetCDF diarios de CHIRTS Tmax
   satellite_tmax_format: "tmax_%s%s%s.nc"                   # Patrón para temperatura máxima diaria
 
-  satellite_tmin_dir: "data/chirts_daily/tmin"              # Directorio con archivos NetCDF diarios de CHIRTS Tmin
+  satellite_tmin_dir: "data/chirts_daily/ca/tmin"           # Directorio con archivos NetCDF diarios de CHIRTS Tmin
   satellite_tmin_format: "tmin_%s%s%s.nc"                   # Patrón para temperatura mínima diaria
 
-  satellite_temperature_dir: "data/chirts_daily"            # Fallback genérico para temperatura
+  satellite_temperature_dir: "data/chirts_daily/ca"         # Fallback genérico para temperatura
   satellite_temperature_format: "tmax_%s%s%s.nc"
 
   # --- Datos de Estaciones Meteorológicas de Superficie (Formato CDT CSV) ---
@@ -75,10 +75,18 @@ paths:
 # 3. Configuraciones por Región / Dominio Territorial (Centroamérica vs Rep. Dominicana)
 # ------------------------------------------------------------------------------
 # Cuando se ejecuta el lanzador con --region ca o --region rd, estas rutas
-# reemplazan automáticamente los archivos de estaciones, DEM, shapefile y carpetas de salida.
+# reemplazan automáticamente los archivos NetCDF 3D, carpetas de grillas diarias 2D,
+# estaciones, DEM, shapefile y carpetas de salida sin necesidad de borrar archivos.
 regions:
   ca:
     name: "Centroamérica"
+    raw_3d_netcdf_rainfall: "data/raw_netcdf/chirpsv2_ca-rd_1991-2020_centroamerica.nc"
+    raw_3d_netcdf_tmax: "data/raw_netcdf/CHIRTS-ERA5.daily_Tmax.1991-2020_centroamerica.nc"
+    raw_3d_netcdf_tmin: "data/raw_netcdf/CHIRTS-ERA5.daily_Tmin.1991-2020_centroamerica.nc"
+    satellite_rainfall_dir: "data/chirps_daily/ca"
+    satellite_tmax_dir: "data/chirts_daily/ca/tmax"
+    satellite_tmin_dir: "data/chirts_daily/ca/tmin"
+    satellite_temperature_dir: "data/chirts_daily/ca"
     stations_rainfall_file: "data/stations/precip_stations_ca.csv"
     stations_tmax_file: "data/stations/tmax_stations_ca.csv"
     stations_tmin_file: "data/stations/tmin_stations_ca.csv"
@@ -93,6 +101,13 @@ regions:
 
   rd:
     name: "República Dominicana"
+    raw_3d_netcdf_rainfall: "data/raw_netcdf/chirpsv2_ca-rd_1991-2020_la_espanola.nc"
+    raw_3d_netcdf_tmax: "data/raw_netcdf/CHIRTS-ERA5.daily_Tmax.1991-2020_la_espanola.nc"
+    raw_3d_netcdf_tmin: "data/raw_netcdf/CHIRTS-ERA5.daily_Tmin.1991-2020_la_espanola.nc"
+    satellite_rainfall_dir: "data/chirps_daily/rd"
+    satellite_tmax_dir: "data/chirts_daily/rd/tmax"
+    satellite_tmin_dir: "data/chirts_daily/rd/tmin"
+    satellite_temperature_dir: "data/chirts_daily/rd"
     stations_rainfall_file: "data/stations/precip_stations_rd.csv"
     stations_tmax_file: "data/stations/tmax_stations_rd.csv"
     stations_tmin_file: "data/stations/tmin_stations_rd.csv"
