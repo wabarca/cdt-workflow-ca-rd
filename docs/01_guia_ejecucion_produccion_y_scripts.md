@@ -180,16 +180,16 @@ Para actualizar datos diariamente al descargar nuevos archivos satelitales:
 
 ## 6. Orquestación Moderna con el Lanzador de Python
 
-Para ejecutar de manera sistemática y reproducible las matrices de 26 experimentos (10 de Precipitación, 8 de $T_{max}$ y 8 de $T_{min}$) con partición automática de estaciones de validación (`data/stations/validation_holdout_stations.csv`) y concatenación 3D CF-1.8:
+Para ejecutar de manera sistemática y reproducible las matrices de 42 configuraciones (3 controles satelitales EXP_00 + 39 experimentos en CDT: 15 de Precipitación, 12 de $T_{max}$ y 12 de $T_{min}$) con partición automática de estaciones de validación (`data/stations/validation_holdout_stations.csv`) y concatenación 3D CF-1.8:
 
 ```bash
 # Diagnóstico de dependencias del sistema
 python launcher/experiment_runner.py --check-env
 
 # Ejecutar por suites completas
-python launcher/experiment_runner.py --suite rainfall   # 10 Experimentos
-python launcher/experiment_runner.py --suite tmax       # 8 Experimentos
-python launcher/experiment_runner.py --suite tmin       # 8 Experimentos
+python launcher/experiment_runner.py --suite rainfall --region ca   # Control EXP_R00 + 15 Experimentos CDT
+python launcher/experiment_runner.py --suite tmax     --region ca   # Control EXP_TX00 + 12 Experimentos CDT
+python launcher/experiment_runner.py --suite tmin     --region ca   # Control EXP_TN00 + 12 Experimentos CDT
 
 # Ejecutar un experimento individual parametrizado en YAML
 python launcher/experiment_runner.py --config config/experiments_rainfall/EXP_R01_SBA_IDW_Baseline.yaml
@@ -199,7 +199,7 @@ python launcher/experiment_runner.py --config config/experiments_rainfall/EXP_R0
 
 ## 7. Ejecución Desatendida en Segundo Plano (`nohup` en Servidores Linux / WSL)
 
-Cuando se ejecutan suites completas o lotes de larga duración (p. ej. los 26 experimentos para el periodo 1991–2020, con una duración aproximada de ~60 horas), es imperativo desacoplar la ejecución de la sesión interactiva del usuario utilizando `nohup`.
+Cuando se ejecutan suites completas o lotes de larga duración (p. ej. las 42 configuraciones [3 controles EXP_00 + 39 experimentos CDT] para el periodo 1991–2020, con una duración aproximada de ~92 horas), es imperativo desacoplar la ejecución de la sesión interactiva del usuario utilizando `nohup`.
 
 ### A. Diagnóstico de Errores Frecuentes en Entornos Headless
 
@@ -463,7 +463,7 @@ python launcher/experiment_runner.py --suite rainfall   # 15 Experimentos de Llu
 python launcher/experiment_runner.py --suite tmax       # 12 Experimentos de Tmax (Fase 1 + Fase 2)
 python launcher/experiment_runner.py --suite tmin       # 12 Experimentos de Tmin (Fase 1 + Fase 2)
 
-# Ejecutar corrida batch completa (26 Experimentos, 1991–2020)
-python launcher/experiment_runner.py --suite all
+# Ejecutar corrida batch completa (42 configuraciones: 3 Controles EXP_00 + 39 Experimentos CDT, 1991–2020)
+python launcher/experiment_runner.py --suite all --region ca
 ```
 

@@ -59,17 +59,17 @@ docker compose run --rm cdt-runner python launcher/experiment_runner.py --check-
 ### D. Ejecución de Experimentos y Suites
 
 ```bash
-# Ejecutar suite completa de Precipitación (10 Experimentos):
-docker compose run --rm cdt-runner python launcher/experiment_runner.py --suite rainfall
+# Ejecutar suite completa de Precipitación (Control EXP_R00 + 15 Experimentos CDT):
+docker compose run --rm cdt-runner python launcher/experiment_runner.py --suite rainfall --region ca
 
-# Ejecutar suite de Temperatura Máxima (8 Experimentos):
-docker compose run --rm cdt-runner python launcher/experiment_runner.py --suite tmax
+# Ejecutar suite de Temperatura Máxima (Control EXP_TX00 + 12 Experimentos CDT):
+docker compose run --rm cdt-runner python launcher/experiment_runner.py --suite tmax --region ca
 
-# Ejecutar suite de Temperatura Mínima (8 Experimentos):
-docker compose run --rm cdt-runner python launcher/experiment_runner.py --suite tmin
+# Ejecutar suite de Temperatura Mínima (Control EXP_TN00 + 12 Experimentos CDT):
+docker compose run --rm cdt-runner python launcher/experiment_runner.py --suite tmin --region ca
 
-# Ejecutar un experimento individual:
-docker compose run --rm cdt-runner python launcher/experiment_runner.py --config config/experiments_rainfall/EXP_R07_Rainfall_RK_DEM_Slope.yaml
+# Ejecutar un experimento individual (ej. ganador de lluvia):
+docker compose run --rm cdt-runner python launcher/experiment_runner.py --config config/experiments_rainfall/EXP_R15_Shepard_RnoR_Smooth.yaml --region ca
 
 # Ejecutar el benchmark y generar reporte interactivo HTML:
 docker compose run --rm cdt-runner python launcher/experiment_runner.py --suite all --generate-report
@@ -79,7 +79,7 @@ docker compose run --rm cdt-runner python launcher/experiment_runner.py --suite 
 
 ## 4. Despliegue en Clusters de Alto Rendimiento (HPC) con Apptainer / Singularity
 
-En centros de supercómputo donde el demonio de Docker está deshabilitado por seguridad, se utiliza el archivo de definición [`Apptainer.def`](file:///d:/Workspace/CDT-8.0/Apptainer.def).
+En centros de supercómputo donde el demonio de Docker está deshabilitado por seguridad, se utiliza el archivo de definición [`Apptainer.def`](../Apptainer.def).
 
 ### A. Construir la Imagen `.sif`
 ```bash
@@ -115,7 +115,7 @@ apptainer run \
 
 ## 5. Desarrollo Integrado con DevContainers (VS Code / Cursor)
 
-El repositorio incluye la carpeta de configuración [`.devcontainer/`](file:///d:/Workspace/CDT-8.0/.devcontainer/devcontainer.json):
+El repositorio incluye la carpeta de configuración [`.devcontainer/`](../.devcontainer/devcontainer.json):
 
 1. Abrir la carpeta raíz del proyecto en **VS Code** o **Cursor**.
 2. Presionar `F1` o `Ctrl+Shift+P` y seleccionar: **`Dev Containers: Reopen in Container`**.

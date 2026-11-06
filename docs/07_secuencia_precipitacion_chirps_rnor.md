@@ -28,7 +28,7 @@ flowchart TD
 ---
 
 ### Paso 2: Gridding > Bias Correction > Compute Bias Coefficients (Rainfall)
-- **Ruta de código:** [`R/cdtBias_functions.R`](file:///d:/Workspace/CDT-8.0/R/cdtBias_functions.R#L1-L188), [`R/cdtBias_Options_functions.R`](file:///d:/Workspace/CDT-8.0/R/cdtBias_Options_functions.R)
+- **Ruta de código:** [`R/cdtBias_functions.R`](../R/cdtBias_functions.R#L1-L188), [`R/cdtBias_Options_functions.R`](../R/cdtBias_Options_functions.R)
 - **Fundamento Climatológico:** Los sensores infrarrojos y de microondas pasivas de los satélites tienden a:
   1. Subestimar eventos de lluvia extrema convectiva localizada.
   2. Sobreestimar la frecuencia de lloviznas leves en zonas semiáridas o nubosidad fría sin precipitación en superficie (*virga*).
@@ -77,7 +77,7 @@ $$
 ---
 
 ### Paso 4: Gridding > Merging Climate Data > Rainfall Data
-- **Ruta de código:** [`R/cdtMerging_Precip_Cmd.R`](file:///d:/Workspace/CDT-8.0/R/cdtMerging_Precip_Cmd.R), [`R/cdtMerging_functions.R`](file:///d:/Workspace/CDT-8.0/R/cdtMerging_functions.R)
+- **Ruta de código:** [`R/cdtMerging_Precip_Cmd.R`](../R/cdtMerging_Precip_Cmd.R), [`R/cdtMerging_functions.R`](../R/cdtMerging_functions.R)
 - **Fundamento Estadístico:** Ajusta los residuales diarios finales preservando la correlación espacial:
   1. **Método de Fusión:**
      - **SBA (*Simple Bias Adjustment*):** Adiciona los residuales espaciales al producto satelital ajustado.

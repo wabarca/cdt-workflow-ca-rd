@@ -1,6 +1,6 @@
 # 02. Arquitectura del Orquestador en Python, CLI y Ensamblado NetCDF (CF-1.8)
 
-Este documento describe la arquitectura técnica, la implementación y la guía exhaustiva de uso para los **scripts lanzadores y orquestadores en Python** encargados de gestionar la ejecución de CDT, diagnosticar el entorno de software y hardware (versión de R, herramientas de compilación y librerías espaciales), particionar estaciones independientes de validación cruzada y ejecutar de forma automatizada las matrices de **26 experimentos** para **Precipitación (CHIRPS)**, **Temperatura Máxima (CHIRTS $T_{max}$)** y **Temperatura Mínima (CHIRTS $T_{min}$)** durante el periodo climatológico 1991–2020 (10,958 días).
+Este documento describe la arquitectura técnica, la implementación y la guía exhaustiva de uso para los **scripts lanzadores y orquestadores en Python** encargados de gestionar la ejecución de CDT, diagnosticar el entorno de software y hardware (versión de R, herramientas de compilación y librerías espaciales), particionar estaciones independientes de validación cruzada y ejecutar de forma automatizada las matrices de **42 configuraciones** (**39 experimentos diseñados en CDT** —15 para Precipitación CHIRPS, 12 para Temperatura Máxima CHIRTS $T_{\max}$ y 12 para Temperatura Mínima CHIRTS $T_{\min}$— más **3 controles de rejilla satelital original sin corregir `EXP_00`**) durante el periodo climatológico 1991–2020 (10,958 días).
 
 ---
 
@@ -90,10 +90,10 @@ sudo apt-get install -y \
 ```
 d:/Workspace/CDT-8.0/
 ├── config/
-│   ├── global_config.yaml                  # Configuración maestra común (rutas, fechas, CPU)
-│   ├── experiments_rainfall/               # 10 YAMLs de Precipitación (EXP_R01 a EXP_R10)
-│   ├── experiments_tmax/                   # 8 YAMLs de Temperatura Máxima (EXP_TX01 a EXP_TX08)
-│   └── experiments_tmin/                   # 8 YAMLs de Temperatura Mínima (EXP_TN01 a EXP_TN08)
+│   ├── global_config.yaml                  # Configuración maestra común y por región (ca y rd)
+│   ├── experiments_rainfall/               # 15 YAMLs de Precipitación (EXP_R01 a EXP_R15)
+│   ├── experiments_tmax/                   # 12 YAMLs de Temperatura Máxima (EXP_TX01 a EXP_TX12)
+│   └── experiments_tmin/                   # 12 YAMLs de Temperatura Mínima (EXP_TN01 a EXP_TN12)
 │
 ├── launcher/
 │   ├── __init__.py
@@ -101,8 +101,11 @@ d:/Workspace/CDT-8.0/
 │   ├── data_preprocessor.py                # Validación de entradas y particionado paralelo 3D a diario
 │   ├── cdt_bridge.py                       # Generación dinámica de scripts R y ejecución
 │   ├── experiment_runner.py                # Lanzador principal y orquestador CLI
+│   ├── evaluate_raw_baseline.py            # Evaluador automático de la rejilla original sin corregir (EXP_00)
 │   ├── station_manager.py                  # Partición de estaciones y métricas de validación
-│   ├── benchmark_reporter.py               # Leaderboard multicriterio, figuras de Taylor/boxplots y dashboard HTML
+│   ├── benchmark_reporter.py               # Orquestador del leaderboard multicriterio y suite de diagnóstico
+│   ├── benchmark_figures.py                # Generador de las 7 figuras científicas a 300 DPI por variable
+│   ├── benchmark_static_dashboard.py       # Generador del dashboard HTML estático (benchmark_report.html)
 │   ├── netcdf_assembler.py                 # Ensamblador NetCDF 3D CF-1.8
 │   └── generate_pdf.py                     # Generador del informe PDF en formato vertical
 │
@@ -143,7 +146,8 @@ python launcher/experiment_runner.py [OPCIONES]
 | :--- | :---: | :---: | :--- |
 | `--check-env` | | `flag` | Ejecuta el diagnóstico del entorno (Rscript, paquetes y compiladores) antes de procesar. |
 | `--check-data` | `--check-inputs`, `--validate-inputs` | `flag` | Verifica exhaustivamente la presencia, formato y completitud de todos los datos e insumos (estaciones, DEM, shapefile, grillas diarias 1991-2020). |
-| `--suite` | `-s`, `--variable`, `-v` | `str` | Ejecuta una suite predefinida: `rainfall` (10 exp), `tmax` (8 exp), `tmin` (8 exp) o `all` (26 exp). |
+| `--suite` | `-s`, `--variable`, `-v` | `str` | Ejecuta una suite predefinida (incluye auto-evaluación de `EXP_00` + Benchmark): `rainfall` (15 exp + `EXP_R00`), `tmax` (12 exp + `EXP_TX00`), `tmin` (12 exp + `EXP_TN00`) o `all` (39 exp + 3 `EXP_00` = 42). |
+| `--region` | `--domain` | `str` | Selecciona el dominio territorial y sus archivos `raw` / carpetas diarias independientes: `ca` (Centroamérica) o `rd` (República Dominicana). |
 | `--config` | `-c` | `str` | Ruta a un archivo `.yaml` específico o a una carpeta con archivos `.yaml`. |
 | `--base-config` | `-b` | `str` | Ruta al archivo maestro común (por defecto: `config/global_config.yaml`). |
 | `--benchmark` | `--generate-report` | `flag` | Genera el ranking multicriterio (leaderboard), diagramas de Taylor, boxplots y dashboard HTML interactivo. |
@@ -189,10 +193,10 @@ python launcher/experiment_runner.py --suite tmax
 python launcher/experiment_runner.py --suite tmin
 ```
 
-#### 4. Ejecutar la Batería Completa de 26 Experimentos
-Ejecuta los 10 experimentos de lluvia, 8 de $T_{max}$ y 8 de $T_{min}$ en un único lote desatendido:
+#### 4. Ejecutar la Batería Completa de 42 Configuraciones (3 Controles `EXP_00` + 39 Experimentos CDT)
+Ejecuta automáticamente la evaluación de las 3 rejillas satelitales originales sin corregir (`EXP_R00`, `EXP_TX00`, `EXP_TN00`), seguida de los 15 experimentos de lluvia, 12 de $T_{\max}$ y 12 de $T_{\min}$, y compila al finalizar el reporte y dashboard de benchmark:
 ```bash
-python launcher/experiment_runner.py --suite all  # 26 Exp. (~60 a 63 horas continuas / ~2.5 días en 18 núcleos)
+python launcher/experiment_runner.py --suite all --region ca --cores 18  # 42 configuraciones (~92.4 horas en 18 núcleos)
 ```
 
 ---
@@ -212,12 +216,20 @@ data/
 │   ├── validation_holdout_stations_rainfall.csv   # Lista de IDs a omitir para lluvia
 │   └── validation_holdout_stations_temperature.csv# Lista de IDs a omitir para temperatura (Tmax/Tmin)
 │
-├── chirps_daily/                                  # Grillas diarias 2D CHIRPS (chirps_YYYYMMDD.nc)
+├── chirps_daily/
+│   ├── ca/                                        # Grillas diarias 2D CHIRPS Centroamérica (chirps_YYYYMMDD.nc)
+│   └── rd/                                        # Grillas diarias 2D CHIRPS Rep. Dominicana (chirps_YYYYMMDD.nc)
 ├── chirts_daily/
-│   ├── tmax/                                      # Grillas diarias 2D Tmax (tmax_YYYYMMDD.nc)
-│   └── tmin/                                      # Grillas diarias 2D Tmin (tmin_YYYYMMDD.nc)
+│   ├── ca/{tmax,tmin}/                            # Grillas diarias 2D Tmax/Tmin Centroamérica
+│   └── rd/{tmax,tmin}/                            # Grillas diarias 2D Tmax/Tmin Rep. Dominicana
 │
-├── raw_netcdf/                                    # (Opcional) NetCDFs 3D únicos multitemporales (1991–2020)
+├── raw_netcdf/                                    # NetCDFs 3D multitemporales (1991–2020) separados por región:
+│   ├── chirpsv2_ca-rd_1991-2020_centroamerica.nc
+│   ├── chirpsv2_ca-rd_1991-2020_la_espanola.nc
+│   ├── CHIRTS-ERA5.daily_Tmax.1991-2020_centroamerica.nc
+│   ├── CHIRTS-ERA5.daily_Tmax.1991-2020_la_espanola.nc
+│   ├── CHIRTS-ERA5.daily_Tmin.1991-2020_centroamerica.nc
+│   └── CHIRTS-ERA5.daily_Tmin.1991-2020_la_espanola.nc
 ├── topography/
 │   └── dem_srtm_90m.nc                            # Modelo Digital de Elevación SRTM/GEBCO (msnm)
 │
@@ -272,25 +284,35 @@ period:
   time_step: "daily"       # Paso temporal diario
 
 paths:
-  # Rutas a NetCDFs 3D únicos (dejar en null si ya tiene archivos diarios 2D)
-  raw_3d_netcdf_rainfall: null     # Ej: "data/raw_netcdf/chirps_1991_2020.nc"
-  raw_3d_netcdf_tmax: null
-  raw_3d_netcdf_tmin: null
+  # Rutas por defecto (Centroamérica)
+  raw_3d_netcdf_rainfall: "data/raw_netcdf/chirpsv2_ca-rd_1991-2020_centroamerica.nc"
+  raw_3d_netcdf_tmax: "data/raw_netcdf/CHIRTS-ERA5.daily_Tmax.1991-2020_centroamerica.nc"
+  raw_3d_netcdf_tmin: "data/raw_netcdf/CHIRTS-ERA5.daily_Tmin.1991-2020_centroamerica.nc"
+  satellite_rainfall_dir: "data/chirps_daily/ca"
+  satellite_tmax_dir: "data/chirts_daily/ca/tmax"
+  satellite_tmin_dir: "data/chirts_daily/ca/tmin"
 
-  # Directorios de grillas 2D
-  satellite_rainfall_dir: "data/chirps_daily"
-  satellite_tmax_dir: "data/chirts_daily/tmax"
-  satellite_tmin_dir: "data/chirts_daily/tmin"
-
-  # Archivos de estaciones maestras y exclusión
-  stations_rainfall_file: "data/stations/precip_stations_all.csv"
-  stations_tmax_file: "data/stations/tmax_stations_all.csv"
-  stations_tmin_file: "data/stations/tmin_stations_all.csv"
-  holdout_stations_file: "data/stations/validation_holdout_stations.csv"
-
-  # Covariables geográficas
-  dem_file: "data/topography/dem_srtm_90m.nc"
-  shapefile_path: "data/gis/central_america_dominican_rep.shp"
+regions:
+  ca:
+    name: "Centroamérica"
+    raw_3d_netcdf_rainfall: "data/raw_netcdf/chirpsv2_ca-rd_1991-2020_centroamerica.nc"
+    raw_3d_netcdf_tmax: "data/raw_netcdf/CHIRTS-ERA5.daily_Tmax.1991-2020_centroamerica.nc"
+    raw_3d_netcdf_tmin: "data/raw_netcdf/CHIRTS-ERA5.daily_Tmin.1991-2020_centroamerica.nc"
+    satellite_rainfall_dir: "data/chirps_daily/ca"
+    satellite_tmax_dir: "data/chirts_daily/ca/tmax"
+    satellite_tmin_dir: "data/chirts_daily/ca/tmin"
+    dem_file: "data/topography/dem_ca_continental_land.nc"
+    shapefile_path: "data/gis/Buffer_15km_todo_AC.shp"
+  rd:
+    name: "República Dominicana"
+    raw_3d_netcdf_rainfall: "data/raw_netcdf/chirpsv2_ca-rd_1991-2020_la_espanola.nc"
+    raw_3d_netcdf_tmax: "data/raw_netcdf/CHIRTS-ERA5.daily_Tmax.1991-2020_la_espanola.nc"
+    raw_3d_netcdf_tmin: "data/raw_netcdf/CHIRTS-ERA5.daily_Tmin.1991-2020_la_espanola.nc"
+    satellite_rainfall_dir: "data/chirps_daily/rd"
+    satellite_tmax_dir: "data/chirts_daily/rd/tmax"
+    satellite_tmin_dir: "data/chirts_daily/rd/tmin"
+    dem_file: "data/topography/dem_srtm_dominicana.nc"
+    shapefile_path: "data/gis/republica_dominicana.shp"
 
 system:
   nb_cores: 9                    # 9 núcleos físicos de CPU para procesamiento paralelo
@@ -307,7 +329,7 @@ system:
 
 ### C. ¿Qué Contienen los Archivos de Experimento Individuales?
 
-Cada archivo en `config/experiments_rainfall/` (10 YAMLs), `config/experiments_tmax/` (8 YAMLs) y `config/experiments_tmin/` (8 YAMLs) hereda de `global_config.yaml` y únicamente especifica la combinación metodológica de ese experimento:
+Cada archivo en `config/experiments_rainfall/` (15 YAMLs), `config/experiments_tmax/` (12 YAMLs) y `config/experiments_tmin/` (12 YAMLs) hereda de `global_config.yaml` y únicamente especifica la combinación metodológica de ese experimento:
 
 * **`include: "config/global_config.yaml"`**: Importa automáticamente todas las rutas y recursos globales.
 * **`id` y `description`**: Identificador único (ej. `EXP_R05_RK_Topography_Weibull`).
@@ -340,13 +362,13 @@ Una vez completada la fusión diaria por CDT:
 Una vez generado y ensamblado el producto climático en formato NetCDF 3D (estándar CF-1.8), el sistema ejecuta de forma automática la evaluación cuantitativa de desempeño contra observaciones in situ.
 
 #### 1. ¿Cómo se extraen los datos de la cuadrícula en las coordenadas de las estaciones?
-Para comparar los valores de la cuadrícula continua con las observaciones puntuales de las estaciones meteorológicas, el evaluador ([`launcher/station_manager.py`](file:///d:/Workspace/CDT-8.0/launcher/station_manager.py)) implementa un esquema espacial riguroso:
+Para comparar los valores de la cuadrícula continua con las observaciones puntuales de las estaciones meteorológicas, el evaluador ([`launcher/station_manager.py`](../launcher/station_manager.py)) implementa un esquema espacial riguroso:
 * **Extracción por Vecino Más Cercano (*Nearest Neighbor*):** Se localiza el centroide de la celda de la cuadrícula más próxima geográficamente a la latitud y longitud de la estación (`da.sel(..., method="nearest")`). No se utiliza interpolación bilineal porque promediar los 4 píxeles vecinos en topografía compleja suaviza de forma artificial las temperaturas extremas y genera lloviznas espurias (*drizzle*) que distorsionan las estadísticas de contingencia.
 * **Mecanismo de Contingencia Costera (Búsqueda en Ventana $3 \times 3$):** Si la estación se localiza en una zona litoral o insular y la celda más próxima cae dentro del océano (donde la máscara continental tiene valor ausente o `NaN`), el evaluador inspecciona automáticamente una ventana circundante de $3 \times 3$ celdas para identificar la celda continental válida más cercana. Esto previene la exclusión inadvertida de estaciones costeras.
 * **Emparejamiento Temporal Estricto (*Inner Join*):** Se sincronizan las fechas día a día y se eliminan del cómputo los días con datos faltantes (`NA`, `-99.0` o valores no físicos).
 
 #### 2. ¿Por qué las métricas se calculan con Python y no directamente con CDT en R?
-Aunque CDT incluye internamente un módulo de validación en R (`R/cdtValidation_functions.R` y `R/cdtCrossValidation_...`), en este flujo de producción se calculan mediante la capa en Python ([`launcher/metrics.py`](file:///d:/Workspace/CDT-8.0/launcher/metrics.py)) por tres razones metodológicas y de rendimiento:
+Aunque CDT incluye internamente un módulo de validación en R (`R/cdtValidation_functions.R` y `R/cdtCrossValidation_...`), en este flujo de producción se calculan mediante la capa en Python ([`launcher/metrics.py`](../launcher/metrics.py)) por tres razones metodológicas y de rendimiento:
 1. **Validación Ciega Real (*Holdout* Independiente):** En el protocolo científico del proyecto, **el modelo no debe evaluarse a sí mismo**. Las 29 estaciones de prueba fueron extraídas y apartadas físicamente antes de ejecutar CDT (`stations_holdout.csv`); CDT solo conoció las estaciones de entrenamiento (`stations_calibration.csv`). La evaluación se realiza a posteriori como una auditoría externa e imparcial sobre el producto final NetCDF 3D.
 2. **Limitaciones de Métricas en CDT (Inclusión de KGE y ETS):** Como se detalla a continuación, el código original de CDT en R **no incluye** el índice de eficiencia de Kling-Gupta (**KGE**) ni la puntuación equitativa de amenaza (**ETS/GSS**), dos de las métricas más importantes en la literatura hidrometeorológica moderna.
 3. **Eficiencia y Escalabilidad:** Calcular las métricas vectorizadas en Python con `xarray` y `numpy` toma apenas ~1.5 segundos por experimento para 30 años de datos diarios (10,958 días), evitando la sobrecarga de generar tablas intermedias en disco desde R.
@@ -465,7 +487,7 @@ Configuración de hardware: **Intel Xeon Silver 4210R (10C/20T @ 2.40 GHz), 18 n
 | **Precipitación (CHIRPS)** | 10 | 10,958 | 1.1 h (IDW) – 4.2 h (Block OKR) | **~29.0 – 31.0 horas** | 2.5 – 4.5 GB |
 | **Temperatura Máxima ($T_{max}$)** | 8 | 10,958 | 1.2 h (IDW) – 2.4 h (RK DEM) | **~15.0 – 16.0 horas** | 3.5 – 4.6 GB |
 | **Temperatura Mínima ($T_{min}$)** | 8 | 10,958 | 1.2 h (IDW) – 2.4 h (RK DEM) | **~15.0 – 16.0 horas** | 3.5 – 4.6 GB |
-| **Total Global (26 Experimentos)** | **26** | **10,958** | — | **~60.0 – 63.0 horas** | **4.6 GB (< 8% de 64 GB)** |
+| **Total Global (39 Exp. CDT + 3 Controles EXP_00)** | **42** | **10,958** | — | **~60.0 – 63.0 horas** | **4.6 GB (< 8% de 64 GB)** |
 
 > **Nota sobre Optimización Geostadística:** Los experimentos de lluvia que implementan Kriging por Bloques con 3 pasadas y máscara logística (`EXP_R03`, `EXP_R04`, `EXP_R05`, `EXP_R07`) requieren ~4.2 h debido a la integración numérica 2D y al doble Kriging diario (residuales + probabilidad logit). Si se configura Kriging puntual (`use_block: false`), el tiempo de dichos experimentos se reduce a ~1.8 h, situando la suite completa en **~48 horas (~2 días continuos)**.
 > 
@@ -475,7 +497,7 @@ Configuración de hardware: **Intel Xeon Silver 4210R (10C/20T @ 2.40 GHz), 18 n
 
 ## 9. Guía de Ejecución en Segundo Plano y Producción Desatendida (`nohup` / Servidores Linux / WSL)
 
-En entornos de cómputo científico, servidores remotos headless y sesiones WSL2, la ejecución de los 26 experimentos para el periodo 1991–2020 toma entre 60 y 63 horas continuas. Para evitar que el proceso se interrumpa por desconexión de red (cierre de sesión SSH) o por bloqueos de librerías gráficas, deben tenerse en cuenta las siguientes consideraciones críticas:
+En entornos de cómputo científico, servidores remotos headless y sesiones WSL2, la ejecución de las 42 configuraciones (39 experimentos en CDT + 3 controles EXP_00) para el periodo 1991–2020 toma entre 60 y 63 horas continuas. Para evitar que el proceso se interrumpa por desconexión de red (cierre de sesión SSH) o por bloqueos de librerías gráficas, deben tenerse en cuenta las siguientes consideraciones críticas:
 
 ### A. Diagnóstico y Resolución de Errores Operativos
 
@@ -490,7 +512,7 @@ En entornos de cómputo científico, servidores remotos headless y sesiones WSL2
 ### B. Comando Estándar de Producción
 
 ```bash
-# Ejecución de toda la matriz de 26 experimentos en segundo plano:
+# Ejecución de toda la matriz de 42 configuraciones en segundo plano:
 DISPLAY= nohup python -u launcher/experiment_runner.py --suite all --cores 18 > corrida_completa.log 2>&1 &
 
 # Seguimiento en vivo de las etapas de cálculo, tiempos y días procesados:

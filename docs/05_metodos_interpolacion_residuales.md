@@ -201,7 +201,7 @@ Al ser `vgm = NULL`, la expresión `vgm$range[2] < 0` producía una condición d
 Error in FUN(jloop) : task [N] failed - "argument is of length zero"
 ```
 
-El parche aplicado en [`R/cdtMerging_functions.R`](file:///d:/Workspace/CDT-8.0/R/cdtMerging_functions.R#L360-L370) sustituye esa estructura por:
+El parche aplicado en [`R/cdtMerging_functions.R`](../R/cdtMerging_functions.R#L360-L370) sustituye esa estructura por:
 
 ```r
 if (inherits(vgm, "try-error")) {

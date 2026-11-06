@@ -28,7 +28,7 @@ flowchart TD
 ---
 
 ### Paso 2: Gridding > Downscaling Reanalysis > Compute Downscaling Coefficients
-- **Ruta de código:** [`R/cdtTemp_DownscalingCoef_Procs.R`](file:///d:/Workspace/CDT-8.0/R/cdtTemp_DownscalingCoef_Procs.R)
+- **Ruta de código:** [`R/cdtTemp_DownscalingCoef_Procs.R`](../R/cdtTemp_DownscalingCoef_Procs.R)
 - **Fundamento Climatológico:** La temperatura disminuye sistemáticamente con la altitud debido a la descompresión adiabática del aire (*Environmental Lapse Rate*, típicamente entre $-5.0\ ^\circ\text{C}$ y $-6.5\ ^\circ\text{C}$ por cada $1000\text{ m}$). Además, la insolación varía según la pendiente (*slope*) y la orientación de las laderas (*aspect*).
 - **Fundamento Estadístico:** Ajusta un Modelo Lineal Generalizado (GLM) para cada mes del año ($m = 1, \dots, 12$) correlacionando la temperatura observada en las estaciones con la topografía:
   
@@ -47,7 +47,7 @@ $$
 ---
 
 ### Paso 3: Gridding > Downscaling Reanalysis > Downscaling Data
-- **Ruta de código:** [`R/cdtTemp_DownscalingReanal_Procs.R`](file:///d:/Workspace/CDT-8.0/R/cdtTemp_DownscalingReanal_Procs.R)
+- **Ruta de código:** [`R/cdtTemp_DownscalingReanal_Procs.R`](../R/cdtTemp_DownscalingReanal_Procs.R)
 - **Fundamento Climatológico:** Los reanálisis o CHIRTS nativos suelen tener resoluciones espaciales gruesas ($0.25^\circ \approx 28\text{ km}$ o $0.05^\circ$). Este paso transfiere la variabilidad orográfica de alta resolución del DEM ($90\text{ m}$ o $1\text{ km}$) al campo térmico grueso.
 - **Fundamento Estadístico:**
   1. Agrega el DEM fino a la resolución gruesa del reanálisis: $\text{DEM}_{\text{coarse}}$.
@@ -74,7 +74,7 @@ $$
 ---
 
 ### Paso 4: Gridding > Bias Correction > Compute Bias Coefficients (Temperature)
-- **Ruta de código:** [`R/cdtBias_functions.R`](file:///d:/Workspace/CDT-8.0/R/cdtBias_functions.R#L211-L320), [`R/cdtBias_Options_functions.R`](file:///d:/Workspace/CDT-8.0/R/cdtBias_Options_functions.R)
+- **Ruta de código:** [`R/cdtBias_functions.R`](../R/cdtBias_functions.R#L211-L320), [`R/cdtBias_Options_functions.R`](../R/cdtBias_Options_functions.R)
 - **Fundamento Climatológico:** El reanálisis/satélite desescalado puede tener sesgos sistemáticos debidos a errores en la parametrización de la capa límite, albedo del suelo o nubosidad.
 - **Fundamento Estadístico:** Modela la función de transferencia entre estaciones y reanálisis:
   1. **Método Multiplicativo Variable (`"mbvar"` / `"mbmon"`):**
@@ -105,7 +105,7 @@ $$
 ---
 
 ### Paso 6: Gridding > Merging Climate Data > Temperature Data
-- **Ruta de código:** [`R/cdtMerging_Temp_Cmd.R`](file:///d:/Workspace/CDT-8.0/R/cdtMerging_Temp_Cmd.R), [`R/cdtMerging_functions.R`](file:///d:/Workspace/CDT-8.0/R/cdtMerging_functions.R)
+- **Ruta de código:** [`R/cdtMerging_Temp_Cmd.R`](../R/cdtMerging_Temp_Cmd.R), [`R/cdtMerging_functions.R`](../R/cdtMerging_functions.R)
 - **Fundamento Estadístico:** Ajusta los residuales puntuales finales entre las estaciones y el producto corregido mediante:
   - **Regression Kriging (RK):** Ajusta un GLM dinámico fecha a fecha con covariables espaciales (DEM, Slope, Lon, Lat).
   - **Ordinary Kriging (OKR) / IDW:** Interpola la estructura espacial de los residuales y la adiciona al campo corregido.
