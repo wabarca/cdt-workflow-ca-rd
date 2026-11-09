@@ -367,9 +367,54 @@ def validate_project_inputs(
     else:
         cfg = dict(config_path_or_dict)
 
-    # Apply regional overrides if region is specified (e.g. 'ca' or 'rd')
+    # Apply regional overrides if region is specified (e.g. 'ca', 'rd', or 'all'/None)
     active_region = (region or cfg.get("active_region", "")).lower()
     regions_dict = cfg.get("regions", {})
+
+    # Si no se especifica región o se pasa 'all', evaluar automáticamente todas las regiones configuradas (CA y RD)
+    if active_region in ("", "all") and regions_dict:
+        sub_reports = {}
+        all_errors: List[str] = []
+        all_warnings: List[str] = []
+        any_ready = False
+        all_ready = True
+        for reg_key in regions_dict.keys():
+            r_rep = validate_project_inputs(
+                config_path_or_dict=cfg,
+                region=reg_key,
+                auto_split_3d=auto_split_3d,
+                max_workers=max_workers,
+                verbose=verbose,
+            )
+            sub_reports[reg_key] = r_rep
+            if r_rep.get("is_ready"):
+                any_ready = True
+            else:
+                all_ready = False
+            for e in r_rep.get("errors", []):
+                all_errors.append(f"[{reg_key.upper()}] {e}")
+            for w in r_rep.get("warnings", []):
+                all_warnings.append(f"[{reg_key.upper()}] {w}")
+
+        if verbose:
+            print("=" * 85)
+            print("  RESUMEN GLOBAL MULTIRREGIONAL (CA + RD):")
+            for rk, rr in sub_reports.items():
+                r_name = regions_dict.get(rk, {}).get("name", rk.upper())
+                st_str = "LISTO [OK]" if rr.get("is_ready") else f"INCOMPLETO ({len(rr.get('errors', []))} errores)"
+                print(f"    • {r_name:<25} (--region {rk}) : {st_str}")
+            print("=" * 85 + "\n")
+
+        overall = "VALID" if all_ready and not all_warnings else ("WARNINGS" if any_ready else "ERRORS")
+        return {
+            "status": overall,
+            "is_ready": any_ready,
+            "all_regions_ready": all_ready,
+            "errors": all_errors,
+            "warnings": all_warnings,
+            "details": {"regions": sub_reports},
+        }
+
     region_label = "General / Completo"
 
     paths = dict(cfg.get("paths", {}))

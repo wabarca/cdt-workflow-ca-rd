@@ -1449,8 +1449,8 @@ def main() -> None:
         "--region", "--domain",
         type=str,
         choices=["ca", "rd", "all"],
-        default="ca",
-        help="Dominio territorial a procesar: 'ca' (Centroamérica), 'rd' (República Dominicana) o 'all' (General). Por defecto 'ca'.",
+        default=None,
+        help="Dominio territorial a procesar: 'ca' (Centroamérica), 'rd' (República Dominicana) o 'all' (Ambos dominios en --check-data). Por defecto evalúa ambos en --check-data y 'ca' en ejecución.",
     )
     parser.add_argument(
         "--cores", "--nb-cores",
@@ -1498,6 +1498,9 @@ def main() -> None:
     )
 
     args = parser.parse_args()
+    check_data_region = args.region or "all"
+    if args.region is None:
+        args.region = "ca"
 
     # Determine regional directory names
     exp_out_dir = PROJECT_ROOT / "output" / f"experiments_{args.region}" if args.region in ("ca", "rd") else PROJECT_ROOT / "output" / "experiments"
@@ -1539,7 +1542,7 @@ def main() -> None:
     if args.check_data:
         from launcher.data_preprocessor import validate_project_inputs
         base_path = Path(args.base_config) if args.base_config else PROJECT_ROOT / "config" / "global_config.yaml"
-        res = validate_project_inputs(config_path_or_dict=base_path, region=args.region, auto_split_3d=False, verbose=True)
+        res = validate_project_inputs(config_path_or_dict=base_path, region=check_data_region, auto_split_3d=False, verbose=True)
         if not args.suite and not args.config:
             sys.exit(0 if res.get("is_ready") else 1)
 
