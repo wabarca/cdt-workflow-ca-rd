@@ -527,14 +527,17 @@ class ExperimentRunner:
 
         dem_p = Path(dem_path_str).resolve()
         topo_dir = PROJECT_ROOT / "data" / "topography"
-        clean_target = topo_dir / "dem_ca_continental_land.nc"
+        clean_name = "dem_rd_continental_land.nc" if self.region == "rd" else "dem_ca_continental_land.nc"
+        clean_target = topo_dir / clean_name
 
         if not dem_p.exists():
             if clean_target.exists():
                 return str(clean_target)
-            raw_cands = list(topo_dir.glob("*.nc"))
+            raw_cands = sorted(list(topo_dir.glob("*.nc"))) if topo_dir.exists() else []
             if raw_cands:
-                dem_p = raw_cands[0].resolve()
+                reg_kw = ("dominicana", "rd", "espanola") if self.region == "rd" else ("gebco", "ca", "centroamerica", "srtm")
+                matched = [c for c in raw_cands if any(k in c.name.lower() for k in reg_kw)]
+                dem_p = (matched[0] if matched else raw_cands[0]).resolve()
             else:
                 return dem_path_str
 
@@ -560,7 +563,7 @@ class ExperimentRunner:
 
             if min_val < 0.0:
                 print(f"  --> [Auditoria DEM] '{dem_p.name}' contiene cotas batimetricas negativas ({min_val:.0f} m).")
-                print(f"      [Auto-Sanitizacion] Generando DEM para suites termicas (clampeo z >= 0 m, proteccion insular)...")
+                print(f"      [Auto-Sanitizacion] Generando DEM saneado (clampeo z >= 0 m, proteccion insular)...")
                 bbox = (-93.0, 6.8, -76.8, 19.0) if self.region in ("ca", "centroamerica") else None
                 clean_path = sanitize_dem_for_temperature(
                     input_dem_path=dem_p,
@@ -852,10 +855,19 @@ class ExperimentRunner:
                 continue
 
             status_str = "SUCCESS" if ret_code == 0 else "FAILED"
-            if ret_code != 0 and stderr:
-                err_lines = [l.strip() for l in stderr.strip().splitlines() if l.strip()]
-                for el in err_lines[-4:]:
-                    print(f"      [R-stderr] {el}")
+            if ret_code != 0:
+                if stdout:
+                    out_lines = [
+                        l.strip()
+                        for l in stdout.strip().splitlines()
+                        if l.strip() and not l.strip().startswith("Tcl_config.json")
+                    ]
+                    for ol in out_lines[-3:]:
+                        print(f"      [R-stdout] {ol}")
+                if stderr:
+                    err_lines = [l.strip() for l in stderr.strip().splitlines() if l.strip()]
+                    for el in err_lines[-4:]:
+                        print(f"      [R-stderr] {el}")
             formatted_time = format_duration(elapsed)
             manifest_data["timestamp_end"] = datetime.datetime.now().isoformat()
             manifest_data["execution_time_sec"] = elapsed
@@ -987,6 +999,7 @@ class ExperimentRunner:
         bias_method = str(bias_cfg.get("method", "mbvar")).lower()
         effective_sat_dir = paths.get("satellite_dir", "")
         effective_sat_format = paths.get("satellite_format", "chirps_%s%s%s.nc")
+        dem_file = self._ensure_sanitized_dem_for_temperature(paths.get("dem_file"))
         total_time = 0.0
 
         if bias_method and bias_method not in ("none", "null", "false"):
@@ -1017,7 +1030,7 @@ class ExperimentRunner:
                     maxdist=b_interp.get("maxdist", 2.0),
                     use_block=b_interp.get("use_block", True),
                     vgm_models=b_interp.get("variogram_models", ["Sph", "Exp", "Gau"]),
-                    dem_file=paths.get("dem_file"),
+                    dem_file=dem_file,
                     var_id=paths.get("var_id", "precip"),
                     start_year=int(str(start_date)[:4]),
                     end_year=int(str(end_date)[:4]),
@@ -1106,7 +1119,7 @@ class ExperimentRunner:
             rnor_wet=rnor.get("wet_threshold", 1.0),
             rnor_smooth=rnor.get("smoothing", True),
             shapefile_path=paths.get("shapefile_path"),
-            dem_file=paths.get("dem_file"),
+            dem_file=dem_file,
             auxvar=merging.get("auxiliary_variables") or merging.get("covariables"),
             global_mrg_opts=(
                 exp.get("merging_options")
