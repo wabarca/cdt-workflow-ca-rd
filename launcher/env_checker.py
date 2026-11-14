@@ -29,6 +29,8 @@ REQUIRED_PYTHON_PACKAGES: list[Tuple[str, str]] = [
     ("seaborn", "seaborn"),
     ("plotly", "plotly"),
     ("jinja2", "jinja2"),
+    ("cartopy", "cartopy"),
+    ("markdown", "markdown"),
 ]
 
 REQUIRED_R_PACKAGES: list[str] = [

@@ -28,7 +28,12 @@ import shutil
 import time
 from typing import Any, Dict, List, Optional, Union
 
-from launcher.env_checker import check_system_environment, print_environment_report
+from launcher.env_checker import (
+    REQUIRED_PYTHON_PACKAGES,
+    check_installed_python_packages,
+    check_system_environment,
+    print_environment_report,
+)
 from launcher.netcdf_assembler import assemble_daily_netcdfs_to_cf18
 
 
@@ -211,24 +216,21 @@ def pack_intermediate_daily_grids(exp_dir: Path | str, force: bool = False) -> D
 
 def _check_python_requirements() -> bool:
     """Ensure all required Python packages are installed, showing a clean error if not."""
-    try:
-        import yaml
-        import numpy
-        import pandas
-        import xarray
-        import netCDF4
+    pkg_status = check_installed_python_packages(REQUIRED_PYTHON_PACKAGES)
+    missing = [pkg for pkg, installed in pkg_status.items() if not installed]
+    if not missing:
         return True
-    except ImportError as e:
-        print("\n" + "=" * 75)
-        print("  [!] ERROR: FALTAN PAQUETES DE PYTHON REQUERIDOS")
-        print("=" * 75)
-        print(f"  Detalle del error : {e}")
-        print("\n  Para instalar todas las dependencias necesarias en este entorno, ejecuta:")
-        print("      pip install -r requirements.txt")
-        print("\n  O ejecuta el diagnóstico completo del entorno con:")
-        print("      python launcher/experiment_runner.py --check-env")
-        print("=" * 75 + "\n")
-        return False
+
+    print("\n" + "=" * 75)
+    print("  [!] ERROR: FALTAN PAQUETES DE PYTHON REQUERIDOS")
+    print("=" * 75)
+    print(f"  Paquetes faltantes: {', '.join(missing)}")
+    print("\n  Para instalar todas las dependencias necesarias en este entorno, ejecuta:")
+    print("      pip install -r requirements.txt")
+    print("\n  O ejecuta el diagnóstico completo del entorno con:")
+    print("      python launcher/experiment_runner.py --check-env")
+    print("=" * 75 + "\n")
+    return False
 
 
 
