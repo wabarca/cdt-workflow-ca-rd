@@ -1,10 +1,10 @@
-# 09. Diseño Experimental en Dos Fases y Criterios Físico-Climatológicos para Precipitación Diaria
+# 09. Diseño Experimental en Dos Fases y Criterios Climatológicos para Precipitación Diaria
 
 > **Componente de Validación:** Suite A — Precipitación Diaria (`rainfall`, CHIRPS v2.0 + Pluviómetros NMHS)  
 > **Período de Reconstrucción:** 1991–2020 (30 años continuos, 10,958 días)  
 > **Configuraciones Evaluadas:** 16 configuraciones (Control Satelital `EXP_R00` + 10 Experimentos de Fase 1 + 5 Experimentos de Fase 2)
 
-Este documento describe la arquitectura metodológica en **dos fases experimentales** implementada para la fusión espacial de precipitación diaria en **Climate Data Tools (CDT v8.0)**, las hipótesis hidroclimáticas asociadas a cada configuración y los criterios físico-climatológicos que complementan la validación estadística puntual.
+Este documento describe la arquitectura metodológica en **dos fases experimentales** implementada para la fusión espacial de precipitación diaria en **Climate Data Tools (CDT v8.0)**, las hipótesis hidroclimáticas asociadas a cada configuración y los criterios climatológicos que complementan la validación estadística puntual.
 
 ---
 
@@ -102,7 +102,7 @@ La **Fase 2 (`EXP_R11` a `EXP_R15`)** se diseña para aislar y resolver cuatro l
 
 ---
 
-## 5. Criterios de Admisibilidad Físico-Climatológica
+## 5. Criterios de Admisibilidad Climatológica
 
 La selección de configuraciones óptimas para generación de escenarios climáticos no puede descansar exclusivamente en la clasificación ciega de una métrica puntual, sino que debe satisfacer tres criterios de consistencia física respaldados por la literatura hidroclimática:
 

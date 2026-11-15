@@ -455,7 +455,7 @@ Para fundamentos matemáticos profundos, justificaciones físicas, menús de CDT
 - [**06. Tratamiento Fisiográfico del DEM, Batimetría Marina y Protección Insular**](docs/06_tratamiento_fisiografico_dem_batimetria.md)
 - [**07. Secuencia de Procesamiento de Precipitación (CHIRPS) y Máscara Rain-No-Rain**](docs/07_secuencia_precipitacion_chirps_rnor.md)
 - [**08. Secuencia de Procesamiento de Temperatura (CHIRTS) y Modelado Topográfico con DEM**](docs/08_secuencia_temperatura_chirts_dem.md)
-- [**09. Diseño Experimental en Dos Fases y Criterios Físico-Climatológicos para Precipitación**](docs/09_diagnostico_y_benchmark_precipitacion.md)
+- [**09. Diseño Experimental en Dos Fases y Criterios Climatológicos para Precipitación**](docs/09_diagnostico_y_benchmark_precipitacion.md)
 - [**10. Diseño Experimental en Dos Fases y Criterios Termodinámicos para Temperatura (Tmax y Tmin)**](docs/10_diagnostico_y_benchmark_temperatura.md)
 - [**11. Modificaciones al Código Fuente R de CDT y Resolución de la Paralelización**](docs/11_modificaciones_codigo_fuente_r_y_paralelizacion.md)
 - [**12. Metodología de Evaluación Estadística, Métricas y Validación Cruzada en CDT 8.0**](docs/12_metodologia_evaluacion_metricas_y_validacion.md)

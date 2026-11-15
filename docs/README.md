@@ -64,7 +64,7 @@ La documentación se organiza en **5 bloques lógicos y 12 módulos secuenciales
    - Flujo de 5 pasos en CDT: cálculo de coeficientes de desescalado orográfico, reducción de escala a 1 km, cálculo de sesgo diurno ($T_{\max}$) y nocturno ($T_{\min}$), aplicación del ajuste y fusión espacial de residuales. Detalle de las **26 configuraciones térmicas (Controles `EXP_TX00` y `EXP_TN00` + 24 experimentos CDT: `EXP_TX01` a `TX12` y `EXP_TN01` a `TN12`)**.
 
 ### Bloque IV: Diseño Experimental en Dos Fases y Metodología de Evaluación
-9. [**09. Diseño Experimental en Dos Fases y Criterios Físico-Climatológicos para Precipitación**](09_diagnostico_y_benchmark_precipitacion.md)
+9. [**09. Diseño Experimental en Dos Fases y Criterios Climatológicos para Precipitación**](09_diagnostico_y_benchmark_precipitacion.md)
    - Estructura metodológica de la Fase 1 exploratoria (10 experimentos) y la Fase 2 de optimización dirigida (5 experimentos), hipótesis físicas e hidroclimáticas por experimento, y criterios de admisibilidad climatológica frente a artefactos de interpolación (*ojos de buey* y truncamiento de lloviznas).
 10. [**10. Diseño Experimental en Dos Fases y Criterios Termodinámicos para Temperatura (Tmax y Tmin)**](10_diagnostico_y_benchmark_temperatura.md)
     - Diseño de las 26 configuraciones térmicas (Fase 1: `EXP_01`–`08` y Fase 2: `EXP_09`–`12` más controles `EXP_00`), contraste termodinámico entre convección diurna ($T_{\max}$) e inversiones radiativas nocturnas ($T_{\min}$), y criterios de admisibilidad física sobre conservación del gradiente térmico vertical ($\Gamma = -\partial T / \partial z$).

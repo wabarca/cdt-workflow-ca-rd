@@ -406,7 +406,7 @@ def generate_experiments_pdf(
         "<br/><br/>"
         "• <b>Temperatura Mínima (CHIRTS Tmin):</b> No modela inversiones térmicas nocturnas ni drenaje catabático en valles intramontanos cerrados (Quetzaltenango, altiplano occidental) con heladas (&lt;0 &deg;C), ni caídas térmicas bruscas asimétricas por frentes fríos invernales (<i>Nortes</i>) (Alfaro et al., 2018). "
         "<br/><br/>"
-        "<b>Objetivo:</b> Ejecutar una matriz de <b>42 configuraciones evaluadas</b> (<b>3 controles de referencia sobre la malla satelital original sin corregir [<code>EXP_R00</code>, <code>EXP_TX00</code>, <code>EXP_TN00</code>]</b> más <b>39 experimentos controlados en CDT</b>: 15 de Precipitación en Fase 1 y Fase 2, 12 de Tmax y 12 de Tmin) para determinar las configuraciones óptimas físico-climatológicas que propaguen coherentemente la información de estaciones sin generar artefactos espaciales.",
+        "<b>Objetivo:</b> Ejecutar una matriz de <b>42 configuraciones evaluadas</b> (<b>3 controles de referencia sobre la malla satelital original sin corregir [<code>EXP_R00</code>, <code>EXP_TX00</code>, <code>EXP_TN00</code>]</b> más <b>39 experimentos controlados en CDT</b>: 15 de Precipitación en Fase 1 y Fase 2, 12 de Tmax y 12 de Tmin) para determinar las configuraciones óptimas climatológicas y estadísticas que propaguen coherentemente la información de estaciones sin generar artefactos espaciales.",
         body_style,
     ))
     story.append(Spacer(1, 3))
@@ -864,7 +864,7 @@ def generate_experiments_pdf(
         Paragraph("ETS", th_lb),
         Paragraph("HSS", th_lb),
         Paragraph("Skill", th_lb),
-        Paragraph("Decisión Físico-Climatológica", th_lb),
+        Paragraph("Decisión Climatológica", th_lb),
     ]
     rows_lb_data = [
         ("1*", "EXP_R02_SBA_IDW_RnoR", "SBA IDW 3 pasadas + RnoR dura", "0.451", "0.520", "12.14", "-0.81%", "0.771", "0.328", "0.343", "0.500", "0.553", "DESCARTADO (Ojos de buey IDW)", False),
@@ -926,10 +926,14 @@ def generate_experiments_pdf(
     story.append(Spacer(1, 2))
 
     # DISCUSIÓN DE RESULTADOS DE PRECIPITACIÓN
-    story.append(Paragraph("5.3. Discusión Físico-Climatológica de Precipitación y Rechazo de Ojos de Buey", h2_style))
+    story.append(Paragraph("5.3. Discusión Climatológica y Estadística de Precipitación en Centroamérica", h2_style))
     story.append(Paragraph(
-        "<b>1. Rechazo Físico de EXP_R02 por Artefactos de 'Ojos de Buey' (Bull's-Eyes):</b> Aunque <code>EXP_R02_SBA_IDW_RnoR</code> ocupa el #1 numérico en GSS bruto en Ronda 2 (0.553 vs 0.547 de R11 y 0.544 de R15; ventaja en KGE de solo +0.003), emplea interpolación IDW isotrópica (<i>w<sub>i</sub> = d<sub>i</sub><sup>-2</sup></i>) que carece de desagrupamiento direccional (<i>declustering</i>) y fuerza derivada nula (&nabla;<i>Z</i> = 0) sobre cada estación, generando anillos concéntricos de 'ojo de buey' (Shepard, 1968; Daly, 2006; Hofstra et al., 2008) y un +2.3% más de Falsas Alarmas (<b>FAR = 0.328</b>).<br/>"
-        "<b>2. Selección del Top 3 Físico con Shepard Modificado (EXP_R11, EXP_R15, EXP_R12):</b> Al aplicar apantallamiento angular (1 - cos &theta;<sub>ij</sub>), la familia Shepard elimina los ojos de buey, logra los mejores índices de detección categórica de toda la suite (<b>ETS = 0.361</b> y <b>HSS = 0.517</b> en <code>EXP_R11</code>; <b>ETS = 0.354</b> y <b>PBIAS = +1.02%</b> en <code>EXP_R15</code>; y mínimo sesgo <b>PBIAS = +0.22%</b> con mínimo <b>FAR = 0.298</b> en <code>EXP_R12</code>), superando ampliamente a la malla sin corregir <code>EXP_R00</code> (+41.9% en KGE).",
+        "<b>1. La Paradoja de la Validación Cruzada y el Descarte de EXP_R02 por 'Ojos de Buey' (Bull's-Eyes):</b> En redes de estaciones con muestreo irregular y agrupado en valles (<i>clustered networks</i>), las métricas puntuales en estaciones <i>holdout</i> no detectan los artefactos que el interpolador introduce en el espacio inter-estación (Daly, 2006; Hofstra et al., 2008). Aunque <code>EXP_R02_SBA_IDW_RnoR</code> encabeza marginalmente el GSS bruto en la Ronda 2 (0.553 vs 0.547 de R11 y 0.544 de R15, con una diferencia en KGE de apenas +0.003, estadísticamente indistinguible), su interpolación <b>IDW isotrópica</b> (<i>w<sub>i</sub> = d<sub>i</sub><sup>-2</sup></i>) impone derivada nula sobre cada estación (&nabla;<i>Z</i>(<b>x</b><sub>i</sub>) = 0) y carece de desagrupamiento direccional (<i>declustering</i>), generando <b>anillos concéntricos de 'ojo de buey'</b> alrededor de los pluviómetros (Shepard, 1968; Willmott et al., 1985). Estadísticamente, estos halos radiales de lluvia se reflejan en un +2.3% más de Falsas Alarmas (<b>FAR = 0.328</b>) y menor habilidad categórica (ETS = 0.343).<br/>"
+        "<b>2. Selección del Top 3 con Shepard Modificado (EXP_R11, EXP_R15, EXP_R12):</b> Al introducir el término de apantallamiento angular <i>s<sub>i</sub> = &Sigma; d<sub>j</sub><sup>-p</sup>(1 - cos &theta;<sub>ij</sub>)</i> y derivadas direccionales de Taylor, la familia Shepard suprime los ojos de buey y domina tanto en consistencia climatológica como en desempeño estadístico frente a la malla sin corregir <code>EXP_R00</code> (KGE=0.315): "
+        "<b>(a) Top 1 (EXP_R11, GSS=0.547, KGE=0.447 [+41.9% vs R00]):</b> La mediana robusta y la malla gruesa costera logran la <b>máxima destreza de detección categórica de toda la suite (ETS = 0.361, HSS = 0.517, FAR = 0.305)</b>; "
+        "<b>(b) Top 2 (EXP_R15, GSS=0.544, KGE=0.431):</b> La transición continua suave (<code>RnoRCutOff=2</code> entre 0.1 y 1.0 mm) preserva lluvias ligeras reales con un balance volumétrico casi perfecto (<b>PBIAS = +1.02%</b>, ETS = 0.354); "
+        "<b>(c) Top 3 (EXP_R12, GSS=0.538, KGE=0.421):</b> El confinamiento radial a 0.9° (~100 km) evita el trasvase de humedad Caribe &harr; Pacífico a través de la divisoria continental, logrando el <b>menor sesgo volumétrico (PBIAS = +0.22%) y menor tasa de falsas alarmas (FAR = 0.298)</b>.<br/>"
+        "<b>3. Comparación frente a la Guía Oficial CDT (EXP_R07) y Regression Kriging (EXP_R05, EXP_R10):</b> El esquema Cressman de la guía CDT (<code>EXP_R07</code>) cae al puesto #14 (GSS=0.474, RMSE=14.28 mm, PBIAS=+10.98%) porque su radio final de 0.25° genera manchas circulares aisladas. Asimismo, los modelos <code>RK</code> con regresión lineal diaria contra el DEM (<code>EXP_R05</code>, <code>EXP_R10</code>) fracasan (PBIAS &gt; +10.6%, FAR &gt; 37%) porque en el trópico el máximo pluviométrico ocurre a media ladera (800–1,800 msnm) y disminuye hacia las cumbres altas (Hastenrath, 1967).",
         body_style,
     ))
     story.append(PageBreak())
@@ -1168,11 +1172,13 @@ def generate_experiments_pdf(
     story.append(Spacer(1, 2))
 
     # DISCUSIÓN DE RESULTADOS DE TEMPERATURA MÁXIMA
-    story.append(Paragraph("6.3. Discusión de resultados de Temperatura Máxima en Centroamérica", h2_style))
+    story.append(Paragraph("6.3. Discusión Climatológica y Estadística de Temperatura Máxima en Centroamérica", h2_style))
     story.append(Paragraph(
-        "<b>1. Convección Diurna y Mezcla Turbulenta en la Capa Límite:</b> Durante el día, la intensa insolación solar tropical induce mezcla turbulenta vigorosa en la capa límite atmosférica (1.5 a 2.5 km de espesor). Esto homogeneiza el gradiente térmico vertical ambiental, aproximándolo estrechamente al gradiente adiabático seco/húmedo (&part;<i>T</i>/&part;<i>z</i> &approx; -6.5 °C/km).<br/>"
-        "<b>2. La Falacia de la Línea Base y por qué no es Operativa:</b> En las estaciones de prueba (concentradas en valles poblados y planicies costeras &lt;500 msnm), el IDW plano 2D minimiza el error puntual (1.90 °C) porque interpola entre puntos de una misma masa de aire de valle. Sin embargo, en las zonas desprovistas de estaciones (como la Cordillera de Talamanca a 3,820 m o los Cuchumatanes a &gt;3,500 m), el IDW horizontal propaga las temperaturas cálidas del valle (28–32 °C) hacia las cumbres gélidas, borrando el gradiente hipsométrico real.<br/>"
-        "<b>3. Superioridad del Híbrido RK + Barnes (EXP_TX11):</b> Acopla el DEM y coordenadas en Regression Kriging para forzar el gradiente vertical real en todo el relieve sin estaciones, mientras que el análisis de Barnes (3 pasadas gaussianas) absorbe suavemente las transiciones de brisas marinas costeras. Alcanza el <b>KGE más alto del benchmark (0.690)</b>, superando al propio baseline (0.679) con coherencia física estricta.",
+        "<b>1. Convección Diurna y Rechazo Climatológico de la Línea Base 2D sin DEM (EXP_TX01):</b> Durante las horas de máxima insolación solar, la mezcla turbulenta en la capa límite planetaria acopla estrechamente la temperatura máxima con la altitud según el gradiente adiabático (&Gamma; = &minus;&part;<i>T</i>/&part;<i>z</i> &approx; &minus;6.5 °C/km; Daly et al., 2008). En <code>EXP_TX01_SBA_IDW_Baseline</code>, el Paso 5 interpola los residuales en un plano 2D sin DEM (<code>use.dem=FALSE</code>) mediante IDW. Debido al sesgo hipso-espacial de la red (más del 85% de las estaciones se ubican en valles agrícolas y costas &lt;1,500 msnm), <code>EXP_TX01</code> obtiene un RMSE bajo en los valles (1.90 °C), pero propaga horizontalmente el calor de los valles (28–32 °C) hacia las cumbres montañosas desprovistas de estaciones (Cordillera de Talamanca a 3,820 m, Cuchumatanes &gt;3,500 m), destruyendo el gradiente vertical y formando ojos de buey térmicos.<br/>"
+        "<b>2. Selección del Top 3 de Temperatura Máxima (EXP_TX11, EXP_TX10, EXP_TX04):</b> Al exigir el forzamiento del DEM en <i>Regression Kriging</i>, el podio seleccionado une coherencia termodinámica y excelencia estadística frente al control sin corregir <code>EXP_TX00</code> (KGE=0.559): "
+        "<b>(a) Top 1 (EXP_TX11_RK_Barnes_Hybrid, GSS=0.693):</b> Alcanza el <b>máximo KGE medio (0.690 [+23.4% vs TX00]) y mediano (0.707) de todo el estudio</b> (superando incluso al baseline <code>EXP_TX01</code> [0.682]), proyectando el enfriamiento adiabático real en montañas y suavizando las brisas costeras con el filtro gaussiano de Barnes libre de ojos de buey; "
+        "<b>(b) Top 2 (EXP_TX10_QM_Empirical_ECDF, GSS=0.682, KGE=0.665):</b> Logra el <b>menor error cuadrático y absoluto entre los modelos con relieve (RMSE = 2.07 °C, MAE = 1.71 °C)</b>, capturando olas de calor mediante curvas empíricas <code>qmecdf</code> y vecindad vertical <code>NN-3D</code>; "
+        "<b>(c) Top 3 (EXP_TX04_RK_FullTopography_NN3D, GSS=0.675, KGE=0.651):</b> Con <b>RMSE = 2.08 °C</b>, incorpora explícitamente la insolación diferencial matutina/vespertina por orientación de ladera (<code>DEM + Slope + Aspect + NN-3D</code>).",
         body_style,
     ))
     story.append(PageBreak())
@@ -1411,11 +1417,13 @@ def generate_experiments_pdf(
     story.append(Spacer(1, 2))
 
     # DISCUSIÓN DE RESULTADOS DE TEMPERATURA MÍNIMA
-    story.append(Paragraph("7.3. Discusión de resultados de Temperatura Mínima en Centroamérica", h2_style))
+    story.append(Paragraph("7.3. Discusión Climatológica y Estadística de Temperatura Mínima en Centroamérica", h2_style))
     story.append(Paragraph(
-        "<b>1. Enfriamiento Radiativo Nocturno y Desacople Vertical:</b> Durante la noche no hay insolación solar; la atmósfera se desacopla verticalmente y predomina la pérdida radiativa de onda larga en superficie. El aire frío y denso drena gravitacionalmente laderas abajo (vientos catabáticos) y se acumula en fondos de valles y cuencas endorreicas (<i>cold-air pooling</i>), provocando fuertes inversiones térmicas (valles altos con heladas &lt;0 °C mientras laderas intermedias permanecen 6–8 °C más cálidas).<br/>"
-        "<b>2. Falla de Funciones Teóricas Gaussianas:</b> Asumir campanas normales simétricas o colas Gumbel analíticas desploma el KGE (&lt; 0.11), pues los modelos lineales asumen erróneamente que a mayor altitud siempre hace más frío en la noche.<br/>"
-        "<b>3. Victoria Contundente de EXP_TN10 sobre la Línea Base:</b> A diferencia de Tmax, en Tmin el modelo físico <b>EXP_TN10_QM_Empirical_ECDF supera de forma directa a la Línea Base en todas las métricas de error</b>: reduce el RMSE a <b>1.92 °C</b> (frente a 2.19 °C del baseline), el MAE a <b>1.57 °C</b> y eleva el Global Skill Score a <b>0.613</b>. Al acoplar el DEM y la pendiente con cuantiles empíricos no paramétricos celda a celda y control vertical NN-3D (&Delta;<i>z</i>), modela con alta fidelidad las heladas y pozas frías sin distorsionar la mediana regional.",
+        "<b>1. Enfriamiento Radiativo Nocturno, Flujo Catabático y Descarte de EXP_TN01:</b> Durante la noche, la pérdida radiativa de onda larga desacopla la capa límite superficial; el aire frío y denso drena gravitacionalmente por las laderas (<i>vientos catabáticos</i>) y se estanca en valles intramontanos y depresiones cerradas (<i>cold-air pooling</i>; Whiteman, 2000; Daly et al., 2008), generando inversiones térmicas (&part;<i>T</i>/&part;<i>z</i> &gt; 0) y heladas locales en altiplanos (Quetzaltenango, Intibucá). La Línea Base 2D sin DEM (<code>EXP_TN01</code>) se descarta por omitir el relieve y propagar temperaturas de valle hacia las cumbres, mientras que las distribuciones paramétricas rígidas con OKR 2D (<code>Normal</code>, <code>Gumbel</code>, <code>Skew-Normal</code>) colapsan (KGE &lt; 0.37) al mezclar estaciones de fondo de valle frío con estaciones de ladera cálida.<br/>"
+        "<b>2. Convergencia Climatológica y Estadística en el Top 3 Nocturno (EXP_TN10, EXP_TN04, EXP_TN08 / EXP_TN11):</b> En <i>T<sub>mín</sub></i>, la inclusión de la vecindad tridimensional <code>NN-3D</code> (&Delta;<i>z</i>) y la pendiente topográfica (<code>Slope</code>) logra que el modelo más completo sea simultáneamente el #1 absoluto del ranking estadístico: "
+        "<b>(a) Top 1 Absoluto (EXP_TN10_QM_Empirical_ECDF, GSS=0.613, KGE=0.544, KGE Med.=0.600):</b> Alcanza el <b>menor error cuadrático (RMSE = 1.88 °C) y absoluto (MAE = 1.53 °C) de toda la batería</b>, reduciendo en <b>&minus;1.37 °C (&minus;42.2%)</b> el error de la malla sin corregir <code>EXP_TN00</code> (3.25 °C) y superando en &minus;0.32 °C al propio baseline 2D <code>EXP_TN01</code> (2.20 °C); "
+        "<b>(b) Top 2 (EXP_TN04_RK_FullTopography_NN3D, GSS=0.593, KGE=0.533, RMSE=2.01 °C):</b> El aislamiento vertical <code>NN-3D</code> con <code>DEM + Slope</code> evita la contaminación térmica cima-valle; "
+        "<b>(c) Top 3 (EXP_TN08 [GSS=0.587, KGE Med.=0.603, RMSE=2.04 °C] y EXP_TN11 [GSS=0.572, RMSE=2.01 °C, MAE=1.61 °C]):</b> <code>EXP_TN08</code> resuelve el drenaje catabático completo en topografía encajonada y <code>EXP_TN11</code> ofrece el campo de isotermas más suave mediante el filtro gaussiano de Barnes.",
         body_style,
     ))
     story.append(PageBreak())
@@ -1484,21 +1492,21 @@ def generate_experiments_pdf(
     story.append(PageBreak())
 
     # =========================================================================
-    # PÁGINA 11: CUADRO DE HONOR Y ANÁLISIS PROSPECTIVO PARA REPÚBLICA DOMINICANA
+    # PÁGINA 11: CUADRO DE HONOR, CONCLUSIONES Y SENSIBILIDAD DE DOMINIO
     # =========================================================================
-    story.append(Paragraph("9. Cuadro de Honor Oficial y Análisis Prospectivo para República Dominicana", h1_style))
+    story.append(Paragraph("9. Cuadro de Honor Oficial, Conclusiones de Selección Dual y Sensibilidad de Dominio", h1_style))
     story.append(Paragraph(
-        "A partir de los resultados de los 39 experimentos sobre la serie histórica 1991–2020 en validación ciega con 29 estaciones en Centroamérica, se formalizan las <b>3 configuraciones oficiales recomendadas</b> para la generación de los escenarios climáticos regionales:",
+        "La elección de los modelos óptimos para la generación de productos climáticos operacionales no puede descansar exclusivamente en el ordenamiento ciego de una métrica puntual sobre estaciones de valle (<i>Paradoja de la Validación Cruzada</i>; Daly, 2006; Hofstra et al., 2008), sino en la <b>convergencia entre destreza estadística (GSS, KGE, RMSE, ETS, PBIAS) y coherencia climatológica espacial</b> (ausencia de artefactos de 'ojo de buey' y conservación del gradiente térmico vertical &Gamma; = &minus;&part;<i>T</i>/&part;<i>z</i>). Bajo este criterio dual sobre las 42 configuraciones evaluadas (1991–2020), se formaliza el <b>Top 3 oficial por variable</b>:",
         body_style,
     ))
     story.append(Spacer(1, 2))
 
     th_fin = [
         Paragraph("Variable Climática", th_style),
-        Paragraph("Experimento Ganador Oficial", th_style),
+        Paragraph("Top 3 Oficial Recomendado", th_style),
         Paragraph("Familia Metodológica", th_style),
         Paragraph("Métricas Clave (Validación Ciega)", th_style),
-        Paragraph("Justificación Físico-Climatológica Regional", th_style),
+        Paragraph("Justificación Climatológica y Estadística Regional", th_style),
     ]
     rows_fin = [
         [
@@ -1506,21 +1514,21 @@ def generate_experiments_pdf(
             Paragraph("<b>Top 1: EXP_R11_Shepard_Median_Coarse<br/>Top 2: EXP_R15_Shepard_RnoR_Smooth<br/>Top 3: EXP_R12_Shepard_Local_Orn</b>", td_lb_winner),
             Paragraph("SBA Multiescala + Shepard Modificado (Desagrupamiento angular libre de ojos de buey)", td_style),
             Paragraph("• <b>R11 (Top 1):</b> GSS 0.547, KGE <b>0.447</b>, ETS <b>0.361</b>, HSS <b>0.517</b><br/>• <b>R15 (Top 2):</b> GSS 0.544, KGE 0.431, PBIAS <b>+1.02%</b><br/>• <b>R12 (Top 3):</b> PBIAS <b>+0.22%</b>, FAR <b>0.298</b><br/>• <b>Ref. EXP_R00 (Crudo):</b> GSS 0.449, KGE 0.315", td_style),
-            Paragraph("Supera en <b>+41.9% el KGE</b> de la malla sin corregir (<code>EXP_R00</code>) y elimina los artefactos concéntricos ('ojos de buey') del IDW isotrópico (<code>EXP_R02</code>) mediante apantallamiento angular de Shepard.", td_style),
+            Paragraph("Supera en <b>+41.9% el KGE</b> de la malla sin corregir (<code>EXP_R00</code>) y elimina los artefactos concéntricos ('ojos de buey') del IDW isotrópico (<code>EXP_R02</code>) mediante apantallamiento angular de Shepard, logrando la máxima destreza categórica (ETS/HSS) y un balance hídrico casi perfecto.", td_style),
         ],
         [
             Paragraph("<b>Temperatura Máxima (Tmax)</b>", td_bold),
             Paragraph("<b>Top 1: EXP_TX11_RK_Barnes_Hybrid<br/>Top 2: EXP_TX10_QM_Empirical_ECDF<br/>Top 3: EXP_TX04_RK_FullTopography_NN3D</b>", td_lb_winner),
             Paragraph("Regression Kriging (DEM) + Filtro Gaussiano de Barnes / QM Empírico ECDF", td_style),
             Paragraph("• <b>TX11 (Top 1):</b> GSS 0.693, KGE <b>0.690</b>, RMSE 2.09 °C<br/>• <b>TX10 (Top 2):</b> GSS 0.682, RMSE <b>2.07 °C</b>, KGE 0.665<br/>• <b>TX04 (Top 3):</b> GSS 0.675, RMSE 2.08 °C, KGE 0.651<br/>• <b>Ref. EXP_TX00 (Crudo):</b> GSS 0.619, KGE 0.559", td_style),
-            Paragraph("Incrementa en <b>+23.4% el KGE</b> sobre la malla sin corregir (<code>EXP_TX00</code>), conserva el gradiente adiabático (&part;<i>T</i>/&part;<i>z</i> &approx; -6.5 °C/km) en cumbres sin estaciones (omitido por <code>EXP_TX01</code>) y suaviza anomalías costeras con Barnes.", td_style),
+            Paragraph("Incrementa en <b>+23.4% el KGE</b> sobre la malla sin corregir (<code>EXP_TX00</code>), conserva el gradiente adiabático (&part;<i>T</i>/&part;<i>z</i> &approx; -6.5 °C/km) en cumbres sin estaciones (omitido por <code>EXP_TX01</code>) y suaviza anomalías costeras con Barnes sin ojos de buey.", td_style),
         ],
         [
             Paragraph("<b>Temperatura Mínima (Tmin)</b>", td_bold),
             Paragraph("<b>Top 1: EXP_TN10_QM_Empirical_ECDF<br/>Top 2: EXP_TN04_RK_FullTopography_NN3D<br/>Top 3: EXP_TN08 / EXP_TN11</b>", td_lb_winner),
             Paragraph("RK (DEM + Pendiente) + Quantile Mapping Empírico (NN-3D) / Barnes", td_style),
             Paragraph("• <b>TN10 (Top 1):</b> GSS <b>0.613</b>, RMSE <b>1.88 °C</b>, MAE <b>1.53 °C</b><br/>• <b>TN04 (Top 2):</b> GSS 0.593, KGE 0.533, RMSE 2.01 °C<br/>• <b>TN08/11 (Top 3):</b> GSS 0.587/0.572, RMSE <b>2.01 °C</b><br/>• <b>Ref. EXP_TN00 (Crudo):</b> RMSE 3.25 °C, PBIAS +15.85%", td_style),
-            Paragraph("Reduce en <b>-1.37 °C (-42.2%) el RMSE</b> respecto a la malla sin corregir (<code>EXP_TN00</code>) y supera directamente a la Línea Base 2D (<code>EXP_TN01</code>, 2.20 °C), resolviendo inversiones térmicas y pozas frías (<i>cold-air pooling</i>).", td_style),
+            Paragraph("Ganador simultáneo estadístico y climatológico: reduce en <b>-1.37 °C (-42.2%) el RMSE</b> respecto a la malla sin corregir (<code>EXP_TN00</code>) y supera directamente a la Línea Base 2D (<code>EXP_TN01</code>, 2.20 °C), resolviendo inversiones térmicas y pozas frías (<i>cold-air pooling</i>).", td_style),
         ],
     ]
     t_fin = Table([th_fin] + rows_fin, colWidths=[1.10 * inch, 1.60 * inch, 1.50 * inch, 1.35 * inch, 1.95 * inch])
@@ -1538,8 +1546,19 @@ def generate_experiments_pdf(
     story.append(t_fin)
     story.append(Spacer(1, 3))
 
-    # SUBSECCIÓN DE ANÁLISIS PROSPECTIVO PARA REPÚBLICA DOMINICANA
-    story.append(Paragraph("9.1. Análisis Prospectivo: ¿Esperaríamos los Mismos Resultados en República Dominicana?", h2_style))
+    # SUBSECCIÓN 9.1: SENSIBILIDAD AL RECORTE DEL DOMINIO ESPACIAL (RONDA 1 VS RONDA 2)
+    story.append(Paragraph("9.1. Conclusión Metodológica: Impacto del Recorte del Dominio Espacial (Macro-Dominio vs. Dominio Centroamérica)", h2_style))
+    story.append(Paragraph(
+        "La comparación entre la <b>Ronda 1 (malla macro-regional completa CA+Caribe)</b> y la <b>Ronda 2 (malla recortada exclusivamente al istmo centroamericano)</b> constituye una prueba empírica directa del principio de <b>estacionariedad regional en geoestadística climática</b> (Cressie, 1993; Goovaerts, 2000; Daly et al., 2008):<br/>"
+        "• <b>1. Eliminación de la inflación de variogramas y deriva sinóptica:</b> Al recortar los sectores oceánicos y del Caribe oriental, la longitud de la diagonal de la malla (<code>maxdist</code> en <code>automap::autofitVariogram</code>) y las regresiones espaciales se ajustan exclusivamente sobre la fisiografía centroamericana. En precipitación, esto elevó el KGE del Top 3 de Shepard de <b>0.372–0.379 (Ronda 1) a 0.421–0.447 (Ronda 2, +18%)</b>, mejoró el ETS de 0.321–0.329 a <b>0.346–0.361</b> y redujo el sesgo volumétrico de &minus;4.39%/&minus;6.70% a <b>+0.22%/+1.02%</b>.<br/>"
+        "• <b>2. Estabilización de distribuciones y pendientes térmicas en T<sub>mín</sub>:</b> En el dominio acotado a Centroamérica, los modelos de <i>Regression Kriging</i> nocturnos con pendiente y orientación mejoraron sustancialmente su precisión: <code>EXP_TN10</code> redujo su RMSE de 1.92 °C a <b>1.88 °C</b> y <code>EXP_TN04</code> / <code>EXP_TN08</code> redujeron su RMSE de 2.19–2.30 °C a <b>2.01–2.04 °C</b>.<br/>"
+        "• <b>3. Invarianza y robustez del Top 3 seleccionado:</b> En ambas configuraciones de dominio, las familias ganadoras permanecen invariantes (<b>Shepard Modificado [<code>R11</code>, <code>R15</code>, <code>R12</code>]</b> en lluvia; <b>RK + Barnes [<code>TX11</code>] y QM Empírico [<code>TX10</code>]</b> en <i>T<sub>máx</sub></i>; y <b>QM Empírico + NN-3D [<code>TN10</code>] junto con RK + NN-3D [<code>TN04</code>]</b> en <i>T<sub>mín</sub></i>), demostrando que la selección responde a mecanismos climatológicos reales del istmo y no a artefactos del borde de la malla. En consecuencia, <b>toda corrida de producción debe ejecutarse sobre dominios recortados a cada unidad fisiográfica homogénea (<code>--region ca</code> y <code>--region rd</code> por separado)</b>.",
+        body_style,
+    ))
+    story.append(Spacer(1, 2))
+
+    # SUBSECCIÓN 9.2: ANÁLISIS PROSPECTIVO PARA REPÚBLICA DOMINICANA
+    story.append(Paragraph("9.2. Análisis Prospectivo: ¿Esperaríamos los Mismos Resultados en República Dominicana?", h2_style))
     story.append(Paragraph(
         "Dado que las simulaciones para <b>República Dominicana</b> están programadas para la siguiente fase operativa y no han sido ejecutadas aún, cabe realizar una extrapolación científica basada en los principios termodinámicos identificados:<br/><br/>"
         "• <b>Precipitación Diaria:</b> Sí se anticipa una superioridad conceptual de Shepard Modificado y la máscara RnoR suave (EXP_R15). Al igual que en Centroamérica, República Dominicana posee un marcado contraste barlovento/sotavento (vertiente norte húmeda por alisios vs sombra de lluvia severa en el Valle de Azua y San Juan). Sin embargo, al tratarse de un dominio insular marítimo cerrado, los métodos de distancia esférica sobre el mar (<b>Spheremap, EXP_R14</b>) y la contención de malla gruesa oceánica (<code>addCoarseGrid</code>) podrían mostrar un peso relativo aún más elevado para evitar fugas del gradiente hacia el mar.<br/><br/>"
