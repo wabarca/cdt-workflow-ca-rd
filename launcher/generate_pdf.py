@@ -406,7 +406,7 @@ def generate_experiments_pdf(
         "<br/><br/>"
         "• <b>Temperatura Mínima (CHIRTS Tmin):</b> No modela inversiones térmicas nocturnas ni drenaje catabático en valles intramontanos cerrados (Quetzaltenango, altiplano occidental) con heladas (&lt;0 &deg;C), ni caídas térmicas bruscas asimétricas por frentes fríos invernales (<i>Nortes</i>) (Alfaro et al., 2018). "
         "<br/><br/>"
-        "<b>Objetivo:</b> Ejecutar una matriz de <b>39 experimentos controlados</b> (15 de Precipitación organizados en Fase 1 y Fase 2, 12 de Tmax y 12 de Tmin) estructurados estrictamente según las etapas de la secuencia de procesamiento de CDT para determinar la configuración óptima de fusión espacial que propague coherentemente la información de estaciones a zonas sin aforos.",
+        "<b>Objetivo:</b> Ejecutar una matriz de <b>42 configuraciones evaluadas</b> (<b>3 controles de referencia sobre la malla satelital original sin corregir [<code>EXP_R00</code>, <code>EXP_TX00</code>, <code>EXP_TN00</code>]</b> más <b>39 experimentos controlados en CDT</b>: 15 de Precipitación en Fase 1 y Fase 2, 12 de Tmax y 12 de Tmin) para determinar las configuraciones óptimas físico-climatológicas que propaguen coherentemente la información de estaciones sin generar artefactos espaciales.",
         body_style,
     ))
     story.append(Spacer(1, 3))
@@ -540,12 +540,12 @@ def generate_experiments_pdf(
     # =========================================================================
     # PÁGINA 10: VALIDACIÓN CRUZADA INDEPENDIENTE Y MÉTRICAS CUANTITATIVAS
     # =========================================================================
-    story.append(Paragraph("4. Protocolo de Evaluación: Validación Cruzada Independiente (Holdout), Estadísticos de Evaluación, Rangos y Significado", h1_style))
+    story.append(Paragraph("4. Protocolo de Evaluación: Validación Cruzada Independiente (Holdout), Experimento Control EXP_00 (Malla Sin Corregir) y Estadísticos", h1_style))
     story.append(Paragraph(
-        "<b>Mecanismo de Evaluación de CDT y Partición Ciega (Holdout Validation):</b> Para garantizar una evaluación estrictamente independiente, ciega e insesgada (evitando el sobreajuste de calibrar y evaluar con las mismas estaciones), el orquestador (<code>launcher/station_manager.py</code>) desacopla la red observacional centroamericana en dos subconjuntos disjuntos: "
-        "<b>(1) Subconjunto de Entrenamiento (~80–90%)</b>, asimilado por CDT en el cálculo de coeficientes de sesgo y en la interpolación de residuales; y "
-        "<b>(2) Subconjunto de Validación Ciega (~10–20%, 29 estaciones retenidas)</b>, completamente invisible para CDT durante toda la corrida. "
-        "Tras generar las grillas diarias NetCDF 3D (CF-1.8), se extrae la serie modelada en el píxel de cada estación retenida y se evalúan las métricas cuantitativas:",
+        "<b>Mecanismo de Evaluación Ciega (Holdout Validation) y Cálculo de Estadísticos de Referencia con la Malla Sin Corregir (<code>EXP_00</code>):</b> Para garantizar una evaluación estrictamente independiente e insesgada, el orquestador (<code>launcher/station_manager.py</code>) separa la red centroamericana (266 estaciones) en: "
+        "<b>(1) Subconjunto de Entrenamiento (237 estaciones, ~89%)</b>, ingresado a CDT; y "
+        "<b>(2) Subconjunto de Validación Ciega (29 estaciones retenidas, ~11%)</b>, completamente excluido de CDT. "
+        "Adicionalmente, mediante el módulo <code>launcher/evaluate_raw_baseline.py</code> se ejecutan automáticamente los <b>3 Experimentos de Referencia <code>EXP_00</code> (<code>EXP_R00_Raw_CHIRPS</code>, <code>EXP_TX00_Raw_CHIRTS</code> y <code>EXP_TN00_Raw_CHIRTS</code>)</b>, los cuales extraen directamente por vecino más cercano (<i>point-to-pixel</i>) la serie diaria 1991–2020 (10,958 días) sobre la <b>malla satelital/reanálisis original a 0.05° sin ningún desescalado topográfico, corrección de sesgo ni fusión con estaciones</b>, evaluándola contra las mismas 29 estaciones <i>holdout</i>. Esto permite distinguir rigurosamente entre el <b>Control 00 (Malla Satelital Cruda Sin Corregir)</b> y el <b>Experimento 01 (Línea Base de Interpolación 2D en CDT)</b>, cuantificando el aporte neto real (&Delta;KGE, &Delta;RMSE, &Delta;GSS) de cada etapa de CDT:",
         body_style,
     ))
     story.append(Spacer(1, 1))
@@ -670,9 +670,9 @@ def generate_experiments_pdf(
     # =========================================================================
     # PÁGINA 3: SUITE A - PRECIPITACIÓN FASE 1 (EVALUACIÓN PRELIMINAR: R01 A R10)
     # =========================================================================
-    story.append(Paragraph("5.1. Suite A: Precipitación Diaria — Fase 1 (Evaluación Exploratoria Preliminar: 10 Experimentos)", h1_style))
+    story.append(Paragraph("5.1. Suite A: Precipitación Diaria — Control 00 (Malla Sin Corregir) y Fase 1 (EXP-R01 a EXP-R10)", h1_style))
     story.append(Paragraph(
-        "Batería experimental estructurada según los 3 pasos de CDT para aislar efectos de corrección de sesgo, filtro RnoR y métodos de interpolación en el istmo centroamericano:",
+        "Batería experimental estructurada según el Control de Referencia Satelital Crudo (<code>EXP-R00</code>) y los 3 pasos de CDT para aislar efectos de corrección de sesgo, filtro RnoR y métodos de interpolación en el istmo centroamericano:",
         body_style,
     ))
     story.append(Spacer(1, 2))
@@ -685,6 +685,13 @@ def generate_experiments_pdf(
         Paragraph("Hipótesis Física y Climatológica Regional", th_sm),
     ]
     rows_r = [
+        [
+            Paragraph("<b>EXP-R00</b><br/><font color='#1E40AF' size=5.5><b>[Control 00]</b></font>", td_sm_bold),
+            Paragraph("• <b>No aplica</b> (Sin cálculo de coeficientes de sesgo en CDT)", td_sm),
+            Paragraph("• <b>No aplica</b> (Malla CHIRPS v2.0 nativa a 0.05° sin corregir, 1991–2020)", td_sm),
+            Paragraph("• <b>No aplica</b> (Extracción directa <i>point-to-pixel</i> vía <code>evaluate_raw_baseline.py</code> sin estaciones)", td_sm),
+            Paragraph("<b>Estadísticos de Referencia Base (Malla Original Sin Corregir):</b> Cuantifica el desempeño nativo de CHIRPS v2.0 crudo frente a las 29 estaciones ciegas (GSS=0.449, KGE=0.315, RMSE=13.35 mm, FAR=0.362) como línea cero de referencia.", td_sm),
+        ],
         [
             Paragraph("<b>EXP-R01</b>", td_sm_bold),
             Paragraph("• Método: <code>mbvar</code> (móvil &plusmn;5 d)<br/>• Interp: IDW (<i>p</i>=2.0, radio 1.5°, nmin=4, nmax=12)", td_sm),
@@ -790,25 +797,18 @@ def generate_experiments_pdf(
     ]
     rows_r2 = [
         [
-            Paragraph("<b>EXP-R11</b>", td_sm_bold),
-            Paragraph("• Método: <code>mbvar</code> (&plusmn;5 d)<br/>• <b>mulBiasFunction: 'median'</b><br/>• <b>addCoarseGrid: true (1.0°)</b><br/>• Interp: IDW (1.5°)", td_sm),
-            Paragraph("• Ajuste multiplicativo robusto sobre grillas CHIRPS<br/>• Salida: <code>rr_adj_*.nc</code>", td_sm),
-            Paragraph("• Método: <b>SBA multiescala</b> (3 pasadas: 1.0°, 0.75°, 0.5°)<br/>• Interp: Shepard Modificado (1.5°)<br/>• RnoR: Activada (Logit GLM)<br/>• <b>addCoarseGrid: true</b>", td_sm),
-            Paragraph("<b>Mediana Robusta y Malla Gruesa:</b> El estimador de mediana neutraliza eventos convectivos extremos atípicos que inflan el sesgo; la malla gruesa contiene anomalías espurias en áreas oceánicas y costeras sin estaciones.", td_sm),
-        ],
-        [
             Paragraph("<b>EXP-R11</b><br/><font color='#065F46' size=6><b>TOP 1 FÍSICO</b></font>", td_sm_bold),
             Paragraph("• Método: <code>mbvar</code> (&plusmn;5 d)<br/>• <b>mulBiasFunction: 'median' (Mediana robusta)</b><br/>• <b>addCoarseGrid: true (res 1.0°)</b><br/>• Interp: IDW (1.5°)", td_sm),
             Paragraph("• Ajuste con mediana robusta sobre grillas CHIRPS<br/>• Salida: <code>rr_adj_*.nc</code>", td_sm),
             Paragraph("• Método: <b>SBA multiescala</b> (3 pasadas: 1.0°, 0.75°, 0.5°)<br/>• Interp: Shepard Modificado (1.5°)<br/>• RnoR: Activada (Logit GLM)<br/>• <b>addCoarseGrid: true (1.0°)</b>", td_sm),
-            Paragraph("<b>TOP 1 FÍSICO (Ronda 2, GSS=0.4539, KGE=0.3358):</b> La mediana neutraliza tormentas aisladas y Shepard Modificado evita artefactos de 'ojos de buey' mediante desagrupamiento direccional angular.", td_sm),
+            Paragraph("<b>TOP 1 FÍSICO (Ronda 2, GSS=0.547, KGE=0.447, ETS=0.361):</b> La mediana neutraliza tormentas aisladas y Shepard Modificado evita artefactos de 'ojos de buey' logrando la máxima destreza categórica.", td_sm),
         ],
         [
             Paragraph("<b>EXP-R12</b><br/><font color='#065F46' size=6><b>TOP 3 FÍSICO</b></font>", td_sm_bold),
             Paragraph("• Método: <code>mbvar</code> (&plusmn;5 d)<br/>• mulBiasFunction: 'median'<br/>• <b>Interp: IDW local (radio 0.9° ~100 km, nmin=3, nmax=8)</b>", td_sm),
             Paragraph("• Ajuste con aislamiento transcordillera<br/>• Salida: <code>rr_adj_*.nc</code>", td_sm),
             Paragraph("• Método: <b>SBA multiescala local</b> (3 pasadas: 1.0°, 0.67°, 0.33°)<br/>• <b>Interp: Shepard local (0.9°, nmin=3, nmax=8)</b><br/>• RnoR: Activada (Logit GLM)", td_sm),
-            Paragraph("<b>TOP 3 FÍSICO (GSS=0.4488, PBIAS=-5.15%):</b> En Centroamérica, acotar el radio a 0.9° evita cruzar la divisoria continental y logra el mejor balance hídrico volumétrico de toda la suite.", td_sm),
+            Paragraph("<b>TOP 3 FÍSICO (GSS=0.538, PBIAS=+0.22%, FAR=0.298):</b> En Centroamérica, acotar el radio a 0.9° evita cruzar la divisoria continental y logra el mejor balance volumétrico y menor FAR de la suite.", td_sm),
         ],
         [
             Paragraph("<b>EXP-R13</b>", td_sm_bold),
@@ -826,10 +826,10 @@ def generate_experiments_pdf(
         ],
         [
             Paragraph("<b>EXP-R15</b><br/><font color='#065F46' size=6><b>TOP 2 FÍSICO</b></font>", td_sm_bold),
-            Paragraph("• Método: <code>mbvar</code> (&plusmn;5 d)<br/>• <b>mulBiasFunction: 'median'</b><br/>• Interp: IDW (radio 1.2°, nmin=4, nmax=10)", td_sm),
+            Paragraph("• Método: <code>mbvar</code> (&plusmn;5 d)<br/>• <b>mulBiasFunction: 'mean'</b><br/>• Interp: IDW (radio 1.2°, nmin=4, nmax=10)", td_sm),
             Paragraph("• Ajuste multiplicativo sobre grillas CHIRPS 1991–2020<br/>• Salida: <code>rr_adj_*.nc</code>", td_sm),
             Paragraph("• Método: <b>SBA multiescala</b> (3 pasadas: 1.0°, 0.75°, 0.5°)<br/>• Interp: Shepard Modificado (radio 1.2°)<br/>• <b>RnoR: Activada con RnoRCutOff = 2 (Suave)</b>", td_sm),
-            Paragraph("<b>TOP 2 FÍSICO — Transición Continua Suave (GSS=0.4535, POD=0.692):</b> Sustituye el corte binario rígido por transición suave (CutOff=2), logrando la mayor detección de eventos reales (69.2%) sin ojos de buey.", td_sm),
+            Paragraph("<b>TOP 2 FÍSICO — Transición Continua Suave (GSS=0.544, KGE=0.431, PBIAS=+1.02%):</b> Sustituye el corte binario rígido por transición suave (CutOff=2), logrando balance hídrico casi perfecto sin ojos de buey.", td_sm),
         ],
     ]
     t_table_r2 = Table([th_r2] + rows_r2, colWidths=[0.65 * inch, 1.65 * inch, 1.20 * inch, 1.80 * inch, 2.20 * inch])
@@ -850,7 +850,7 @@ def generate_experiments_pdf(
     story.append(Spacer(1, 2))
 
     # Leaderboard Lluvia
-    story.append(Paragraph("<b>Ranking Consolidado de Precipitación — Ronda 2 (Dominio Recortado CA, 29 Estaciones Holdout)</b>", h2_style))
+    story.append(Paragraph("<b>Ranking Consolidado de Precipitación — Ronda 2 (15 Exp. CDT + Control EXP_R00 en Centroamérica)</b>", h2_style))
     th_lb_row = [
         Paragraph("#", th_lb),
         Paragraph("Experimento ID", th_lb),
@@ -867,22 +867,22 @@ def generate_experiments_pdf(
         Paragraph("Decisión Físico-Climatológica", th_lb),
     ]
     rows_lb_data = [
-        ("1*", "EXP_R02_SBA_IDW_RnoR", "SBA IDW 3 pasadas + RnoR dura", "0.336", "0.491", "12.01", "-13.33%", "0.667", "0.336", "0.275", "0.419", "0.456", "DESCARTADO (Ojos de buey IDW)", False),
-        ("2", "EXP_R11_Shepard_Median_Coarse", "Shepard Mediana + CoarseGrid (1.5°)", "0.336", "0.464", "13.38", "-6.02%", "0.663", "0.313", "0.308", "0.456", "0.454", "TOP 1 FÍSICO (Sin ojos de buey)", True),
-        ("3", "EXP_R15_Shepard_RnoR_Smooth", "Shepard Suave (RnoRCutOff=2, 1.2°)", "0.319", "0.462", "13.35", "-7.52%", "0.692", "0.320", "0.316", "0.465", "0.454", "TOP 2 FÍSICO (Máx POD/ETS/HSS)", True),
-        ("4", "EXP_R12_Shepard_Local_Orn", "Shepard Confinado Local (rad 0.9°)", "0.315", "0.456", "13.59", "-5.15%", "0.659", "0.311", "0.307", "0.456", "0.449", "TOP 3 FÍSICO (Mejor PBIAS)", True),
-        ("5", "EXP_R08_Shepard_Complex_Relief", "Shepard Relieve Complejo (rad 1.5°)", "0.317", "0.464", "13.39", "-8.33%", "0.653", "0.315", "0.300", "0.448", "0.442", "Admisible (Rank 4 Físico)", False),
-        ("6", "EXP_R14_Spheremap_Median", "Spheremap Gran Círculo + Mediana", "0.299", "0.436", "14.23", "-5.16%", "0.642", "0.308", "0.302", "0.450", "0.437", "Admisible (Rank 5 Físico)", False),
-        ("7", "EXP_R09_Spheremap_Trans_Caribe", "Spheremap Gran Círculo Estándar", "0.295", "0.438", "14.27", "-6.23%", "0.635", "0.309", "0.296", "0.445", "0.434", "Admisible (Rank 6 Físico)", False),
-        ("8", "EXP_R01_SBA_IDW_Baseline", "IDW Plano Monocapa (Sin RnoR)", "0.335", "0.486", "12.22", "-13.53%", "0.666", "0.338", "0.274", "0.418", "0.440", "Línea Base 2D (Ojos de buey)", False),
-        ("9", "EXP_R13_QM_Empirical_ECDF", "QM Empírico (qmecdf) + Shepard", "0.260", "0.452", "13.51", "-6.69%", "0.630", "0.313", "0.288", "0.433", "0.422", "Admisible (Alta var. γ)", False),
-        ("10", "EXP_R07_Cressman_Spherical", "Cressman 4 pasadas (1.0° a 0.25°)", "0.252", "0.429", "15.17", "+1.96%", "0.619", "0.317", "0.282", "0.428", "0.418", "Guía Oficial CDT", False),
-        ("11", "EXP_R06_Barnes_Gauss_Coastal", "Barnes BSc Gaussiano Costero (NN-3D)", "0.236", "0.432", "14.90", "+2.65%", "0.635", "0.321", "0.285", "0.431", "0.414", "Admisible (Costas)", False),
-        ("12", "EXP_R05_RK_Topography_BW", "Regression Kriging DEM+Slope (Weibull)", "0.145", "0.391", "14.41", "-13.45%", "0.520", "0.369", "0.199", "0.319", "0.313", "Inestable (Sobreajuste RK)", False),
-        ("13", "EXP_R04_SBA_OKR_BernoulliWeib", "QM Paramétrico Weibull + OKR Bloques", "-0.025", "0.419", "14.95", "-10.50%", "0.631", "0.354", "0.241", "0.366", "0.296", "Inestable (KGE < 0)", False),
-        ("14", "EXP_R03_SBA_OKR_BernoulliGamma", "QM Paramétrico Gamma + OKR Bloques", "-0.085", "0.416", "15.38", "-3.96%", "0.635", "0.354", "0.240", "0.366", "0.295", "Inestable (KGE < 0)", False),
-        ("15", "EXP_R10_RK_FullTopography_Asp", "RK Máxima Complejidad DEM+Aspect", "0.022", "0.382", "15.36", "-13.18%", "0.505", "0.379", "0.187", "0.303", "0.264", "Inestable (Colapso RK)", False),
-        ("Control", "EXP_R00_Raw_CHIRPS", "Control 0: CHIRPS Crudo (Sin estaciones)", "0.284", "0.442", "14.85", "-18.65%", "0.589", "0.392", "0.218", "0.345", "0.379", "Control Grilla Original", False),
+        ("1*", "EXP_R02_SBA_IDW_RnoR", "SBA IDW 3 pasadas + RnoR dura", "0.451", "0.520", "12.14", "-0.81%", "0.771", "0.328", "0.343", "0.500", "0.553", "DESCARTADO (Ojos de buey IDW)", False),
+        ("2", "EXP_R11_Shepard_Median_Coarse", "Shepard Mediana + CoarseGrid (1.5°)", "0.447", "0.513", "12.53", "+2.52%", "0.756", "0.305", "0.361", "0.517", "0.547", "TOP 1 FÍSICO (Máx ETS/HSS, sin dianas)", True),
+        ("3", "EXP_R15_Shepard_RnoR_Smooth", "Shepard Suave (RnoRCutOff=2, 1.2°)", "0.431", "0.504", "12.65", "+1.02%", "0.746", "0.306", "0.354", "0.510", "0.544", "TOP 2 FÍSICO (Co-ganador hidrológico)", True),
+        ("4", "EXP_R12_Shepard_Local_Orn", "Shepard Confinado Local (rad 0.9°)", "0.421", "0.489", "13.00", "+0.22%", "0.716", "0.298", "0.346", "0.502", "0.538", "TOP 3 FÍSICO (Mín PBIAS y FAR)", True),
+        ("5", "EXP_R08_Shepard_Complex_Relief", "Shepard Relieve Complejo (rad 1.5°)", "0.439", "0.502", "12.89", "+3.75%", "0.727", "0.309", "0.343", "0.498", "0.533", "Admisible (#4 Físico)", False),
+        ("6", "EXP_R14_Spheremap_Median", "Spheremap Gran Círculo + Mediana", "0.426", "0.486", "13.36", "+3.96%", "0.721", "0.298", "0.349", "0.506", "0.525", "Admisible (#5 Físico)", False),
+        ("7", "EXP_R09_Spheremap_Trans_Caribe", "Spheremap Gran Círculo Estándar", "0.421", "0.482", "13.56", "+4.89%", "0.701", "0.304", "0.334", "0.489", "0.515", "Admisible (#6 Físico)", False),
+        ("8", "EXP_R04_SBA_OKR_BernoulliWeib", "QM Paramétrico Weibull + OKR Bloques", "0.396", "0.506", "12.04", "+4.90%", "0.783", "0.360", "0.298", "0.438", "0.505", "Alisado OKR / FAR alto", False),
+        ("9*", "EXP_R01_SBA_IDW_Baseline", "IDW Plano Monocapa (Sin RnoR)", "0.415", "0.518", "12.22", "+9.01%", "0.797", "0.371", "0.304", "0.457", "0.499", "Control Línea Base 2D (Ojos de buey)", False),
+        ("10", "EXP_R06_Barnes_Gauss_Coastal", "Barnes BSc Gaussiano Costero (NN-3D)", "0.391", "0.475", "13.94", "+9.76%", "0.702", "0.312", "0.325", "0.480", "0.482", "Admisible en costas (Alisado)", False),
+        ("11", "EXP_R13_QM_Empirical_ECDF", "QM Empírico (qmecdf) + Shepard", "0.399", "0.493", "13.05", "+11.57%", "0.740", "0.334", "0.320", "0.472", "0.481", "Sesgo húmedo (>11%)", False),
+        ("12", "EXP_R05_RK_Topography_BW", "Regression Kriging DEM+Slope (Weibull)", "0.389", "0.512", "12.00", "+10.81%", "0.782", "0.371", "0.292", "0.436", "0.479", "Descartado (Regresión DEM lineal)", False),
+        ("13", "EXP_R10_RK_FullTopography_Asp", "RK Máxima Complejidad DEM+Aspect", "0.388", "0.511", "12.01", "+10.65%", "0.778", "0.374", "0.286", "0.430", "0.478", "Descartado (Regresión DEM lineal)", False),
+        ("14", "EXP_R07_Cressman_Spherical", "Cressman 4 pasadas (1.0° a 0.25°)", "0.394", "0.468", "14.28", "+10.98%", "0.680", "0.308", "0.318", "0.472", "0.474", "Guía Oficial CDT (CSc)", False),
+        ("15", "EXP_R03_SBA_OKR_BernoulliGamma", "QM Paramétrico Gamma + OKR Bloques", "0.353", "0.501", "12.24", "+12.68%", "0.786", "0.365", "0.292", "0.431", "0.456", "Descartado (Inflación Gamma)", False),
+        ("Control", "EXP_R00_Raw_CHIRPS", "Control 0: Malla CHIRPS v2.0 Sin Corregir", "0.315", "0.382", "13.35", "-2.27%", "0.660", "0.362", "0.263", "0.407", "0.449", "Referencia Malla Original (0.05°)", False),
     ]
 
     table_lb_rows = [th_lb_row]
@@ -928,18 +928,18 @@ def generate_experiments_pdf(
     # DISCUSIÓN DE RESULTADOS DE PRECIPITACIÓN
     story.append(Paragraph("5.3. Discusión Físico-Climatológica de Precipitación y Rechazo de Ojos de Buey", h2_style))
     story.append(Paragraph(
-        "<b>1. Rechazo Físico de EXP_R02 por Artefactos de 'Ojos de Buey' y Sesgo Seco:</b> Aunque <code>EXP_R02_SBA_IDW_RnoR</code> encabeza por 2 milésimas el GSS bruto en Ronda 2 (0.456 vs 0.454), utiliza interpolación IDW isotrópica pura (<i>w<sub>i</sub> = d<sub>i</sub><sup>-2</sup></i>) que carece de desagrupamiento direccional (<i>declustering</i>) y presenta derivada nula (&nabla;<i>Z</i> = 0) en cada pluviómetro, generando dianas circulares concéntricas ('ojos de buey'; Shepard, 1968; Daly, 2006; Hofstra et al., 2008) y un sesgo seco severo (<b>PBIAS = -13.33%</b>).<br/>"
-        "<b>2. Selección del Top 3 Físico con Shepard Modificado (EXP_R11, EXP_R15, EXP_R12):</b> Al aplicar ponderación angular direccional (1 - cos &theta;<sub>ij</sub>) y derivadas locales de Taylor, la familia Shepard elimina los ojos de buey, reduce a menos de la mitad la pérdida de volumen hídrico (PBIAS entre <b>-5.15% y -7.52%</b>) y domina la detección de eventos lluviosos (<b>POD hasta 69.2%</b> y <b>HSS hasta 0.465</b> en <code>EXP_R15</code>).",
+        "<b>1. Rechazo Físico de EXP_R02 por Artefactos de 'Ojos de Buey' (Bull's-Eyes):</b> Aunque <code>EXP_R02_SBA_IDW_RnoR</code> ocupa el #1 numérico en GSS bruto en Ronda 2 (0.553 vs 0.547 de R11 y 0.544 de R15; ventaja en KGE de solo +0.003), emplea interpolación IDW isotrópica (<i>w<sub>i</sub> = d<sub>i</sub><sup>-2</sup></i>) que carece de desagrupamiento direccional (<i>declustering</i>) y fuerza derivada nula (&nabla;<i>Z</i> = 0) sobre cada estación, generando anillos concéntricos de 'ojo de buey' (Shepard, 1968; Daly, 2006; Hofstra et al., 2008) y un +2.3% más de Falsas Alarmas (<b>FAR = 0.328</b>).<br/>"
+        "<b>2. Selección del Top 3 Físico con Shepard Modificado (EXP_R11, EXP_R15, EXP_R12):</b> Al aplicar apantallamiento angular (1 - cos &theta;<sub>ij</sub>), la familia Shepard elimina los ojos de buey, logra los mejores índices de detección categórica de toda la suite (<b>ETS = 0.361</b> y <b>HSS = 0.517</b> en <code>EXP_R11</code>; <b>ETS = 0.354</b> y <b>PBIAS = +1.02%</b> en <code>EXP_R15</code>; y mínimo sesgo <b>PBIAS = +0.22%</b> con mínimo <b>FAR = 0.298</b> en <code>EXP_R12</code>), superando ampliamente a la malla sin corregir <code>EXP_R00</code> (+41.9% en KGE).",
         body_style,
     ))
     story.append(PageBreak())
 
     # =========================================================================
-    # PÁGINA 5: SUITE B - TEMPERATURA MÁXIMA FASE 1 (EXP-TX01 A TX08)
+    # PÁGINA 5: SUITE B - TEMPERATURA MÁXIMA FASE 1 (EXP-TX00 A TX08)
     # =========================================================================
-    story.append(Paragraph("6.1. Suite B: Temperatura Máxima Diurna — Fase 1 (Evaluación Preliminar: 8 Experimentos)", h1_style))
+    story.append(Paragraph("6.1. Suite B: Temperatura Máxima Diurna — Control 00 (Malla Sin Corregir) y Fase 1 (EXP-TX01 a EXP-TX08)", h1_style))
     story.append(Paragraph(
-        "Batería experimental estructurada según los 5 pasos de CDT: desescalado topográfico, ajuste de sesgo diurno y fusión con radiación solar e insolación en Centroamérica:",
+        "Batería experimental estructurada según el Control de Referencia Satelital Crudo (<code>EXP-TX00</code>) y los 5 pasos de CDT: desescalado topográfico, ajuste de sesgo diurno y fusión con radiación solar e insolación en Centroamérica:",
         body_style,
     ))
     story.append(Spacer(1, 2))
@@ -953,6 +953,14 @@ def generate_experiments_pdf(
         Paragraph("Hipótesis Física Diurna (Tmax)", th_xs),
     ]
     rows_tx = [
+        [
+            Paragraph("<b>EXP-TX00</b><br/><font color='#1E40AF' size=5.5><b>[Control 00]</b></font>", td_xs_bold),
+            Paragraph("<b>No aplica</b> (Sin desescalado topográfico con DEM).", td_xs),
+            Paragraph("• <b>No aplica</b> (Sin cálculo de sesgo en CDT)", td_xs),
+            Paragraph("• <b>No aplica</b> (Malla CHIRTS-ERA5 Tmax nativa a 0.05° sin corregir)", td_xs),
+            Paragraph("• <b>No aplica</b> (Extracción directa <i>point-to-pixel</i> vía <code>evaluate_raw_baseline.py</code>)", td_xs),
+            Paragraph("<b>Estadísticos de Referencia Base Diurna (Malla Sin Corregir):</b> Evalúa el producto CHIRTS-ERA5 Tmax original sin DEM ni estaciones sobre las 29 estaciones <i>holdout</i> (GSS=0.619, KGE=0.559, RMSE=2.18 °C, PBIAS=+1.67%).", td_xs),
+        ],
         [
             Paragraph("<b>EXP-TX01</b>", td_xs_bold),
             Paragraph("<b>[P1]</b> Coefs neutros.<br/><b>[P2]</b> Bilineal a 0.05° sin DEM.<br/>Salida: <code>tmax_down_*.nc</code>", td_xs),
@@ -1093,7 +1101,7 @@ def generate_experiments_pdf(
     story.append(t_table_tx2)
     story.append(Spacer(1, 2))
 
-    story.append(Paragraph("<b>Ranking Consolidado de Temperatura Máxima (CHIRTS Tmax: 12 Experimentos en Centroamérica)</b>", h2_style))
+    story.append(Paragraph("<b>Ranking Consolidado de Temperatura Máxima — Ronda 2 (12 Exp. CDT + Control EXP_TX00 en Centroamérica)</b>", h2_style))
     th_lb_t_row = [
         Paragraph("#", th_lb),
         Paragraph("Experimento ID", th_lb),
@@ -1107,19 +1115,19 @@ def generate_experiments_pdf(
         Paragraph("Estado / Justificación Operativa", th_lb),
     ]
     rows_lb_tx_data = [
-        ("1*", "EXP_TX01_SBA_IDW_Baseline", "SBA IDW Plano sin DEM", "0.735", "0.679", "0.787", "1.90", "1.58", "+1.37%", "DESCARTADO (Viola gradiente vertical ∂T/∂z en montañas)", False),
-        ("2", "EXP_TX11_RK_Barnes_Hybrid", "RK (DEM+Coords) + Barnes Residuos", "0.719", "0.690", "0.743", "2.06", "1.69", "+1.40%", "TOP 1 FÍSICO (Máx KGE=0.690, Relieve real + filtro Barnes)", True),
-        ("3", "EXP_TX06_Barnes_Gauss_Coastal", "Barnes BSc Gaussiano Continuo", "0.708", "0.676", "0.736", "2.17", "1.80", "+0.95%", "TOP 2 FÍSICO (Suavizado costero sin ojos de buey)", True),
-        ("4", "EXP_TX10_QM_Empirical_ECDF", "QM Empírico (ECDF) + RK DEM/Slope", "0.705", "0.655", "0.739", "2.05", "1.69", "+1.31%", "TOP 3 FÍSICO (Menor RMSE físico=2.05°C, olas de calor)", True),
-        ("5", "EXP_TX04_RK_FullTopography_NN3D", "RK DEM + Pendiente + Aspect + NN-3D", "0.682", "0.633", "0.727", "2.28", "1.90", "+2.03%", "Admisible (Rank 4 Físico — Insolación de ladera)", False),
-        ("6", "EXP_TX07_Cressman_Intermontane", "Cressman 4 pasadas (Guía Oficial CDT)", "0.674", "0.626", "0.707", "2.36", "1.95", "+0.82%", "Admisible (Rank 5 Físico — Guía Oficial CDT)", False),
-        ("7", "EXP_TX09_SBA_Shepard_NN3D", "SBA Shepard Modificado + NN-3D", "0.624", "0.596", "0.678", "3.00", "2.59", "+2.74%", "Admisible (Rank 6 Físico — Control vertical NN-3D)", False),
-        ("8", "EXP_TX12_SBA_IDW_Local_Relief", "SBA IDW Local Multiescala + NN-3D", "0.596", "0.568", "0.643", "3.14", "2.70", "+2.96%", "Admisible (Rank 7 Físico — IDW confinado 0.25°)", False),
-        ("9", "EXP_TX05_RK_Gumbel_Heatwaves", "RK DEM + QM Gumbel Extremos", "0.365", "0.056", "0.680", "4.04", "3.53", "-4.75%", "Inestable (Colapso por colas Gumbel + OKR)", False),
-        ("10", "EXP_TX02_RK_DEM_Normal", "RK Solo DEM + QM Normal Gaussiano", "0.354", "0.031", "0.686", "4.09", "3.61", "-5.12%", "Inestable (Rigidez gaussiana + OKR diario)", False),
-        ("11", "EXP_TX08_RK_FullTopography_Aspect", "RK Acoplamiento Total + Skew-Normal", "0.349", "0.026", "0.678", "4.11", "3.60", "-4.93%", "Inestable (Sobreparametrización en residuales)", False),
-        ("12", "EXP_TX03_RK_Topography_SkewNormal", "RK DEM + Pendiente + Skew-Normal", "0.348", "0.023", "0.677", "4.11", "3.60", "-4.88%", "Inestable (Distribución Skew-Normal + OKR)", False),
-        ("Control", "EXP_TX00_Raw_CHIRTS", "Control 0: CHIRTS Tmax Crudo (Sin DEM ni estaciones)", "0.577", "0.518", "0.672", "3.12", "2.54", "+5.82%", "Control Grilla Original", False),
+        ("1*", "EXP_TX01_SBA_IDW_Baseline", "SBA IDW Plano sin DEM", "0.712", "0.682", "0.788", "1.90", "1.58", "+1.32%", "DESCARTADO (Viola gradiente vertical ∂T/∂z en montañas)", False),
+        ("2", "EXP_TX11_RK_Barnes_Hybrid", "RK (DEM+Coords) + Barnes Residuos", "0.693", "0.690", "0.743", "2.09", "1.72", "+1.35%", "TOP 1 FÍSICO (Máx KGE=0.690, Relieve real + filtro Barnes)", True),
+        ("3", "EXP_TX10_QM_Empirical_ECDF", "QM Empírico (ECDF) + RK DEM/Slope", "0.682", "0.665", "0.742", "2.07", "1.71", "+1.67%", "TOP 2 FÍSICO (Menor RMSE físico=2.07°C, olas de calor)", True),
+        ("4", "EXP_TX06_Barnes_Gauss_Coastal", "Barnes BSc Gaussiano Continuo", "0.682", "0.677", "0.737", "2.18", "1.81", "+0.95%", "Admisible en costas (Sin RK en Paso 5)", False),
+        ("5", "EXP_TX04_RK_FullTopography_NN3D", "RK DEM + Pendiente + Aspect + NN-3D", "0.675", "0.651", "0.740", "2.08", "1.72", "+1.97%", "TOP 3 FÍSICO (Insolación diferencial de ladera)", True),
+        ("6", "EXP_TX07_Cressman_Intermontane", "Cressman 4 pasadas (Guía Oficial CDT)", "0.655", "0.643", "0.714", "2.33", "1.93", "+0.72%", "Admisible (Guía Oficial CDT)", False),
+        ("Control", "EXP_TX00_Raw_CHIRTS", "Control 0: Malla CHIRTS Tmax Sin Corregir", "0.619", "0.559", "0.692", "2.18", "1.79", "+1.67%", "Referencia Malla Original (0.05° Sin DEM)", False),
+        ("8", "EXP_TX09_SBA_Shepard_NN3D", "SBA Shepard Modificado + NN-3D", "0.614", "0.626", "0.715", "2.91", "2.51", "+2.78%", "SBA sin tendencia RK (RMSE=2.91°C)", False),
+        ("9", "EXP_TX12_SBA_IDW_Local_Relief", "SBA IDW Local Multiescala + NN-3D", "0.588", "0.588", "0.682", "2.97", "2.55", "+2.01%", "SBA + IDW sin RK (RMSE=2.97°C)", False),
+        ("10", "EXP_TX02_RK_DEM_Normal", "RK Solo DEM + QM Normal Gaussiano", "0.521", "0.424", "0.685", "3.02", "2.58", "-1.96%", "Inestable (Rigidez gaussiana + OKR diario)", False),
+        ("11", "EXP_TX05_RK_Gumbel_Heatwaves", "RK DEM + QM Gumbel Extremos", "0.508", "0.394", "0.676", "3.02", "2.51", "-1.58%", "Inestable (Colapso por colas Gumbel + OKR)", False),
+        ("12", "EXP_TX03_RK_Topography_SkewNormal", "RK DEM + Pendiente + Skew-Normal", "0.498", "0.378", "0.672", "3.06", "2.55", "-1.63%", "Inestable (Distribución Skew-Normal + OKR)", False),
+        ("13", "EXP_TX08_RK_FullTopography_Aspect", "RK Acoplamiento Total + Skew-Normal", "0.497", "0.377", "0.672", "3.06", "2.55", "-1.69%", "Inestable (Sobreparametrización en residuales)", False),
     ]
 
     table_lb_tx = [th_lb_t_row]
@@ -1170,11 +1178,11 @@ def generate_experiments_pdf(
     story.append(PageBreak())
 
     # =========================================================================
-    # PÁGINA 7: SUITE C - TEMPERATURA MÍNIMA FASE 1 (EXP-TN01 A TN08)
+    # PÁGINA 7: SUITE C - TEMPERATURA MÍNIMA FASE 1 (EXP-TN00 A TN08)
     # =========================================================================
-    story.append(Paragraph("7.1. Suite C: Temperatura Mínima Nocturna — Fase 1 (Evaluación Preliminar: 8 Experimentos)", h1_style))
+    story.append(Paragraph("7.1. Suite C: Temperatura Mínima Nocturna — Control 00 (Malla Sin Corregir) y Fase 1 (EXP-TN01 a EXP-TN08)", h1_style))
     story.append(Paragraph(
-        "Batería experimental estructurada según los 5 pasos de CDT: desescalado altimétrico, enfriamiento radiativo, inversiones nocturnas y frentes fríos en Centroamérica:",
+        "Batería experimental estructurada según el Control de Referencia Satelital Crudo (<code>EXP-TN00</code>) y los 5 pasos de CDT: desescalado altimétrico, enfriamiento radiativo, inversiones nocturnas y frentes fríos en Centroamérica:",
         body_style,
     ))
     story.append(Spacer(1, 2))
@@ -1188,6 +1196,14 @@ def generate_experiments_pdf(
         Paragraph("Hipótesis Física Nocturna (Tmin)", th_xs),
     ]
     rows_tn = [
+        [
+            Paragraph("<b>EXP-TN00</b><br/><font color='#1E40AF' size=5.5><b>[Control 00]</b></font>", td_xs_bold),
+            Paragraph("<b>No aplica</b> (Sin desescalado topográfico con DEM).", td_xs),
+            Paragraph("• <b>No aplica</b> (Sin cálculo de sesgo en CDT)", td_xs),
+            Paragraph("• <b>No aplica</b> (Malla CHIRTS-ERA5 Tmin nativa a 0.05° sin corregir)", td_xs),
+            Paragraph("• <b>No aplica</b> (Extracción directa <i>point-to-pixel</i> vía <code>evaluate_raw_baseline.py</code>)", td_xs),
+            Paragraph("<b>Estadísticos de Referencia Base Nocturna (Malla Sin Corregir):</b> Cuantifica el sesgo cálido nativo de CHIRTS-ERA5 Tmin sin DEM ni estaciones (GSS=0.448, KGE=0.436, RMSE=3.25 °C, PBIAS=+15.85%).", td_xs),
+        ],
         [
             Paragraph("<b>EXP-TN01</b>", td_xs_bold),
             Paragraph("<b>[P1]</b> Coefs neutros.<br/><b>[P2]</b> Bilineal a 0.05° sin DEM.<br/>Salida: <code>tmin_down_*.nc</code>", td_xs),
@@ -1328,7 +1344,7 @@ def generate_experiments_pdf(
     story.append(t_table_tn2)
     story.append(Spacer(1, 2))
 
-    story.append(Paragraph("<b>Ranking Consolidado de Temperatura Mínima (CHIRTS Tmin: 12 Experimentos en Centroamérica)</b>", h2_style))
+    story.append(Paragraph("<b>Ranking Consolidado de Temperatura Mínima — Ronda 2 (12 Exp. CDT + Control EXP_TN00 en Centroamérica)</b>", h2_style))
     th_lb_tn_row = [
         Paragraph("#", th_lb),
         Paragraph("Experimento ID", th_lb),
@@ -1342,19 +1358,19 @@ def generate_experiments_pdf(
         Paragraph("Estado / Posición", th_lb),
     ]
     rows_lb_tn_data = [
-        ("1*", "EXP_TN01_SBA_IDW_Baseline", "SBA IDW Plano sin DEM", "0.612", "0.550", "0.669", "2.19", "1.89", "+3.47%", "DESCARTADO (Destruye heladas en cumbres e inv. en valles)", False),
-        ("2", "EXP_TN10_QM_Empirical_ECDF", "QM Empírico (ECDF) + RK DEM/Slope", "0.611", "0.543", "0.649", "1.92", "1.57", "+4.47%", "TOP 1 FÍSICO (Menor RMSE=1.92°C y MAE=1.57°C del estudio)", True),
-        ("3", "EXP_TN04_RK_FullTopography_NN3D", "RK DEM + Pend + Coords + NN-3D", "0.572", "0.508", "0.612", "2.19", "1.76", "+5.43%", "TOP 2 FÍSICO (Aislamiento vertical estricto anti-inversión)", True),
-        ("4", "EXP_TN11_RK_Barnes_Hybrid", "RK (DEM+Coords) + Barnes Residuos", "0.569", "0.480", "0.611", "2.07", "1.66", "+4.42%", "TOP 3 FÍSICO (2do menor RMSE=2.07°C y MAE=1.66°C)", True),
-        ("5", "EXP_TN08_RK_FullTopography_Aspect", "RK Drenaje Catabático DEM+Slope+Asp", "0.559", "0.483", "0.601", "2.30", "1.85", "+4.05%", "Admisible (Rank 4 Físico — Drenaje catabático)", False),
-        ("6", "EXP_TN06_Barnes_Gauss_Coastal", "Barnes BSc Gaussiano Continuo", "0.528", "0.413", "0.598", "2.36", "1.95", "+3.51%", "Admisible (Rank 5 Físico — Amortiguamiento costero)", False),
-        ("7", "EXP_TN09_SBA_Shepard_NN3D", "SBA Shepard Modificado + NN-3D", "0.449", "0.347", "0.576", "3.21", "2.80", "+6.05%", "Admisible (Rank 6 Físico — Shepard con NN-3D)", False),
-        ("8", "EXP_TN07_Cressman_ColdAirPooling", "Cressman 4 pasadas (Guía Oficial CDT)", "0.444", "0.294", "0.551", "2.74", "2.29", "+5.04%", "Admisible (Rank 7 Físico — Guía Oficial CDT)", False),
-        ("9", "EXP_TN12_SBA_IDW_Local_Relief", "SBA IDW Local Multiescala + NN-3D", "0.402", "0.260", "0.549", "3.37", "2.91", "+5.09%", "Admisible (Rank 8 Físico — IDW confinado 0.25°)", False),
-        ("10", "EXP_TN05_RK_Gumbel_Frost_Extremes", "RK DEM + QM Gumbel Heladas", "0.376", "0.108", "0.593", "3.18", "2.73", "-1.36%", "Inestable (Colapso por asimetría Gumbel + OKR)", False),
-        ("11", "EXP_TN02_RK_DEM_Normal", "RK Solo DEM + QM Normal Gaussiano", "0.358", "0.072", "0.598", "3.22", "2.79", "-1.82%", "Inestable (Rigidez gaussiana en inversiones)", False),
-        ("12", "EXP_TN03_RK_Topography_SkewNormal", "RK DEM + Pendiente + Skew-Normal", "0.357", "0.069", "0.596", "3.25", "2.82", "-1.50%", "Inestable (Distribución Skew-Normal + OKR)", False),
-        ("Control", "EXP_TN00_Raw_CHIRTS", "Control 0: CHIRTS Tmin Crudo (Sin DEM ni estaciones)", "0.470", "0.412", "0.583", "3.28", "2.69", "+7.94%", "Control Grilla Original", False),
+        ("1", "EXP_TN10_QM_Empirical_ECDF", "QM Empírico (ECDF) + RK DEM/Slope", "0.613", "0.544", "0.654", "1.88", "1.53", "+4.46%", "TOP 1 FÍSICO Y ESTADÍSTICO (Mín RMSE=1.88°C, MAE=1.53°C)", True),
+        ("2*", "EXP_TN01_SBA_IDW_Baseline", "SBA IDW Plano sin DEM", "0.609", "0.550", "0.671", "2.20", "1.90", "+3.33%", "DESCARTADO (Destruye heladas en cumbres e inv. en valles)", False),
+        ("3", "EXP_TN04_RK_FullTopography_NN3D", "RK DEM + Pend + Coords + NN-3D", "0.593", "0.533", "0.633", "2.01", "1.64", "+5.74%", "TOP 2 FÍSICO (Aislamiento vertical estricto anti-inversión)", True),
+        ("4", "EXP_TN08_RK_FullTopography_Aspect", "RK Drenaje Catabático DEM+Slope+Asp", "0.587", "0.527", "0.626", "2.04", "1.66", "+5.89%", "TOP 3A FÍSICO (Drenaje catabático en laderas)", True),
+        ("5", "EXP_TN11_RK_Barnes_Hybrid", "RK (DEM+Coords) + Barnes Residuos", "0.572", "0.482", "0.612", "2.01", "1.61", "+3.99%", "TOP 3B FÍSICO (2do menor RMSE=2.01°C y MAE=1.61°C)", False),
+        ("6", "EXP_TN06_Barnes_Gauss_Coastal", "Barnes BSc Gaussiano Continuo", "0.529", "0.420", "0.599", "2.35", "1.94", "+3.37%", "Admisible en costas (Sin RK en Paso 5)", False),
+        ("7", "EXP_TN05_RK_Gumbel_Frost_Extremes", "RK DEM + QM Gumbel Heladas", "0.512", "0.367", "0.605", "2.39", "1.94", "+2.23%", "Distribución rígida (Gumbel + OKR)", False),
+        ("8", "EXP_TN02_RK_DEM_Normal", "RK Solo DEM + QM Normal Gaussiano", "0.511", "0.363", "0.610", "2.42", "2.00", "+1.74%", "Distribución rígida (Normal + OKR)", False),
+        ("9", "EXP_TN03_RK_Topography_SkewNormal", "RK DEM + Pendiente + Skew-Normal", "0.505", "0.356", "0.608", "2.46", "2.03", "+2.06%", "Distribución rígida (Skew-Normal + OKR)", False),
+        ("10", "EXP_TN07_Cressman_ColdAirPooling", "Cressman 4 pasadas (Guía Oficial CDT)", "0.462", "0.340", "0.555", "2.71", "2.27", "+5.12%", "Guía Oficial CDT (CSc)", False),
+        ("11", "EXP_TN09_SBA_Shepard_NN3D", "SBA Shepard Modificado + NN-3D", "0.456", "0.390", "0.569", "3.10", "2.71", "+8.97%", "SBA sin tendencia RK (RMSE=3.10°C)", False),
+        ("Control", "EXP_TN00_Raw_CHIRTS", "Control 0: Malla CHIRTS Tmin Sin Corregir", "0.448", "0.436", "0.571", "3.25", "2.93", "+15.85%", "Referencia Malla Original (0.05° Sin DEM)", False),
+        ("13", "EXP_TN12_SBA_IDW_Local_Relief", "SBA IDW Local Multiescala + NN-3D", "0.415", "0.311", "0.537", "3.21", "2.79", "+7.39%", "SBA + IDW sin RK (RMSE=3.21°C)", False),
     ]
 
     table_lb_tn = [th_lb_tn_row]
@@ -1489,22 +1505,22 @@ def generate_experiments_pdf(
             Paragraph("<b>Precipitación Diaria</b>", td_bold),
             Paragraph("<b>Top 1: EXP_R11_Shepard_Median_Coarse<br/>Top 2: EXP_R15_Shepard_RnoR_Smooth<br/>Top 3: EXP_R12_Shepard_Local_Orn</b>", td_lb_winner),
             Paragraph("SBA Multiescala + Shepard Modificado (Desagrupamiento angular libre de ojos de buey)", td_style),
-            Paragraph("• <b>R11 (Balance):</b> GSS 0.454, KGE 0.336, PBIAS -6.02%<br/>• <b>R15 (Eventos):</b> GSS 0.454, POD <b>0.692</b>, HSS <b>0.465</b><br/>• <b>R12 (Volumen):</b> PBIAS <b>-5.15%</b>, FAR <b>0.311</b><br/><i>(EXP_R02 descartado por ojos de buey IDW)</i>", td_style),
-            Paragraph("Elimina los artefactos concéntricos ('ojos de buey') del IDW isotrópico mediante ponderación direccional de Shepard, reduciendo a menos de la mitad la subestimación volumétrica (-5.15% a -7.52% vs -13.33% en R02) y maximizando la detección de tormentas reales.", td_style),
+            Paragraph("• <b>R11 (Top 1):</b> GSS 0.547, KGE <b>0.447</b>, ETS <b>0.361</b>, HSS <b>0.517</b><br/>• <b>R15 (Top 2):</b> GSS 0.544, KGE 0.431, PBIAS <b>+1.02%</b><br/>• <b>R12 (Top 3):</b> PBIAS <b>+0.22%</b>, FAR <b>0.298</b><br/>• <b>Ref. EXP_R00 (Crudo):</b> GSS 0.449, KGE 0.315", td_style),
+            Paragraph("Supera en <b>+41.9% el KGE</b> de la malla sin corregir (<code>EXP_R00</code>) y elimina los artefactos concéntricos ('ojos de buey') del IDW isotrópico (<code>EXP_R02</code>) mediante apantallamiento angular de Shepard.", td_style),
         ],
         [
             Paragraph("<b>Temperatura Máxima (Tmax)</b>", td_bold),
-            Paragraph("<b>Top 1: EXP_TX11_RK_Barnes_Hybrid<br/>Top 2: EXP_TX06_Barnes_Gauss_Coastal<br/>Top 3: EXP_TX10_QM_Empirical_ECDF</b>", td_lb_winner),
+            Paragraph("<b>Top 1: EXP_TX11_RK_Barnes_Hybrid<br/>Top 2: EXP_TX10_QM_Empirical_ECDF<br/>Top 3: EXP_TX04_RK_FullTopography_NN3D</b>", td_lb_winner),
             Paragraph("Regression Kriging (DEM) + Filtro Gaussiano de Barnes / QM Empírico ECDF", td_style),
-            Paragraph("• <b>TX11 (Top 1):</b> GSS 0.719, KGE <b>0.690</b>, RMSE 2.06 °C<br/>• <b>TX06 (Top 2):</b> GSS 0.708, KGE 0.676, PBIAS +0.95%<br/>• <b>TX10 (Top 3):</b> RMSE <b>2.05 °C</b>, KGE 0.655<br/><i>(EXP_TX01 descartado por omitir DEM)</i>", td_style),
-            Paragraph("Conserva el gradiente adiabático vertical (&part;<i>T</i>/&part;<i>z</i> &approx; -6.5 °C/km) en cordilleras desprovistas de estaciones mediante el DEM y suaviza las anomalías costeras con el filtro continuo de Barnes sin bordes artificiales.", td_style),
+            Paragraph("• <b>TX11 (Top 1):</b> GSS 0.693, KGE <b>0.690</b>, RMSE 2.09 °C<br/>• <b>TX10 (Top 2):</b> GSS 0.682, RMSE <b>2.07 °C</b>, KGE 0.665<br/>• <b>TX04 (Top 3):</b> GSS 0.675, RMSE 2.08 °C, KGE 0.651<br/>• <b>Ref. EXP_TX00 (Crudo):</b> GSS 0.619, KGE 0.559", td_style),
+            Paragraph("Incrementa en <b>+23.4% el KGE</b> sobre la malla sin corregir (<code>EXP_TX00</code>), conserva el gradiente adiabático (&part;<i>T</i>/&part;<i>z</i> &approx; -6.5 °C/km) en cumbres sin estaciones (omitido por <code>EXP_TX01</code>) y suaviza anomalías costeras con Barnes.", td_style),
         ],
         [
             Paragraph("<b>Temperatura Mínima (Tmin)</b>", td_bold),
-            Paragraph("<b>Top 1: EXP_TN10_QM_Empirical_ECDF<br/>Top 2: EXP_TN04_RK_FullTopography_NN3D<br/>Top 3: EXP_TN11_RK_Barnes_Hybrid</b>", td_lb_winner),
+            Paragraph("<b>Top 1: EXP_TN10_QM_Empirical_ECDF<br/>Top 2: EXP_TN04_RK_FullTopography_NN3D<br/>Top 3: EXP_TN08 / EXP_TN11</b>", td_lb_winner),
             Paragraph("RK (DEM + Pendiente) + Quantile Mapping Empírico (NN-3D) / Barnes", td_style),
-            Paragraph("• <b>TN10 (Top 1):</b> GSS <b>0.611</b>, RMSE <b>1.92 °C</b>, MAE <b>1.57 °C</b><br/>• <b>TN04 (Top 2):</b> GSS 0.572, KGE 0.508, RMSE 2.19 °C<br/>• <b>TN11 (Top 3):</b> GSS 0.569, RMSE <b>2.07 °C</b>, MAE 1.66 °C<br/><i>(EXP_TN01 descartado por omitir DEM)</i>", td_style),
-            Paragraph("Resuelve el desacople vertical nocturno y el drenaje catabático de aire frío (<i>cold-air pooling</i>) en valles cerrados y altiplanos modelando la curva acumulada empírica real de heladas con vecindad vertical NN-3D.", td_style),
+            Paragraph("• <b>TN10 (Top 1):</b> GSS <b>0.613</b>, RMSE <b>1.88 °C</b>, MAE <b>1.53 °C</b><br/>• <b>TN04 (Top 2):</b> GSS 0.593, KGE 0.533, RMSE 2.01 °C<br/>• <b>TN08/11 (Top 3):</b> GSS 0.587/0.572, RMSE <b>2.01 °C</b><br/>• <b>Ref. EXP_TN00 (Crudo):</b> RMSE 3.25 °C, PBIAS +15.85%", td_style),
+            Paragraph("Reduce en <b>-1.37 °C (-42.2%) el RMSE</b> respecto a la malla sin corregir (<code>EXP_TN00</code>) y supera directamente a la Línea Base 2D (<code>EXP_TN01</code>, 2.20 °C), resolviendo inversiones térmicas y pozas frías (<i>cold-air pooling</i>).", td_style),
         ],
     ]
     t_fin = Table([th_fin] + rows_fin, colWidths=[1.10 * inch, 1.60 * inch, 1.50 * inch, 1.35 * inch, 1.95 * inch])
