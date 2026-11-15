@@ -28,12 +28,11 @@ python launcher/experiment_runner.py --suite tmin     --region ca --cores 18   #
 # 3. Ejecutar corrida en lote completa (42 configuraciones: 3 Controles EXP_00 + 39 Experimentos CDT, 1991–2020):
 python launcher/experiment_runner.py --suite all      --region ca --cores 18   # 42 configuraciones (~92.4 h)
 
-# 4. Ejecutar un experimento individual (ej. modelo ganador de lluvia):
+# 4. Ejecutar un experimento individual:
 python launcher/experiment_runner.py --config config/experiments_rainfall/EXP_R15_Shepard_RnoR_Smooth.yaml --region ca --cores 18
 
-# 5. Regenerar el dashboard de benchmark (figuras a 300 DPI + reporte HTML) o el informe PDF:
+# 5. Regenerar el dashboard de benchmark (figuras a 300 DPI + reporte HTML):
 python launcher/experiment_runner.py --benchmark --region ca
-python launcher/generate_pdf.py
 ```
 
 ---
@@ -64,32 +63,14 @@ La documentación se organiza en **5 bloques lógicos y 12 módulos secuenciales
 8. [**08. Secuencia de Procesamiento de Temperatura (CHIRTS) y Modelado Topográfico con DEM**](08_secuencia_temperatura_chirts_dem.md)
    - Flujo de 5 pasos en CDT: cálculo de coeficientes de desescalado orográfico, reducción de escala a 1 km, cálculo de sesgo diurno ($T_{\max}$) y nocturno ($T_{\min}$), aplicación del ajuste y fusión espacial de residuales. Detalle de las **26 configuraciones térmicas (Controles `EXP_TX00` y `EXP_TN00` + 24 experimentos CDT: `EXP_TX01` a `TX12` y `EXP_TN01` a `TN12`)**.
 
-### Bloque IV: Diagnóstico Científico, Benchmarks y Metodología de Validación
-9. [**09. Diagnóstico Científico de Fase 1 y Resultados del Benchmark de Precipitación (Fase 2)**](09_diagnostico_y_benchmark_precipitacion.md)
-   - Evaluación de los 10 experimentos de Fase 1, optimización dirigida en Fase 2 (5 experimentos), ranking consolidado de las 16 configuraciones evaluadas sobre 29 estaciones ciegas *holdout* y selección del modelo ganador `EXP_R15_Shepard_RnoR_Smooth`.
-10. [**10. Diagnóstico Científico y Resultados del Benchmark de Temperatura (Tmax y Tmin)**](10_diagnostico_y_benchmark_temperatura.md)
-    - Análisis de las 26 configuraciones térmicas (13 $T_{\max}$ y 13 $T_{\min}$ incluyendo controles `EXP_00`), diagnóstico de la divergencia termodinámica convectiva diurna vs. desacople e inversiones nocturnas, justificación física del rechazo a la Línea Base 2D sin DEM, y selección de ganadores físicos (`EXP_TX11_RK_Barnes_Hybrid` y `EXP_TN10_QM_Empirical_ECDF`).
+### Bloque IV: Diseño Experimental en Dos Fases y Metodología de Evaluación
+9. [**09. Diseño Experimental en Dos Fases y Criterios Físico-Climatológicos para Precipitación**](09_diagnostico_y_benchmark_precipitacion.md)
+   - Estructura metodológica de la Fase 1 exploratoria (10 experimentos) y la Fase 2 de optimización dirigida (5 experimentos), hipótesis físicas e hidroclimáticas por experimento, y criterios de admisibilidad climatológica frente a artefactos de interpolación (*ojos de buey* y truncamiento de lloviznas).
+10. [**10. Diseño Experimental en Dos Fases y Criterios Termodinámicos para Temperatura (Tmax y Tmin)**](10_diagnostico_y_benchmark_temperatura.md)
+    - Diseño de las 26 configuraciones térmicas (Fase 1: `EXP_01`–`08` y Fase 2: `EXP_09`–`12` más controles `EXP_00`), contraste termodinámico entre convección diurna ($T_{\max}$) e inversiones radiativas nocturnas ($T_{\min}$), y criterios de admisibilidad física sobre conservación del gradiente térmico vertical ($\Gamma = -\partial T / \partial z$).
 11. [**12. Metodología de Evaluación Estadística, Métricas y Validación Cruzada en CDT 8.0**](12_metodologia_evaluacion_metricas_y_validacion.md)
-    - Formulación matemática rigurosa en KaTeX ($\text{KGE}_{2012}$, $r$, $R^2$, $\text{RMSE}$, $\text{MAE}$, $\text{PBIAS}$, $\text{POD}$, $\text{FAR}$, $\text{ETS}$, $\text{HSS}$), distinción entre Rejilla Original (`EXP_00`), Línea Base 2D (`EXP_01`) y Ganador Físico, agregación regional (media vs. mediana), Diagrama de Taylor e interpretación física del desempeño en Centroamérica y el Caribe.
+    - Formulación matemática rigurosa en KaTeX ($\text{KGE}_{2012}$, $r$, $R^2$, $\text{RMSE}$, $\text{MAE}$, $\text{PBIAS}$, $\text{POD}$, $\text{FAR}$, $\text{ETS}$, $\text{HSS}$), distinción entre Rejilla Original (`EXP_00`), Línea Base 2D (`EXP_01`) y modelos físicamente admisibles, agregación regional (media vs. mediana) y Diagrama de Taylor.
 
 ### Bloque V: Auditoría del Código Fuente en R y Ejecución Desatendida (*Headless*)
 12. [**11. Modificaciones al Código Fuente R de CDT y Resolución de la Paralelización**](11_modificaciones_codigo_fuente_r_y_paralelizacion.md)
     - Diagnóstico del bucle de ventanas en Tcl/Tk (`tcltk`), desactivación fija del paralelismo en la interfaz original, aislamiento de memoria en procesos secundarios (clústeres locales PSOCK), aceleración de cuantiles empíricos mediante nudos ordenados (`stats::knots`), omisión inteligente de archivos ya calculados (*smart file skip*) e inventario detallado de ajustes en `R/`.
-
----
-
-## Resumen de Modelos Ganadores Físicos vs. Controles (`EXP_00` y `EXP_01`)
-
-| Variable Climática | Configuración Ganadora Física | Familia Metodológica | Desempeño Cuantitativo (Holdout Ciego) | Ganancia vs. Rejilla Original (`EXP_00`) y Justificación Física |
-| :--- | :--- | :--- | :--- | :--- |
-| **Precipitación Diaria** | **`EXP_R15_Shepard_RnoR_Smooth`** | SBA Multiescala + Shepard Modificado + RnoR Suave (`CutOff = 2`) | **GSS:** 0.501 \| **KGE:** **0.379** \| **ETS:** 0.329 \| **RMSE:** 12.88 mm | **+0.095 pts (+33.5%) en KGE vs. CHIRPS crudo (`0.284`)**. Suprime lloviznas espurias (*drizzle*) sin cortes binarios abruptos y preserva gradientes en laderas. |
-| **Temperatura Máxima ($T_{\max}$)** | **`EXP_TX11_RK_Barnes_Hybrid`** | RK (DEM + Lat + Lon) + Barnes Gaussiano Continuo | **GSS:** 0.719 \| **KGE:** **0.690** \| **$r$:** 0.743 \| **RMSE:** 2.06 $^\circ\text{C}$ | **+0.172 pts (+33.2%) en KGE vs. CHIRTS crudo (`0.518`)**. Forzamiento orográfico real con DEM continental ($z \ge 0\text{ m}$) y filtrado continuo de brisas marinas. |
-| **Temperatura Mínima ($T_{\min}$)** | **`EXP_TN10_QM_Empirical_ECDF`** | RK (DEM + Pendiente) + QM Empírico Celda a Celda (NN-3D) | **GSS:** **0.613** \| **KGE:** **0.543** \| **RMSE:** **1.92 $^\circ\text{C}$** \| **MAE:** 1.57 $^\circ\text{C}$ | **+0.131 pts (+31.8%) en KGE vs. CHIRTS crudo (`0.412`)**. Menor error absoluto y cuadrático del estudio; captura inversiones nocturnas y pozas de aire frío en valles. |
-
----
-
-## Documentación Técnica Complementaria (`docs-private/`)
-
-Para consultar los documentos internos complementarios del proyecto:
-- **Informe Maestro del Benchmark (Markdown y PDF):** `docs-private/reporte_maestro_benchmark_cdt.md` y `docs-private/reporte_maestro_benchmark_cdt.pdf` (generado vía `python launcher/generate_pdf.py`).
-- **Fundamento Metodológico sobre CHIRPS (v2 vs. v3) y el Desfase Horario (07:00 AM Local vs. 00:00 UTC):** `docs-private/fundamento_metodologico_chirps_desfase_horario_cdt.md`.

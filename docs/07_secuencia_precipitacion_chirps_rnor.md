@@ -161,7 +161,7 @@ Aísla el efecto del método de corrección de sesgo, la máscara RnoR y los int
 ---
 
 ### 5.2 Fase 2: Optimización Dirigida de Precipitación (5 Experimentos)
-Diseñada a partir de los hallazgos de la Fase 1, donde Shepard Modificado y Spheremap demostraron ser superiores al Kriging:
+Diseñada a partir de las hipótesis de refinamiento de la Fase 1 para explorar estadísticos robustos (mediana), confinamiento radial local, cuantiles empíricos no paramétricos y transiciones suaves en la máscara húmeda-seca:
 
 | ID Exp. | Método Bias (Paso 1) | Apply Bias (Paso 2) | Merging (Paso 3) | Hipótesis y Configuración de Optimización |
 | :---: | :--- | :--- | :--- | :--- |
@@ -169,10 +169,10 @@ Diseñada a partir de los hallazgos de la Fase 1, donde Shepard Modificado y Sph
 | **`EXP-R12`** | `mbvar` ($\pm 5\text{ d}$) + IDW (1.0°) | Proporcional | Shepard Confinado Local (radio 0.9°, 3 pasadas) | **Confinamiento Local:** Radios estrechos para evitar propagación de lluvia a través de divisorias continentales. |
 | **`EXP-R13`** | **QM Empírico (`qmecdf`)** + Shepard | Mapeo cuantil empírico | Shepard Modificado (radio 1.5°) | **No Paramétrico:** Calibra cuantiles directamente sobre la curva observada sin distribución teórica prefijada. |
 | **`EXP-R14`** | `mbvar` ($\pm 5\text{ d}$) + **Mediana** + Spheremap | Proporcional | Spheremap Gran Círculo (radio 1.5°) | **Esferoide con Mediana:** Combina distancias de gran círculo en el Caribe con estimación robusta de sesgo. |
-| **`EXP-R15`**<br>**(GANADOR)** | `mbvar` ($\pm 5\text{ d}$) + IDW (1.2°) | Proporcional | Shepard (radio 1.2°) + **RnoR Suave (`CutOff=2`, smooth=TRUE)** | **MODELO GANADOR OFICIAL:** Suprime lloviznas espurias (*drizzle*) sin cortes artificiales. Máximo GSS (0.501) y KGE (0.379). |
+| **`EXP-R15`** | `mbvar` ($\pm 5\text{ d}$) + IDW (1.2°) | Proporcional | Shepard (radio 1.2°) + **RnoR Suave (`CutOff=2`, smooth=TRUE)** | **Transición Húmeda-Seca Continua:** Suprime lloviznas espurias (*drizzle*) mediante transición gradual de probabilidad sin cortes binarios abruptos. |
 
 ### Ejecución de Suites desde Terminal:
 ```bash
 # Ejecutar la suite completa de 15 experimentos de precipitación con 18 hilos:
-python launcher/experiment_runner.py --suite rainfall --cores 18
+python launcher/experiment_runner.py --suite rainfall --region ca --cores 18
 ```

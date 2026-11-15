@@ -158,17 +158,17 @@ La física atmosférica exige modelar y evaluar de manera independiente los extr
 Las dos suites de temperatura se ejecutan de manera directa y desatendida mediante:
 
 ```bash
-# Ejecutar suite completa de Temperatura Máxima (8 experimentos)
-python launcher/experiment_runner.py --suite tmax
+# Ejecutar suite completa de Temperatura Máxima (12 experimentos + Control EXP_TX00)
+python launcher/experiment_runner.py --suite tmax --region ca --cores 18
 
-# Ejecutar suite completa de Temperatura Mínima (8 experimentos)
-python launcher/experiment_runner.py --suite tmin
+# Ejecutar suite completa de Temperatura Mínima (12 experimentos + Control EXP_TN00)
+python launcher/experiment_runner.py --suite tmin --region ca --cores 18
 
 # Ejecutar un experimento individual de Tmax (ej. insolación y radiación solar)
-python launcher/experiment_runner.py --config config/experiments_tmax/EXP_TX08_RK_Aspect_Solar_Insolation.yaml
+python launcher/experiment_runner.py --config config/experiments_temperature/EXP_TX08_RK_Aspect_Solar_Insolation.yaml --region ca --cores 18
 
 # Ejecutar un experimento individual de Tmin (ej. inversiones térmicas en valles)
-python launcher/experiment_runner.py --config config/experiments_tmin/EXP_TN04_RK_NN3D_Inversion_Valleys.yaml
+python launcher/experiment_runner.py --config config/experiments_temperature/EXP_TN04_RK_NN3D_Inversion_Valleys.yaml --region ca --cores 18
 ```
 
 ### Esquema de Validación Cruzada Independiente (Holdout)
@@ -470,7 +470,7 @@ La batería comprende **24 experimentos térmicos** (12 para $T_{\max}$ y 12 par
 | **`EXP-TX08`** | F1 | Multivariado DEM+Slope+Aspect | `qmdist` (Skew-Normal) + OKR | **RK Total** (DEM+Slope+Aspect+Coords) | **Máxima Complejidad Diurna:** Acoplamiento total de relieve e insolación. |
 | **`EXP-TX09`** | F2 | Bilineal con DEM SRTM | `mbvar` ($\pm 5\text{ d}$) + **NN-3D ($\Delta z$)** | **SBA** (1.0°, 0.67°, 0.33°) + Shepard | **Shepard Térmico NN-3D:** Derivadas direccionales locales en residuales. |
 | **`EXP-TX10`** | F2 | Bilineal con DEM SRTM | **QM Empírico (`qmecdf`)** + NN-3D | **RK** (DEM + Pendiente) + IDW | **QM Empírico Celda a Celda:** Modela olas de calor directamente sobre la curva observada. |
-| **`EXP-TX11`**<br>**(GANADOR)** | F2 | Bilineal con DEM SRTM | `mbvar` ($\pm 5\text{ d}$) + IDW (3.5°) | **RK (DEM + Lat + Lon)** + **Barnes Residuos (2.0°)** | **MODELO GANADOR TMAX:** Descompone el campo diurno en tendencia orográfica real y Barnes continuo. Máx KGE (0.690). |
+| **`EXP-TX11`** | F2 | Bilineal con DEM SRTM | `mbvar` ($\pm 5\text{ d}$) + IDW (3.5°) | **RK (DEM + Lat + Lon)** + **Barnes Residuos (2.0°)** | **Híbrido Determinista-Gaussiano:** Descompone el campo diurno en tendencia orográfica explícita y filtrado espacial continuo de Barnes. |
 | **`EXP-TX12`** | F2 | Bilineal con DEM SRTM | `mbvar` ($\pm 5\text{ d}$) + NN-3D | **SBA Multiescala Local** (1.0°, 0.50°, 0.25°) | **SBA Local con NN-3D:** Confinamiento a 0.25° con control vertical de cota. |
 
 ---
@@ -488,13 +488,13 @@ La batería comprende **24 experimentos térmicos** (12 para $T_{\max}$ y 12 par
 | **`EXP-TN07`** | F1 | Regresión altimétrica DEM | `mbmon` (mensual) + IDW | **Cressman (CSc)** 4 pasadas | **Pozas Frías Confinadas:** Radios decrecientes contra dispersión espuria. |
 | **`EXP-TN08`** | F1 | Multivariado DEM+Slope+Aspect | `qmdist` (Skew-Normal) + NN-3D | **RK Total** (DEM+Slope+Aspect+Coords) | **Drenaje Catabático en Laderas:** Acoplamiento topográfico completo. |
 | **`EXP-TN09`** | F2 | Bilineal con DEM SRTM | `mbvar` ($\pm 5\text{ d}$) + **NN-3D ($\Delta z$)** | **SBA** (1.0°, 0.67°, 0.33°) + Shepard | **Shepard Térmico Nocturno:** Interpolación local no lineal en residuales. |
-| **`EXP-TN10`**<br>**(GANADOR)** | F2 | Bilineal con DEM SRTM | **QM Empírico (`qmecdf`)** + **NN-3D ($\Delta z$)** | **RK (DEM + Pendiente)** + IDW (2.0°) | **MODELO GANADOR ABSOLUTO TMIN:** Resuelve inversiones y pozas de aire frío (*cold-air pooling*). Menor RMSE (1.92 °C), menor MAE (1.57 °C) y GSS (0.613). |
-| **`EXP-TN11`** | F2 | Bilineal con DEM SRTM | `mbvar` ($\pm 5\text{ d}$) + IDW (3.5°) | **RK (DEM + Lat + Lon)** + Barnes (2.0°) | **Híbrido Determinista-Gaussiano:** Segundo mejor RMSE (2.07 °C). |
+| **`EXP-TN10`** | F2 | Bilineal con DEM SRTM | **QM Empírico (`qmecdf`)** + **NN-3D ($\Delta z$)** | **RK (DEM + Pendiente)** + IDW (2.0°) | **QM Empírico con RK Orográfico:** Modela inversiones térmicas y pozas de aire frío (*cold-air pooling*) mediante cuantiles empíricos no paramétricos. |
+| **`EXP-TN11`** | F2 | Bilineal con DEM SRTM | `mbvar` ($\pm 5\text{ d}$) + IDW (3.5°) | **RK (DEM + Lat + Lon)** + Barnes (2.0°) | **Híbrido Determinista-Gaussiano:** Tendencia orográfica explícita combinada con suavizado gaussiano de Barnes en residuales. |
 | **`EXP-TN12`** | F2 | Bilineal con DEM SRTM | `mbvar` ($\pm 5\text{ d}$) + NN-3D | **SBA Multiescala Local** (1.0°, 0.50°, 0.25°) | **SBA Local con NN-3D:** Confinamiento local estricto para mínimas nocturnas. |
 
 ### Ejecución de Suites desde Terminal:
 ```bash
 # Ejecutar suites de 12 experimentos con 18 hilos:
-python launcher/experiment_runner.py --suite tmax --cores 18
-python launcher/experiment_runner.py --suite tmin --cores 18
+python launcher/experiment_runner.py --suite tmax --region ca --cores 18
+python launcher/experiment_runner.py --suite tmin --region ca --cores 18
 ```

@@ -410,32 +410,20 @@ docker compose run --rm cdt-runner python launcher/experiment_runner.py --suite 
 docker compose run --rm cdt-runner python launcher/experiment_runner.py --suite all --region rd
 ```
 
-## Resultados del Benchmark de Precipitación: 16 Configuraciones (15 Experimentos CDT + Control 00)
+## Diseño Experimental en Dos Fases (42 Configuraciones: 39 Experimentos CDT + 3 Controles `EXP_00`)
 
-Las 16 configuraciones de precipitación diaria (CHIRPS 1991–2020: 15 experimentos de fusión en CDT más el control satelital crudo `EXP_R00_Raw_CHIRPS`) fueron evaluadas contra **29 estaciones de validación ciega independiente (*holdout*)**:
+El marco de evaluación del proyecto se estructura en **dos fases secuenciales de experimentación científica** sobre el período climatológico estándar **1991–2020 (10,958 días continuos)**, evaluadas contra un conjunto fijo de estaciones de validación ciega independiente (*holdout*):
 
-| Rank | Experimento ID | Método de Fusión y Configuración Clave | KGE | $r$ | RMSE (mm) | PBIAS (%) | POD | ETS | HSS | Global Skill | Clasificación |
-|:---:|---|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **1** | **EXP_R15_Shepard_RnoR_Smooth** | **Shepard Modificado + RnoR Suave (CutOff 2, rad 1.2°)** | **0.3791** | **0.4791** | **12.88** | **-4.39%** | **0.6922** | **0.3287** | **0.4785** | **0.5007** | **GANADOR FÍSICO** |
-| **2** | **EXP_R12_Shepard_Local_Orn** | Shepard Confinado Local Anti-Cruce (rad 0.9° ~100 km) | 0.3716 | 0.4685 | 13.21 | -3.21% | 0.6731 | 0.3238 | 0.4735 | 0.4991 | Fase 2 (Rank 2) |
-| **3** | **EXP_R08_Shepard_Complex_Relief** | Shepard Relieve Complejo Estándar (rad 1.5°) | 0.3749 | 0.4794 | 12.89 | -6.30% | 0.6650 | 0.3147 | 0.4638 | 0.4888 | Fase 1 (Rank 3) |
-| **4** | **EXP_R11_Shepard_Median_Coarse** | Shepard Mediana Robusta + Malla Gruesa (rad 1.5°) | 0.3753 | 0.4787 | 12.77 | -6.70% | 0.6746 | 0.3213 | 0.4697 | 0.4885 | Fase 2 (Rank 4) |
-| **5** | **EXP_R14_Spheremap_Median** | Spheremap Gran Círculo + Mediana + Malla Gruesa | 0.3621 | 0.4552 | 13.56 | -4.43% | 0.6540 | 0.3174 | 0.4660 | 0.4863 | Fase 2 (Rank 5) |
-| **6** | **EXP_R09_Spheremap_Trans_Caribe** | Spheremap Gran Círculo Estándar (rad 1.5°) | 0.3584 | 0.4584 | 13.59 | -4.59% | 0.6477 | 0.3132 | 0.4633 | 0.4843 | Fase 1 (Rank 6) |
-| **7** | **EXP_R07_Cressman_Spherical** | Cressman Celdas Aisladas (Guía Oficial CDT: 4 pasadas 1.0° a 0.25°) | 0.3318 | 0.4468 | 14.44 | +3.64% | 0.6299 | 0.2958 | 0.4436 | 0.4724 | Guía CDT |
-| **8** | **EXP_R13_QM_Empirical_ECDF** | Quantile Mapping Empírico No-Paramétrico (qmecdf) | 0.3196 | 0.4655 | 13.08 | -5.57% | 0.6393 | 0.2995 | 0.4458 | 0.4658 | Fase 2 (Rank 8) |
-| **9** | **EXP_R06_Barnes_Gauss_Coastal** | Barnes BSc Gaussiano Costero (NN-3D con DEM) | 0.3087 | 0.4490 | 14.22 | +4.08% | 0.6461 | 0.2976 | 0.4450 | 0.4635 | Fase 1 (Rank 9) |
-| **10** | **EXP_R01_SBA_IDW_Baseline** | Línea Base 2D: SBA IDW Plano Monocapa (Sin RnoR) | 0.3353 | 0.4861 | 12.22 | -13.53% | 0.6657 | 0.2743 | 0.4178 | 0.4396 | Línea Base 2D |
-| **11** | **EXP_R00_Raw_CHIRPS** | Rejilla Original: CHIRPS v2.0 Crudo (Sin corrección ni estaciones) | 0.2840 | 0.4420 | 14.85 | -18.65% | 0.5890 | 0.2180 | 0.3450 | 0.3789 | Rejilla Original |
-| **12** | **EXP_R02_SBA_IDW_RnoR** | SBA IDW 3 pasadas + RnoR (Corte Rígido 0.5 mm) | 0.2631 | 0.4659 | 12.39 | -22.15% | 0.6132 | 0.2718 | 0.4109 | 0.3743 | Fase 1 |
-| **13** | **EXP_R05_RK_Topography_BW** | Regression Kriging Topográfico (Weibull + DEM) | 0.2147 | 0.4166 | 13.28 | -18.28% | 0.5216 | 0.2010 | 0.3215 | 0.3463 | Fase 1 |
-| **14** | **EXP_R03_SBA_OKR_BernoulliGamma** | QM Paramétrico Gamma + OKR por Bloques | -0.0277 | 0.4275 | 14.87 | -5.83% | 0.6389 | 0.2460 | 0.3729 | 0.3231 | Fase 1 |
-| **15** | **EXP_R04_SBA_OKR_BernoulliWeib** | QM Paramétrico Weibull + OKR por Bloques | 0.0159 | 0.4306 | 14.51 | -11.98% | 0.6357 | 0.2475 | 0.3733 | 0.3148 | Fase 1 |
-| **16** | **EXP_R10_RK_FullTopography_Asp** | RK Máxima Complejidad (DEM + Pendiente + Aspect) | 0.1062 | 0.4112 | 14.11 | -18.36% | 0.5084 | 0.1901 | 0.3073 | 0.3045 | Fase 1 |
+1. **Controles de Rejilla Satelital Original (`EXP_R00`, `EXP_TX00`, `EXP_TN00`):** Extracción directa punto a píxel sobre las rejillas originales CHIRPS v2.0 y CHIRTS-ERA5 sin ajuste de sesgo ni fusión con estaciones, cuantificando el aporte neto real de cada configuración de CDT.
+2. **Fase 1 — Evaluación Exploratoria de Familias Metodológicas (26 Experimentos: `EXP_R01`–`R10`, `EXP_TX01`–`TX08`, `EXP_TN01`–`TN08`):** Explora sistemáticamente el espacio de métodos de corrección de sesgo (`mbvar`, `mbmon`, `qmdist` paramétrico) y esquemas de fusión espacial (*Simple Bias Adjustment* [SBA], *Regression Kriging* [RK] con covariables fisiográficas DEM/Pendiente/Orientación, Kriging Ordinario por Bloques [OKR], IDW, Barnes, Cressman, Shepard Modificado y Spheremap).
+3. **Fase 2 — Optimización Física y Estadística Dirigida (13 Experimentos: `EXP_R11`–`R15`, `EXP_TX09`–`TX12`, `EXP_TN09`–`TN12`):** Diseñada a partir del diagnóstico de la Fase 1 para refinar las familias con mejor comportamiento físico, incorporando cuantiles empíricos no paramétricos (`qmecdf`), estadísticos robustos (mediana en grilla gruesa), confinamiento radial local, transiciones continuas suaves en la máscara *Rain-No-Rain* (`RnoRCutOff = 2`) y esquemas híbridos deterministas-gaussianos.
 
-> **Hallazgos Clave:**
-> 1. **Modelo Ganador de Precipitación (`EXP_R15_Shepard_RnoR_Smooth`):** Supera a todos los esquemas evaluados ($\text{Skill} = 0.5007$, $\text{KGE} = 0.3791$ [$+33.5\%$ vs. CHIRPS original `EXP_R00`], $\text{POD} = 69.22\%$, $\text{ETS} = 0.3287$). La transición continua suave (`RnoRCutOff: 2`) entre 0.1 y 1.0 mm eliminó la subestimación severa de lluvia de la máscara binaria rígida ($\text{PBIAS} = -4.39\%$ frente a $-22.15\%$ en `R02` y $-18.65\%$ en CHIRPS crudo).
-> 2. **Modelos Ganadores de Temperatura (`EXP_TX11_RK_Barnes_Hybrid` y `EXP_TN10_QM_Empirical_ECDF`):** En $T_{\max}$, el híbrido Regression Kriging + Barnes (`EXP_TX11`) alcanza $\text{KGE} = 0.690$ ($\text{RMSE} = 2.06\ ^\circ\text{C}$), superando en $+33.2\%$ a CHIRTS crudo (`EXP_TX00`). En $T_{\min}$, el mapeo de cuantiles empírico (`EXP_TN10`) obtiene el menor error térmico del estudio ($\text{RMSE} = 1.92\ ^\circ\text{C}$, $\text{KGE} = 0.543$, $+31.8\%$ vs. CHIRTS crudo `EXP_TN00`).
+Para calcular la matriz completa de métricas continuas y categóricas ($\text{KGE}_{2012}$, $r$, $\text{RMSE}$, $\text{MAE}$, $\text{PBIAS}$, $\text{POD}$, $\text{FAR}$, $\text{ETS}$, $\text{HSS}$ y *Global Skill Score*) junto con el dashboard interactivo HTML y figuras a 300 DPI:
+
+```bash
+python launcher/experiment_runner.py --benchmark --region ca
+python launcher/experiment_runner.py --benchmark --region rd
+```
 
 ## Estructura de Preparación de Datos Regionales (`data/`)
 
@@ -450,13 +438,13 @@ El orquestador soporta archivos NetCDF 3D y directorios de grillas diarias 2D in
 - **Estaciones y Listas de Exclusión (`data/stations/`):**
   - Centroamérica: `precip_stations_ca.csv`, `tmax_stations_ca.csv`, `tmin_stations_ca.csv`
   - Rep. Dominicana: `precip_stations_rd.csv`, `tmax_stations_rd.csv`, `tmin_stations_rd.csv`
-  - **Validación Cruzada Independiente (*Holdout*):** `validation_holdout_stations_rainfall.csv` y `validation_holdout_stations_temperature.csv` (o con sufijo `_rd.csv`).
+  - **Validación Cruzada Independiente (*Holdout*):** `validation_holdout_stations_rainfall.csv` y `validation_holdout_stations_temperature.csv` (o con sufijo `_ca.csv` / `_rd.csv`).
 - **Topografía (`data/topography/`):** DEM continental saneado ($z \ge 0\text{ msnm}$): `dem_ca_continental_land.nc` (CA) y `dem_srtm_dominicana.nc` (RD).
 - **Cartografía GIS (`data/gis/`):** Shapefile con buffer costero (`Buffer_15km_todo_AC.shp` para CA y `republica_dominicana.shp` para RD, junto con `.shx`, `.dbf`, `.prj`).
 
 ## Módulos de Documentación Técnica (`docs/`)
 
-Para fundamentos matemáticos profundos, justificaciones físicas, menús de CDT GUI/CLI y resultados detallados, consulta la carpeta [`docs/`](docs/README.md):
+Para fundamentos matemáticos profundos, justificaciones físicas, menús de CDT GUI/CLI y diseño experimental en dos fases, consulta la carpeta [`docs/`](docs/README.md):
 
 - [**Índice General de Documentación Técnica (`docs/README.md`)**](docs/README.md)
 - [**01. Guía de Ejecución desde Terminal (CLI / Headless) y Scripts de Producción**](docs/01_guia_ejecucion_produccion_y_scripts.md)
@@ -467,7 +455,7 @@ Para fundamentos matemáticos profundos, justificaciones físicas, menús de CDT
 - [**06. Tratamiento Fisiográfico del DEM, Batimetría Marina y Protección Insular**](docs/06_tratamiento_fisiografico_dem_batimetria.md)
 - [**07. Secuencia de Procesamiento de Precipitación (CHIRPS) y Máscara Rain-No-Rain**](docs/07_secuencia_precipitacion_chirps_rnor.md)
 - [**08. Secuencia de Procesamiento de Temperatura (CHIRTS) y Modelado Topográfico con DEM**](docs/08_secuencia_temperatura_chirts_dem.md)
-- [**09. Diagnóstico Científico de Fase 1 y Resultados del Benchmark de Precipitación (Fase 2)**](docs/09_diagnostico_y_benchmark_precipitacion.md)
-- [**10. Diagnóstico Científico y Resultados del Benchmark de Temperatura (Tmax y Tmin)**](docs/10_diagnostico_y_benchmark_temperatura.md)
+- [**09. Diseño Experimental en Dos Fases y Criterios Físico-Climatológicos para Precipitación**](docs/09_diagnostico_y_benchmark_precipitacion.md)
+- [**10. Diseño Experimental en Dos Fases y Criterios Termodinámicos para Temperatura (Tmax y Tmin)**](docs/10_diagnostico_y_benchmark_temperatura.md)
 - [**11. Modificaciones al Código Fuente R de CDT y Resolución de la Paralelización**](docs/11_modificaciones_codigo_fuente_r_y_paralelizacion.md)
 - [**12. Metodología de Evaluación Estadística, Métricas y Validación Cruzada en CDT 8.0**](docs/12_metodologia_evaluacion_metricas_y_validacion.md)

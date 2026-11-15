@@ -1,188 +1,122 @@
-# Diagnóstico Científico de la Fase 1 y Diseño Metodológico de la Fase 2 (Precipitación Diaria)
+# 09. Diseño Experimental en Dos Fases y Criterios Físico-Climatológicos para Precipitación Diaria
 
-## 1. Contexto y Objetivos del Benchmark de Lluvia
+> **Componente de Validación:** Suite A — Precipitación Diaria (`rainfall`, CHIRPS v2.0 + Pluviómetros NMHS)  
+> **Período de Reconstrucción:** 1991–2020 (30 años continuos, 10,958 días)  
+> **Configuraciones Evaluadas:** 16 configuraciones (Control Satelital `EXP_R00` + 10 Experimentos de Fase 1 + 5 Experimentos de Fase 2)
 
-El objetivo del benchmark es evaluar y seleccionar la configuración óptima de corrección de sesgo y fusión espacial (*merging*) en **CDT 8.0** para la serie histórica diaria de 30 años (1991–2020, 10,958 pasos temporales) en América Central y República Dominicana, utilizando satélite **CHIRPS v2.0** a resolución de $0.05^\circ$ (~5.5 km) y la red de estaciones pluviométricas de superficie.
-
-Para garantizar máxima objetividad científica y evitar sobreajuste (*in-sample overfitting*), se implementó un esquema estricto de **validación ciega (*holdout*)**:
-* **Total de estaciones disponibles:** 266 estaciones meteorológicas.
-* **Estaciones de entrenamiento (calibración y merging):** 237 estaciones.
-* **Estaciones de validación independiente (*holdout*):** 29 estaciones excluidas del entrenamiento, distribuidas representativamente en distintos regímenes climáticos y pisos altitudinales.
+Este documento describe la arquitectura metodológica en **dos fases experimentales** implementada para la fusión espacial de precipitación diaria en **Climate Data Tools (CDT v8.0)**, las hipótesis hidroclimáticas asociadas a cada configuración y los criterios físico-climatológicos que complementan la validación estadística puntual.
 
 ---
 
-## 2. Resultados Consolidados de la Fase 1 (evaluación exploratoria preliminar: EXP_R01 a EXP_R10)
+## 1. Esquema de Validación Cruzada Independiente (*Holdout*)
 
-La Fase 1 evaluó 10 familias metodológicas representativas del estado del arte en interpolación geoespacial y ajuste de sesgo satelital:
+Para garantizar una evaluación objetiva libre de sobreajuste espacial (*overfitting*), el flujo de trabajo separa estrictamente la red de estaciones antes de ejecutar cualquier etapa de CDT:
 
-| Experimento ID | Familia / Algoritmo | Ajuste de Sesgo | Interpolación Merging | KGE Medio | $r$ Pearson | RMSE (mm) | POD | FAR | ETS | HSS |
-|---|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **EXP_R08** | **Modified Shepard (Relieve Complejo)** | `mbvar` (IDW) | **Shepard (3 pasadas)** | **0.375** | **0.479** | **12.89** | **0.665** | **0.304** | **0.315** | **0.464** |
-| **EXP_R09** | **Spheremap (Geometría Esférica)** | `mbvar` (IDW) | **Spheremap (3 pasadas)** | **0.358** | **0.458** | **13.59** | 0.648 | 0.296 | 0.313 | 0.463 |
-| **EXP_R01** | Control Nulo / IDW Plano (Baseline) | `mbvar` (IDW) | IDW 1 pasada (sin RnoR) | 0.335 | 0.486 | 12.22 | 0.666 | 0.338 | 0.274 | 0.418 |
-| **EXP_R07** | Cressman Celdas Aisladas (Guía Oficial CDT) | `mbvar` (IDW) | Cressman (4 pasadas) | 0.332 | 0.447 | 14.44 | 0.630 | 0.305 | 0.296 | 0.444 |
-| **EXP_R06** | Barnes BSc Gradientes Costeros | `mbvar` (NN-3D) | Barnes BSc (3 pasadas) | 0.309 | 0.449 | 14.22 | 0.646 | 0.310 | 0.298 | 0.445 |
-| **EXP_R02** | SBA IDW con Filtro RnoR | `mbvar` (IDW) | IDW 3 pasadas (RnoR logit) | 0.263 | 0.466 | 12.39 | 0.613 | 0.315 | 0.272 | 0.411 |
-| **EXP_R05** | Regression Kriging Topográfico | `qmdist` (Weibull) | RK (DEM + Pendiente) | 0.215 | 0.417 | 13.28 | 0.522 | 0.367 | 0.201 | 0.322 |
-| **EXP_R10** | RK Máxima Complejidad Acoplada | `qmdist` (Weibull) | RK (DEM + Pend + Aspect) | 0.106 | 0.411 | 14.11 | 0.508 | 0.376 | 0.190 | 0.307 |
-| **EXP_R04** | SBA Kriging Ordinario Bernoulli-Weibull | `qmdist` (Weibull) | OKR por bloques | 0.016 | 0.431 | 14.51 | 0.636 | 0.348 | 0.247 | 0.373 |
-| **EXP_R03** | SBA Kriging Ordinario Bernoulli-Gamma | `qmdist` (Gamma) | OKR por bloques | -0.028 | 0.427 | 14.87 | 0.639 | 0.348 | 0.246 | 0.373 |
+- **Conjunto de Entrenamiento (*Training Set*):** Subconjunto mayoritario de estaciones (~85–90% de la red) ingresado a las tres etapas de CDT:
+  1. Cálculo de coeficientes o funciones de distribución de sesgo (`cdtBiasCoeffRainCMD`).
+  2. Aplicación de la corrección de sesgo sobre la serie satelital CHIRPS (`cdtBiasCorrectRainCMD`).
+  3. Interpolación de residuales y máscara húmeda-seca *Rain-No-Rain* (`cdtMergingRainCMD`).
+- **Conjunto de Validación Ciega (*Holdout Set*):** Subconjunto independiente (~10–15% de la red, estratificado por zona climática y piso altitudinal) completamente excluido de los archivos de entrada de CDT mediante [`launcher/station_manager.py`](../launcher/station_manager.py).
+- **Control Satelital Original (`EXP_R00_Raw_CHIRPS`):** Evaluación directa de la rejilla satelital original CHIRPS v2.0 ($0.05^\circ$) sobre las mismas coordenadas del conjunto *holdout*, estableciendo la referencia base sin intervención geoestadística.
 
 ---
 
-## 3. Diagnóstico Físico y Estadístico de la Fase 1
+## 2. Estructura Metodológica en Dos Fases Experimentales
 
-### 3.1. ¿Por qué el KGE diario se ubica en el rango 0.30 - 0.38?
-A primera vista, un KGE de 0.375 puede parecer moderado si se compara con variables como temperatura o caudales mensuales. Sin embargo, para **precipitación diaria tropical en terreno complejo con validación out-of-sample**, este valor es científicamente robusto por las siguientes razones:
-1. **Efecto de Doble Penalización (*Double Penalty*):** La lluvia convectiva ocurre en núcleos de 3 a 8 km. Una tormenta que impacta directamente una estación puede no coincidir exactamente en tiempo o en píxel con el sensor satelital, penalizando severamente el KGE diario puntual.
-2. **Desempeño Categórico Sólido:** Las métricas de detección diaria son altas: POD de **66.5%**, FAR de **30.4%** y un Heidke Skill Score (HSS) de **0.464**, lo que confirma una alta fidelidad para discernir lluvia de días secos.
-3. **Escala Temporal:** Al acumular a escalas pentadales, decadales o mensuales, el ruido convectivo diario se disipa y la correlación y el KGE suben típicamente a valores superiores a **0.80**.
+Dada la alta variabilidad espacio-temporal de la precipitación diaria en regímenes tropicales complejos —donde coexisten convección profunda localizada, ascenso orográfico por vientos alisios, sistemas frontales (*Nortes*) y subsidencia en valles intramontanos—, la búsqueda de parametrizaciones óptimas se divide en **dos fases secuenciales**:
 
-### 3.2. Colapso del Quantile Mapping Teórico (Bernoulli-Gamma y Weibull)
-* `EXP_R03` y `EXP_R04` tuvieron los peores desempeños (KGE -0.028 y 0.016).
-* **Causa:** Forzar las observaciones a distribuciones paramétricas teóricas de 2 parámetros distorsiona las colas y la alta proporción de ceros (60-80% según la vertiente). El ajuste empírico por ventanas móviles (`mbvar`) demostró ser inmensamente más estable.
-
-### 3.3. La Paradoja Orográfica del Regression Kriging
-* Incorporar DEM, pendiente y orientación en `EXP_R05` y `EXP_R10` redujo el KGE a 0.215 y 0.106.
-* **Causa:** La orografía centroamericana presenta una banda de condensación máxima a media ladera (1,000–1,800 msnm) y un contraste drástico entre la vertiente Caribe (húmeda) y la vertiente Pacífico (seca). Un modelo de regresión lineal global confunde estas relaciones e introduce artefactos espurios.
-
-### 3.4. Superioridad Numérica de Shepard Modificado y Spheremap
-* **Shepard Modificado (`EXP_R08`):** Logró el mejor KGE (0.375), el mejor HSS (0.464) y el menor error en zonas de relieve escarpado porque los polinomios de Taylor locales amortiguan singularidades numéricas.
-* **Spheremap (`EXP_R09`):** Ocupó el segundo lugar (KGE 0.358), demostrando la importancia de calcular distancias sobre la esfera terrestre en un istmo rodeado por dos masas oceánicas.
-
----
-
-## 4. Diseño Metodológico de la Fase 2 (Optimización Dirigida: EXP_R11 a EXP_R15)
-
-Apoyándose en la victoria de Shepard y Spheremap, la Fase 2 formula **5 hipótesis de mejora dirigida** explotando parámetros avanzados de CDT 8.0:
-
-```
-                      FASE 1: evaluación preliminar (Screening)
-                                  │
-                  ┌───────────────┴───────────────┐
-                  ▼                               ▼
-       Modelos Descartados                Modelos Ganadores
-    • QM Teórico (Gamma/Weibull)       • Modified Shepard (EXP_R08: KGE 0.375)
-    • Regression Kriging Lineal        • Spheremap (EXP_R09: KGE 0.358)
-                  │                               │
-                  └───────────────┬───────────────┘
-                                  ▼
-               FASE 2: Refinamiento Dirigido (EXP_R11 - EXP_R15)
-           ┌──────────────────────┼──────────────────────┐
-           ▼                      ▼                      ▼
-    Sesgo Robusto          Acotamiento Espacial    QM No-Paramétrico
-   (Mediana vs Media)    (CoarseGrid + Local 0.9°)  (eCDF Empírico)
+```mermaid
+flowchart TD
+    R00["Control Satelital Original (EXP_R00)\nCHIRPS v2.0 sin corrección"] --> F1
+    subgraph F1["Fase 1: Exploración Sistemática de Familias (EXP_R01 a EXP_R10)"]
+        direction TB
+        F1_A["Ajuste de Sesgo:\nMultiplicativo (mbvar, mbmon)\nvs. QM Paramétrico (Gamma, Weibull)"]
+        F1_B["Esquema de Fusión:\nSBA vs. Regression Kriging (RK)\ncon covariables DEM, Slope, Aspect"]
+        F1_C["Interpolador de Residuales:\nIDW, OKR por Bloques, Barnes,\nCressman, Shepard, Spheremap"]
+    end
+    F1 --> DIAG["Diagnóstico Físico y Estadístico Inter-Fase\n(Identificación de familias estables y artefactos)"]
+    DIAG --> F2
+    subgraph F2["Fase 2: Optimización Dirigida (EXP_R11 a EXP_R15)"]
+        direction TB
+        F2_A["Estadísticos Robustos:\nMediana sobre Malla Gruesa (EXP_R11, EXP_R14)"]
+        F2_B["Confinamiento Orográfico:\nRadios Locales Anti-Divisoria (EXP_R12)"]
+        F2_C["Corrección No Paramétrica:\nQM Empírico ECDF (EXP_R13)"]
+        F2_D["Transición Húmeda-Seca Continua:\nMáscara RnoR Suave CutOff=2 (EXP_R15)"]
+    end
 ```
 
-### Detalle de los Experimentos de la Fase 2:
+---
 
-1. **`EXP_R11_Shepard_Median_Coarse` (Shepard Robusto con Mediana y Malla Gruesa):**
-   * *Hipótesis:* Sustituir la media aritmética por la mediana (`mulBiasFunction: "median"`) en `mbvar` elimina la sobrestimación causada por tormentas convectivas extremas aisladas. La adición de malla gruesa (`addCoarseGrid: true`) amortigua los residuos hacia 0 en las zonas marítimas y costeras desprovistas de estaciones.
-   * *Configuración:* `biascoeff_options: {mulBiasFunction: "median", addCoarseGrid: true}`, SBA Shepard $1.5^\circ$.
+## 3. Fase 1: Exploración Sistemática de Familias Geoestadísticas (10 Experimentos)
 
-2. **`EXP_R12_Shepard_Local_Orn` (Shepard Confinado Orográfico / Anti-Cruce Transcordillera):**
-   * *Hipótesis:* Un radio de búsqueda de $1.5^\circ$ (~165 km) cruza la cordillera central y contamina la estación seca del Pacífico con estaciones húmedas del Caribe. Confinar el radio a $0.9^\circ$ (~100 km) con $n_{min}=3, n_{max}=8$ preserva la sombra orográfica real.
-   * *Configuración:* SBA Shepard $maxdist = 0.9^\circ$, pasadas $[1.0, 0.67, 0.33]$.
+La **Fase 1 (`EXP_R01` a `EXP_R10`)** explora de manera ortogonal las tres decisiones estructurales del flujo de fusión de precipitación en CDT:
 
-3. **`EXP_R13_QM_Empirical_ECDF` (Quantile Mapping No-Paramétrico eCDF):**
-   * *Hipótesis:* La falla de `EXP_R03`/`R04` provino de imponer fórmulas Gamma/Weibull rígidas. El método `qmecdf` realiza mapeo cuantil a cuantil sin distribución analítica predeterminada, capturando eventos extremos sin distorsión.
-   * *Configuración:* Bias method `qmecdf`, SBA Shepard $1.5^\circ$.
+1. **Mecanismo de Corrección de Sesgo (Pasos 1 y 2):**
+   - **Sesgo Multiplicativo Móvil (`mbvar`) o Mensual (`mbmon`):** Ajusta la razón media observada/satelital en ventanas móviles decádicas ($\pm 5\text{ días}$) o climatológicas mensuales, preservando la estructura temporal de eventos diarios.
+   - **Mapeo de Cuantiles Paramétrico (`qmdist`):** Ajusta distribuciones mixtas Bernoulli-Gamma (`berngamma`) o Bernoulli-Weibull (`bernweibull`) para transformar conjuntamente la probabilidad de ocurrencia y la cola de intensidades.
+2. **Estrategia de Fusión (Paso 3):**
+   - **Simple Bias Adjustment (`SBA`):** Interpola directamente los residuales entre los pluviómetros y el fondo satelital corregido.
+   - **Regression Kriging (`RK`):** Modela una tendencia determinista explícita en función de covariables fisiográficas derivadas del DEM ($z$, pendiente $\text{Slope}$ y orientación $\text{Aspect}$) antes de interpolar los residuales estocásticos.
+3. **Algoritmo de Interpolación Espacial y Máscara *Rain-No-Rain* (`RnoR`):**
+   - Evalúa interpoladores deterministas isotrópicos (`IDW`), esquemas de corrección sucesiva (`Barnes`, `Cressman`), ponderación direccional angular (`Modified Shepard`, `Spheremap`) y geoestadística variográfica (`Ordinary Kriging` por bloques), con y sin máscara logística `RnoR`.
 
-4. **`EXP_R14_Spheremap_Median` (Geometría Esférica con Mediana y Malla Gruesa):**
-   * *Hipótesis:* Acoplar la proyección de gran círculo de Spheremap con el estimador de mediana y contención de malla gruesa para evaluar si supera a Shepard al eliminar distorsiones de borde.
-   * *Configuración:* `biascoeff_options: {mulBiasFunction: "median", addCoarseGrid: true}`, SBA Spheremap $1.5^\circ$.
+### Matriz de Hipótesis de la Fase 1 (`EXP_R01` a `EXP_R10`)
 
-5. **`EXP_R15_Shepard_RnoR_Smooth` (Shepard con Transición Continua de Lluvia):**
-   * *Hipótesis:* La máscara RnoR con umbral duro (0.5) penaliza precipitaciones leves en valles secos. Usar `RnoRCutOff: 2` establece una transición gradual continua entre 0.1 y 1.0.
-   * *Configuración:* SBA Shepard $1.2^\circ$, `merging_options: {RnoRCutOff: 2}`.
+| ID Exp. | Familia de Sesgo | Estrategia de Fusión | Interpolador y Radios | Máscara RnoR | Hipótesis Hidroclimática Evaluada |
+| :---: | :--- | :--- | :--- | :---: | :--- |
+| **`EXP_R01`** | `mbvar` ($\pm 5\text{ d}$) + IDW | `SBA` Monocapa | IDW plano (1 pasada, $1.5^\circ$) | Desactivada | **Línea Base 2D:** Evalúa la capacidad de una interpolación isotrópica simple sin control de áreas secas. |
+| **`EXP_R02`** | `mbvar` ($\pm 5\text{ d}$) + IDW | `SBA` Multiescala | IDW (3 pasadas: $1.5^\circ \to 0.5^\circ$) | Rígida (`CutOff=1`) | **Control Húmedo-Seco Binario:** Prueba la reducción de falsas alarmas mediante truncamiento logístico abrupto. |
+| **`EXP_R03`** | `qmdist` Bernoulli-Gamma | `SBA` Multiescala | Kriging Ordinario (`OKR`) por bloques | Rígida (`CutOff=1`) | **QM Paramétrico Gamma:** Evalúa el ajuste teórico de sesgo e intensidad acoplado a semivariogramas diarios. |
+| **`EXP_R04`** | `qmdist` Bernoulli-Weibull | `SBA` Multiescala | Kriging Ordinario (`OKR`) por bloques | Rígida (`CutOff=1`) | **QM Paramétrico Weibull:** Prueba una cola pesada alternativa para regímenes convectivos intensos. |
+| **`EXP_R05`** | `qmdist` Bernoulli-Weibull | `RK` (DEM + Slope + Coords) | Kriging Ordinario (`OKR`) por bloques | Rígida (`CutOff=1`) | **Forzamiento Orográfico Lineal:** Hipótesis de proporcionalidad directa entre altitud, pendiente y lluvia diaria. |
+| **`EXP_R06`** | `mbvar` ($\pm 5\text{ d}$) + NN-3D | `SBA` Multiescala | **Barnes (`BSc`)** 3 pasadas gaussianas | Rígida (`CutOff=1`) | **Filtro Gaussiano Costero:** Amortiguamiento suave de gradientes litorales y brisas marinas. |
+| **`EXP_R07`** | `mbmon` (mensual) + IDW | `SBA` Multiescala | **Cressman (`CSc`)** 4 pasadas ($1.0^\circ \to 0.25^\circ$) | Rígida (`CutOff=1`) | **Configuración Guía Oficial CDT:** Convergencia sucesiva hacia núcleos convectivos de mesoescala. |
+| **`EXP_R08`** | `mbvar` ($\pm 5\text{ d}$) + IDW | `SBA` Multiescala | **Shepard Modificado** ($1.5^\circ$) | Rígida (`CutOff=1`) | **Desagrupamiento Angular:** Penalización de estaciones redundantes y derivadas direccionales de Taylor. |
+| **`EXP_R09`** | `mbvar` ($\pm 5\text{ d}$) + IDW | `SBA` Multiescala | **Spheremap** (Gran Círculo, $1.5^\circ$) | Rígida (`CutOff=1`) | **Geometría Esférica:** Cálculo geodésico exacto de distancias y ángulos sobre el elipsoide. |
+| **`EXP_R10`** | `qmdist` Bernoulli-Gamma | `RK` Total (DEM+Slope+Aspect) | Kriging Ordinario (`OKR`) por bloques | Rígida (`CutOff=1`) | **Máxima Complejidad Fisiográfica:** Acoplamiento simultáneo de altitud, pendiente y exposición barlovento/sotavento. |
 
 ---
 
-## 5. Trazabilidad y Ejecución
+## 4. Fase 2: Optimización Física y Estadística Dirigida (5 Experimentos)
 
-* **Grupo de Evaluación:** Se mantiene estrictamente el archivo `validation_holdout_stations_rainfall.csv` (29 estaciones de validación ciega independiente).
-* **Eficiencia de Cómputo:** Los experimentos de la Fase 1 (`EXP_R01` a `EXP_R10`) y Fase 2 (`EXP_R11` a `EXP_R15`) se evaluaron integralmente sobre los 30 años climatológicos continuos (1991–2020, 10,958 días).
+La **Fase 2 (`EXP_R11` a `EXP_R15`)** se diseña para aislar y resolver cuatro limitaciones estructurales específicas del modelado de precipitación diaria:
 
----
+1. **Sensibilidad del Sesgo Multiplicativo a Tormentas Convectivas Aisladas (`EXP_R11` y `EXP_R14`):**
+   - Sustituye el estimador de la media muestral por la **mediana robusta** (`fun: "median"`) evaluada sobre una malla gruesa agregada (`coarse.grid: TRUE`, $1.0^\circ$), evitando que un único evento convectivo extremo distorsione el factor multiplicativo decádico.
+2. **Contaminación Trans-Divisoria entre Vertientes Climáticas (`EXP_R12`):**
+   - Reduce el radio de búsqueda de Shepard Modificado a un entorno estrictamente local ($0.9^\circ \approx 100\text{ km}$), impidiendo que anomalías húmedas de la vertiente caribeña se propaguen a través de la cordillera hacia los valles secos del Pacífico (y viceversa).
+3. **Rigidez de las Distribuciones Paramétricas Teóricas (`EXP_R13`):**
+   - Sustituye las familias paramétricas Gamma/Weibull por **Mapeo de Cuantiles Empírico No-Paramétrico (`qmecdf`)**, construyendo funciones de distribución acumulada empíricas directamente a partir de las series históricas.
+4. **Discontinuidad Espacial de la Máscara *Rain-No-Rain* Binaria (`EXP_R15`):**
+   - Reemplaza el umbral escalonado rígido (`RnoRCutOff = 1`) por un esquema de **transición continua suave (`RnoRCutOff = 2`, `wet.day = 0.5 mm`, `smooth = TRUE`)**, permitiendo una amortiguación gradual en los bordes de las celdas convectivas.
 
-## 6. Resultados Consolidados de la Fase 2 y Ranking Final (15 Experimentos)
+### Matriz de Hipótesis de la Fase 2 (`EXP_R11` a `EXP_R15`)
 
-La ejecución y evaluación cuantitativa de los 15 experimentos sobre las **29 estaciones de validación ciega independiente (*holdout*)** arroja el siguiente tablero de liderazgo consolidado:
-
-| Rank | Experimento ID | Método de Fusión y Configuración | KGE Medio | KGE Mediana | $r$ Pearson | RMSE (mm) | MAE (mm) | PBIAS (%) | POD | FAR | ETS | HSS | Global Skill | Estado |
-|:---:|---|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **1** | **EXP_R15_Shepard_RnoR_Smooth** | **Shepard + RnoR Suave (CutOff 2, rad 1.2°)** | **0.3791** | **0.3978** | **0.4791** | **12.88** | **5.83** | **-4.39%** | **0.6922** | **0.3038** | **0.3287** | **0.4785** | **0.5007** | **GANADOR** |
-| **2** | **EXP_R12_Shepard_Local_Orn** | Shepard Confinado Local (rad 0.9° ~100 km) | 0.3716 | 0.4046 | 0.4685 | 13.21 | 5.95 | -3.21% | 0.6731 | 0.2989 | 0.3238 | 0.4735 | 0.4991 | Fase 2 |
-| **3** | **EXP_R08_Shepard_Complex_Relief** | Shepard Relieve Escarpado (rad 1.5°) | 0.3749 | 0.4006 | 0.4794 | 12.89 | 5.85 | -6.30% | 0.6650 | 0.3039 | 0.3147 | 0.4638 | 0.4888 | Fase 1 |
-| **4** | **EXP_R11_Shepard_Median_Coarse** | Shepard Mediana Robusta + Malla Gruesa (1.5°) | 0.3753 | 0.4041 | 0.4787 | 12.77 | 5.76 | -6.70% | 0.6746 | 0.3037 | 0.3213 | 0.4697 | 0.4885 | Fase 2 |
-| **5** | **EXP_R14_Spheremap_Median** | Spheremap Gran Círculo + Mediana + Malla | 0.3621 | 0.3978 | 0.4552 | 13.56 | 6.06 | -4.43% | 0.6540 | 0.2971 | 0.3174 | 0.4660 | 0.4863 | Fase 2 |
-| **6** | **EXP_R09_Spheremap_Trans_Caribe** | Spheremap Gran Círculo Estándar (rad 1.5°) | 0.3584 | 0.3992 | 0.4584 | 13.59 | 6.09 | -4.59% | 0.6477 | 0.2959 | 0.3132 | 0.4633 | 0.4843 | Fase 1 |
-| **7** | **EXP_R07_Cressman_Spherical** | Cressman Celdas Aisladas (Guía Oficial CDT: 4 pasadas 1.0° a 0.25°) | 0.3318 | 0.3669 | 0.4468 | 14.44 | 6.44 | +3.64% | 0.6299 | 0.3048 | 0.2958 | 0.4436 | 0.4724 | Guía CDT |
-| **8** | **EXP_R13_QM_Empirical_ECDF** | Quantile Mapping Empírico (qmecdf) + Shepard | 0.3196 | 0.3602 | 0.4655 | 13.08 | 6.03 | -5.57% | 0.6393 | 0.3034 | 0.2995 | 0.4458 | 0.4658 | Fase 2 |
-| **9** | **EXP_R06_Barnes_Gauss_Coastal** | Barnes BSc Gaussiano Costero (NN-3D) | 0.3087 | 0.3458 | 0.4490 | 14.22 | 6.40 | +4.08% | 0.6461 | 0.3098 | 0.2976 | 0.4450 | 0.4635 | Fase 1 |
-| **10** | **EXP_R01_SBA_IDW_Baseline** | Control Nulo / IDW Plano Monocapa (Sin RnoR) | 0.3353 | 0.3984 | 0.4861 | 12.22 | 5.62 | -13.53% | 0.6657 | 0.3379 | 0.2743 | 0.4178 | 0.4396 | Base |
-| **11** | **EXP_R02_SBA_IDW_RnoR** | SBA IDW 3 pasadas + RnoR (Corte Rígido 0.5) | 0.2631 | 0.3592 | 0.4659 | 12.39 | 5.56 | -22.15% | 0.6132 | 0.3153 | 0.2718 | 0.4109 | 0.3743 | Fase 1 |
-| **12** | **EXP_R05_RK_Topography_BW** | Regression Kriging Topográfico (Weibull) | 0.2147 | 0.3802 | 0.4166 | 13.28 | 5.98 | -18.28% | 0.5216 | 0.3673 | 0.2010 | 0.3215 | 0.3463 | Fase 1 |
-| **13** | **EXP_R03_SBA_OKR_BernoulliGamma** | QM Paramétrico Gamma + OKR por Bloques | -0.0277 | 0.3780 | 0.4275 | 14.87 | 6.03 | -5.83% | 0.6389 | 0.3484 | 0.2460 | 0.3729 | 0.3231 | Fase 1 |
-| **14** | **EXP_R04_SBA_OKR_BernoulliWeib** | QM Paramétrico Weibull + OKR por Bloques | 0.0159 | 0.3786 | 0.4306 | 14.51 | 5.85 | -11.98% | 0.6357 | 0.3479 | 0.2475 | 0.3733 | 0.3148 | Fase 1 |
-| **15** | **EXP_R10_RK_FullTopography_Asp** | RK Máxima Complejidad (DEM + Pend + Aspect) | 0.1062 | 0.3518 | 0.4112 | 14.11 | 6.07 | -18.36% | 0.5084 | 0.3761 | 0.1901 | 0.3073 | 0.3045 | Fase 1 |
+| ID Exp. | Configuración de Sesgo (Paso 1) | Interpolador de Fusión (Paso 3) | Parámetros Diferenciadores de Fase 2 | Hipótesis de Optimización |
+| :---: | :--- | :--- | :--- | :--- |
+| **`EXP_R11`** | `mbvar` ($\pm 5\text{ d}$) + **Mediana** + Malla Gruesa ($1.0^\circ$) | Shepard Modificado ($1.5^\circ$) + Malla Gruesa | `fun: "median"`, `coarse.grid: TRUE`, `RnoRCutOff: 1` | **Estabilidad de Extremos:** Neutraliza valores atípicos convectivos en el cálculo del factor multiplicativo. |
+| **`EXP_R12`** | `mbvar` ($\pm 5\text{ d}$) + Media + IDW ($1.0^\circ$) | Shepard Confinado Local ($0.9^\circ$, 3 pasadas) | `maxdist: 0.9`, `nmin: 3`, `nmax: 10`, `RnoRCutOff: 1` | **Aislamiento de Vertientes:** Evita el cruce de residuales pluviales sobre divisorias continentales estrechas. |
+| **`EXP_R13`** | **QM Empírico (`qmecdf`)** + Shepard ($1.5^\circ$) | Shepard Modificado ($1.5^\circ$) | `bias.method: "qmecdf"`, `RnoRCutOff: 1` | **Flexibilidad No Paramétrica:** Elimina el supuesto de forma funcional fija en las colas de precipitación. |
+| **`EXP_R14`** | `mbvar` ($\pm 5\text{ d}$) + **Mediana** + Spheremap ($1.5^\circ$) | Spheremap Gran Círculo ($1.5^\circ$) | `interp.method: "spheremap"`, `fun: "median"` | **Geodésica Robusta:** Combina trigonometría esférica de gran círculo con estimación robusta de mediana. |
+| **`EXP_R15`** | `mbvar` ($\pm 5\text{ d}$) + Media + IDW ($1.2^\circ$) | Shepard Modificado ($1.2^\circ$) + **RnoR Suave** | `RnoRCutOff: 2`, `wet.day: 0.5`, `smooth: TRUE` | **Continuidad de Bordes Pluviales:** Suprime el efecto *drizzle* satelital sin amputar la lámina de lluvias débiles a moderadas. |
 
 ---
 
-## 7. Análisis Físico y Climatológico de los Resultados de la Fase 2
+## 5. Criterios de Admisibilidad Físico-Climatológica
 
-### 7.1. ¿Por qué gana EXP_R15_Shepard_RnoR_Smooth?
-1. **Transición Continua Suave (`RnoRCutOff: 2`):**
-   * En la Fase 1, `EXP_R02` demostró que aplicar una máscara RnoR con corte binario duro a $0.5\text{ mm}$ provocaba un sesgo seco severo ($\text{PBIAS} = -22.15\%$), porque eliminaba eventos de llovizna real ($0.1\text{ a }1.0\text{ mm}$) en valles intermontanos y laderas secas.
-   * `EXP_R15` aplica una rampa de transición continua entre $0.1$ y $1.0\text{ mm}$, eliminando el sesgo seco casi en su totalidad ($\text{PBIAS} = -4.39\%$), preservando la detección de días secos en la Canícula sin mutilar la lluvia ligera.
-2. **Ponderación Angular y Direccional de Shepard:**
-   * La familia Shepard incorpora factores de protección direccional que evitan que varias estaciones agrupadas en una misma vertiente dominen excesivamente la interpolación hacia celdas vecinas a través de barreras montañosas.
-   * Esto explica por qué los 4 primeros lugares del benchmark pertenecen todos a la familia Shepard (`EXP_R15`, `EXP_R12`, `EXP_R08`, `EXP_R11`).
-3. **Métricas Categóricas Sobresalientes:**
-   * `EXP_R15` alcanza el **POD más alto de todo el benchmark (69.22%)**, el **ETS más alto (0.3287)** y el **HSS más alto (0.4785)**, demostrando una discriminación óptima entre eventos de lluvia y días secos.
+La selección de configuraciones óptimas para generación de escenarios climáticos no puede descansar exclusivamente en la clasificación ciega de una métrica puntual, sino que debe satisfacer tres criterios de consistencia física respaldados por la literatura hidroclimática:
 
-### 7.2. Aislamiento Orográfico en EXP_R12 (Rank 2)
-* `EXP_R12` obtuvo el sesgo más cercano a cero ($\text{PBIAS} = -3.21\%$). Confinar el radio de búsqueda a $0.9^\circ$ (~100 km) confirma la hipótesis física: en un istmo estrecho con una espina dorsal montañosa elevada, radios de búsqueda $>1.5^\circ$ generan "fuga de humedad" artificial desde el Caribe hacia las cuencas secas del Pacífico.
+### 5.1 Prevención de Artefactos de «Ojos de Buey» (*Bull's-Eye Artifacts*)
+Los interpoladores puramente isotrópicos de distancia inversa ($\text{IDW}$, como en `EXP_R01` y `EXP_R02`) asignan pesos exclusivamente en función de la distancia euclidiana $w_i = d_i^{-p}$, presentando dos deficiencias estructurales ampliamente documentadas (Shepard, 1968; Daly, 2006; Hofstra et al., 2008):
+1. **Singularidad de derivada nula ($\nabla \hat{Z}(\mathbf{s}_i) = \mathbf{0}$) en cada estación:** Genera máximos y mínimos circulares concéntricos alrededor de pluviómetros aislados (*ojos de buey*), mientras el campo inter-estación decae artificialmente hacia el promedio de fondo.
+2. **Ausencia de desagrupamiento direccional (*declustering*):** Un racimo de estaciones en un valle intramontano domina aritméticamente la interpolación sobre una ladera adyacente con menor densidad de muestreo.
 
-### 7.3. Rescate del Quantile Mapping en EXP_R13
-* Frente al colapso de las distribuciones teóricas Gamma ($\text{KGE} = -0.028$) y Weibull ($\text{KGE} = 0.016$), el Quantile Mapping Empírico (`EXP_R13`) elevó el KGE a **0.3196** ($+0.347$ frente a Gamma). La vectorización con interpolación de cuantiles sobre `knots()` redujo el tiempo de cómputo del Paso 2 de más de 30 horas a solo 12 minutos.
+En contraste, los esquemas de ** ponderación angular direccional** (`Modified Shepard` y `Spheremap`) y de **filtrado espectral gaussiano** (`Barnes`) corrigen la redundancia direccional mediante el término de coseno de separación angular $(1 - \cos \theta_{ij})$ e incorporan gradientes espaciales no nulos, preservando bandas de precipitación físicamente coherentes a lo largo de barreras orográficas.
 
+### 5.2No-Monotonicidad de la Precipitación Orográfica Tropical
+A diferencia de la temperatura del aire, la precipitación diaria en cordilleras tropicales no sigue una relación lineal monótona con la altitud $z$. El máximo pluvial suele ocurrir en el piedemonte y laderas medias de barlovento ($600\text{–}1,500\text{ msnm}$) por disparo convectivo forzado, disminuyendo hacia las cumbres altas que penetran la inversión de los alisios (Daly et al., 1994; Funk et al., 2015). Por ello, los modelos de *Regression Kriging* (`EXP_R05`, `EXP_R10`) que fuerzan una regresión lineal global $P = \beta_0 + \beta_1 z$ a escala diaria son susceptibles a extrapolar sobreestimaciones irreales en cimas volcánicas y cordilleranas.
 
-### 7.4. Desempeño del 3er Lugar (`EXP_R08_Shepard_Complex_Relief`) y Análisis Comparativo
-* `EXP_R08` confirmó la robustez de la interpolación de Shepard Modificada en orografía accidentada ($KGE = 0.3749$, $r = 0.4794$, $RMSE = 12.89\text{ mm/d}$).
-* Al evaluar derivadas locales direccionales de primer orden, Shepard previene la formación de conos agudos o "ojos de buey" (*bull's eyes*) en estaciones aisladas en cumbres y cañones intermontanos, superando tanto al IDW plano como a los variogramas isotrópicos de Kriging, los cuales asumen una correlación espacial simétrica que no se cumple ante barreras orográficas pronunciadas.
-
-### 7.5. Evaluación de Mejora Potencial y Justificación de Detención (*Skill Plateau*)
-* **¿Podría ser mejorado el producto?** A escala diaria, la diferencia de KGE entre el 1er lugar (`EXP_R15`, $KGE = 0.3791$) y el 2do lugar (`EXP_R12`, $KGE = 0.3716$) es de apenas $0.007$, con correlaciones $r \approx 0.47 - 0.48$. Las 4 configuraciones líderes de Shepard se encuentran en un margen estadístico indistinguible.
-* **Asíntota Climatológica:** Se ha alcanzado la frontera de destreza admisible por la física del producto base CHIRPS ($0.05^\circ \approx 5.5\text{ km}$) y la densidad observacional disponible. En el trópico húmedo, la convección profunda de mesoescala presenta componentes aleatorias submalla inasimilables mediante modelos de grilla sin incurrir en ruido espurio.
-* **Riesgo de Sobreajuste (*Overfitting*):** Continuar iterando sobre variaciones mínimas de parámetros o radios hiperespecíficos acarrearía el riesgo de sobreajustar el algoritmo a las 29 estaciones de prueba, degradando la capacidad de generalización en cuencas no aforadas. Por tanto, se concluye con solidez técnica que **la fase experimental ha concluido exitosamente** y se fija `EXP_R15_Shepard_RnoR_Smooth` como la configuración ganadora definitiva.
-
-### 7.6. Bibliografía Científica de Referencia para Evaluación de Rejillas en Centroamérica
-Los resultados alcanzados en este benchmark son altamente consistentes con la literatura científica internacional para productos combinados satélite-estación a escala diaria:
-1. **Funk, C., et al. (2015).** *The climate hazards group infrared precipitation with stations—a new environmental record for monitoring extremes.* **Nature Scientific Data**, 2, 150066. DOI: [10.1038/sdata.2015.66](https://doi.org/10.1038/sdata.2015.66). (CHIRPS nativo reporta correlaciones de $0.40 - 0.55$ frente a estaciones diarias en el trópico).
-2. **Dinku, T., et al. (2018).** *Validation of the CHIRPS satellite rainfall estimates over eastern Africa.* **Quarterly Journal of the Royal Meteorological Society**, 144(S1), 292–312. DOI: [10.1002/qj.3115](https://doi.org/10.1002/qj.3115). (Reporta KGE diario de $0.25$ a $0.42$ en África oriental usando CDT; cataloga valores de $KGE > 0.35$ como de excelente destreza predictiva).
-3. **Mendez, M., et al. (2020).** *Evaluation of daily precipitation estimates from satellite and reanalysis products over Costa Rica.* **Atmósfera**, 33(3), 271–290. DOI: [10.20937/ATM.52731](https://doi.org/10.20937/ATM.52731). (Reporta $r \approx 0.42 - 0.51$ y destaca el impacto de la sombra orográfica y la división Pacífico-Caribe en los errores satelitales).
-4. **Zambrano-Bigiarini, M., et al. (2017).** *Temporal and spatial evaluation of satellite-based precipitation estimates across the complex topography of Chile.* **Hydrology and Earth System Sciences**, 21(4), 2095–2120. DOI: [10.5194/hess-21-2095-2017](https://doi.org/10.5194/hess-21-2095-2017). (Demuestra que en orografía compleja el KGE diario está acotado entre $0.30$ y $0.45$ debido al error de soporte espacial entre mediciones puntuales de pluviómetros y celdas satelitales).
-
-### 7.7. Transición Operativa a Producción: Re-grillado con el 100% de las Estaciones
-* La partición en conjunto de entrenamiento y conjunto ciego de validación (holdout de 29 estaciones) fue una exigencia metodológica estricta para evaluar objetivamente los 15 algoritmos sin circularidad ni sesgo.
-* **Paso siguiente a producción:** Habiendo seleccionado imparcialmente la mejor formulación matemática (`EXP_R15_Shepard_RnoR_Smooth`), el producto climatológico definitivo para uso operativo y transferencia a los servicios meteorológicos de Centroamérica y República Dominicana debe generarse **asimilando el 100% de las estaciones disponibles** (entrenamiento + las 29 de validación). Esto maximiza la densidad de información in situ en cada celda del territorio regional.
-
-### 7.8. Comparativa con la "Guía Oficial de Procedimientos de CDT"
-* En la Guía Oficial de CDT, el flujo predeterminado para precipitación utiliza ajuste de sesgo temporal multiplicativo `mbvar` e interpolación de Cressman en 4 pasadas anidadas, parametrización reproducida exactamente en **`EXP_R07_Cressman_Spherical`** (Fase 1, Rank 7). De igual forma, en temperatura, **`EXP_TX07`** y **`EXP_TN07`** reproducen la guía oficial (Downscaling bilineal con DEM, sesgo mensual e interpolación de Cressman).
-* La configuración ganadora de este estudio (`EXP_R15`) supera a la Guía Oficial de CDT de forma contundente:
-  * **Ganancia en KGE:** $+0.0473$ ($0.3791$ vs $0.3318$).
-  * **Reducción del Error Cuadrático (RMSE):** $-1.56\text{ mm/d}$ ($12.88$ vs $14.44\text{ mm/d}$).
-  * **Ganancia en Destreza Categórica (ETS):** $+11.1\%$ ($0.3287$ vs $0.2958$).
----
-
-## 8. Entorno de Hardware Calibrado y Rendimiento de Cómputo
-
-Los experimentos de precipitación de la Fase 1 y Fase 2 fueron ejecutados y calibrados en una estación de trabajo dedicada con las siguientes especificaciones:
-
-* **Sistema Operativo:** Linux Ubuntu 24.04.5 LTS (x86_64, Kernel Linux nativo)
-* **Procesador (CPU):** Intel(R) Core(TM) i9-10850K CPU @ 3.60GHz (10 núcleos físicos / 20 hilos, frecuencia base 3.60 GHz, Turbo Boost 5.20 GHz, 20 MB Intel Smart Cache)
-* **Memoria RAM:** 32 GB DDR4 @ 3200 MT/s (Dual-Channel)
-* **Almacenamiento:** SSD NVMe M.2 PCIe de 400 GB (Lectura/Escritura > 3,000 MB/s)
-* **Configuración de Paralelismo:** 18 hilos de procesamiento en paralelo (dejando 2 hilos para el sistema operativo), despachados mediante la suite `launcher/experiment_runner.py --cores 18`.
-* **Tiempo Total Suite Precipitación (15 Experimentos / 30 Años / 10,958 Días):** ~35.0 a 38.0 horas continuas. Consumo máximo de memoria: ~4.5 GB (< 15% de RAM disponible).
+### 5.3 Equilibrio entre Detección de Eventos (`ETS`/`POD`) y Conservación de Masa (`PBIAS`)
+Un producto grillado apto para modelación hidrológica debe equilibrar simultáneamente:
+- La **estructura de ocurrencia** (alta probabilidad de detección $\text{POD}$ y alto *Equitable Threat Score* $\text{ETS}$ corrigiendo el efecto *drizzle* del satélite).
+- La **conservación del volumen precipitado** ($\text{PBIAS}$ cercano a $0\%$ y $\text{KGE}_{2012}$ elevado), evitando que máscaras binarias excesivamente restrictivas introduzcan sesgos secos severos.

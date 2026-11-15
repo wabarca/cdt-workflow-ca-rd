@@ -797,11 +797,18 @@ def generate_experiments_pdf(
             Paragraph("<b>Mediana Robusta y Malla Gruesa:</b> El estimador de mediana neutraliza eventos convectivos extremos atípicos que inflan el sesgo; la malla gruesa contiene anomalías espurias en áreas oceánicas y costeras sin estaciones.", td_sm),
         ],
         [
-            Paragraph("<b>EXP-R12</b>", td_sm_bold),
+            Paragraph("<b>EXP-R11</b><br/><font color='#065F46' size=6><b>TOP 1 FÍSICO</b></font>", td_sm_bold),
+            Paragraph("• Método: <code>mbvar</code> (&plusmn;5 d)<br/>• <b>mulBiasFunction: 'median' (Mediana robusta)</b><br/>• <b>addCoarseGrid: true (res 1.0°)</b><br/>• Interp: IDW (1.5°)", td_sm),
+            Paragraph("• Ajuste con mediana robusta sobre grillas CHIRPS<br/>• Salida: <code>rr_adj_*.nc</code>", td_sm),
+            Paragraph("• Método: <b>SBA multiescala</b> (3 pasadas: 1.0°, 0.75°, 0.5°)<br/>• Interp: Shepard Modificado (1.5°)<br/>• RnoR: Activada (Logit GLM)<br/>• <b>addCoarseGrid: true (1.0°)</b>", td_sm),
+            Paragraph("<b>TOP 1 FÍSICO (Ronda 2, GSS=0.4539, KGE=0.3358):</b> La mediana neutraliza tormentas aisladas y Shepard Modificado evita artefactos de 'ojos de buey' mediante desagrupamiento direccional angular.", td_sm),
+        ],
+        [
+            Paragraph("<b>EXP-R12</b><br/><font color='#065F46' size=6><b>TOP 3 FÍSICO</b></font>", td_sm_bold),
             Paragraph("• Método: <code>mbvar</code> (&plusmn;5 d)<br/>• mulBiasFunction: 'median'<br/>• <b>Interp: IDW local (radio 0.9° ~100 km, nmin=3, nmax=8)</b>", td_sm),
             Paragraph("• Ajuste con aislamiento transcordillera<br/>• Salida: <code>rr_adj_*.nc</code>", td_sm),
             Paragraph("• Método: <b>SBA multiescala local</b> (3 pasadas: 1.0°, 0.67°, 0.33°)<br/>• <b>Interp: Shepard local (0.9°, nmin=3, nmax=8)</b><br/>• RnoR: Activada (Logit GLM)", td_sm),
-            Paragraph("<b>Aislamiento Transcordillera:</b> En Centroamérica, un radio de 1.5° (~165 km) cruza la cordillera central contaminando la vertiente seca del Pacífico con el Caribe húmedo. Acotar el radio a 0.9° preserva la sombra orográfica real.", td_sm),
+            Paragraph("<b>TOP 3 FÍSICO (GSS=0.4488, PBIAS=-5.15%):</b> En Centroamérica, acotar el radio a 0.9° evita cruzar la divisoria continental y logra el mejor balance hídrico volumétrico de toda la suite.", td_sm),
         ],
         [
             Paragraph("<b>EXP-R13</b>", td_sm_bold),
@@ -818,11 +825,11 @@ def generate_experiments_pdf(
             Paragraph("<b>Spheremap con Mediana y Malla Gruesa:</b> Acopla la métrica de distancia de gran círculo sobre la curvatura terrestre real con estimador robusto de mediana y contención gruesa en costas del Pacífico y Caribe.", td_sm),
         ],
         [
-            Paragraph("<b>EXP-R15</b><br/><font color='#065F46' size=6><b>GANADOR</b></font>", td_sm_bold),
+            Paragraph("<b>EXP-R15</b><br/><font color='#065F46' size=6><b>TOP 2 FÍSICO</b></font>", td_sm_bold),
             Paragraph("• Método: <code>mbvar</code> (&plusmn;5 d)<br/>• <b>mulBiasFunction: 'median'</b><br/>• Interp: IDW (radio 1.2°, nmin=4, nmax=10)", td_sm),
             Paragraph("• Ajuste multiplicativo sobre grillas CHIRPS 1991–2020<br/>• Salida: <code>rr_adj_*.nc</code>", td_sm),
             Paragraph("• Método: <b>SBA multiescala</b> (3 pasadas: 1.0°, 0.75°, 0.5°)<br/>• Interp: Shepard Modificado (radio 1.2°)<br/>• <b>RnoR: Activada con RnoRCutOff = 2 (Suave)</b>", td_sm),
-            Paragraph("<b>MODELO GANADOR — Transición Continua Suave:</b> Sustituye el corte binario rígido (0.5) por una función de transición lineal suave (0.1 a 1.0 mm). Elimina el subestimado seco severo (-4.39% PBIAS vs -22.15% en R02), logrando el máximo KGE y Skill.", td_sm),
+            Paragraph("<b>TOP 2 FÍSICO — Transición Continua Suave (GSS=0.4535, POD=0.692):</b> Sustituye el corte binario rígido por transición suave (CutOff=2), logrando la mayor detección de eventos reales (69.2%) sin ojos de buey.", td_sm),
         ],
     ]
     t_table_r2 = Table([th_r2] + rows_r2, colWidths=[0.65 * inch, 1.65 * inch, 1.20 * inch, 1.80 * inch, 2.20 * inch])
@@ -832,6 +839,7 @@ def generate_experiments_pdf(
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("GRID", (0, 0), (-1, -1), 0.5, BORDER_COLOR),
         ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_BG]),
+        ("BACKGROUND", (0, 1), (-1, 1), WINNER_BG),
         ("BACKGROUND", (0, 5), (-1, 5), WINNER_BG),
         ("TOPPADDING", (0, 0), (-1, -1), 1.5),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 1.5),
@@ -842,7 +850,7 @@ def generate_experiments_pdf(
     story.append(Spacer(1, 2))
 
     # Leaderboard Lluvia
-    story.append(Paragraph("<b>Ranking Consolidado de Precipitación (29 Estaciones de Validación Ciega Holdout en Centroamérica)</b>", h2_style))
+    story.append(Paragraph("<b>Ranking Consolidado de Precipitación — Ronda 2 (Dominio Recortado CA, 29 Estaciones Holdout)</b>", h2_style))
     th_lb_row = [
         Paragraph("#", th_lb),
         Paragraph("Experimento ID", th_lb),
@@ -856,24 +864,24 @@ def generate_experiments_pdf(
         Paragraph("ETS", th_lb),
         Paragraph("HSS", th_lb),
         Paragraph("Skill", th_lb),
-        Paragraph("Estado / Posición", th_lb),
+        Paragraph("Decisión Físico-Climatológica", th_lb),
     ]
     rows_lb_data = [
-        ("1", "EXP_R15_Shepard_RnoR_Smooth", "Shepard Suave (RnoRCutOff=2, rad 1.2°)", "0.379", "0.479", "12.88", "-4.39%", "0.692", "0.304", "0.329", "0.479", "0.501", "GANADOR (Rank 1)", True),
-        ("2", "EXP_R12_Shepard_Local_Orn", "Shepard Confinado Local (rad 0.9°)", "0.372", "0.469", "13.21", "-3.21%", "0.673", "0.299", "0.324", "0.474", "0.499", "Fase 2 (Rank 2)", False),
-        ("3", "EXP_R08_Shepard_Complex_Relief", "Shepard Relieve Complejo (rad 1.5°)", "0.375", "0.479", "12.89", "-6.30%", "0.665", "0.304", "0.315", "0.464", "0.489", "Fase 1 (Rank 3)", False),
-        ("4", "EXP_R11_Shepard_Median_Coarse", "Shepard Mediana + CoarseGrid (1.5°)", "0.375", "0.479", "12.77", "-6.70%", "0.675", "0.304", "0.321", "0.470", "0.489", "Fase 2 (Rank 4)", False),
-        ("5", "EXP_R14_Spheremap_Median", "Spheremap Gran Círculo + Mediana", "0.362", "0.455", "13.56", "-4.43%", "0.654", "0.297", "0.317", "0.466", "0.486", "Fase 2 (Rank 5)", False),
-        ("6", "EXP_R09_Spheremap_Trans_Caribe", "Spheremap Gran Círculo Estándar", "0.358", "0.458", "13.59", "-4.59%", "0.648", "0.296", "0.313", "0.463", "0.484", "Fase 1 (Rank 6)", False),
-        ("7", "EXP_R07_Cressman_Spherical", "Cressman 4 pasadas (1.0° a 0.25°)", "0.332", "0.447", "14.44", "+3.64%", "0.630", "0.305", "0.296", "0.444", "0.472", "Fase 1 (Guía CDT)", False),
-        ("8", "EXP_R13_QM_Empirical_ECDF", "QM Empírico (qmecdf) + Shepard", "0.320", "0.465", "13.08", "-5.57%", "0.639", "0.303", "0.299", "0.446", "0.466", "Fase 2 (Rank 8)", False),
-        ("9", "EXP_R06_Barnes_Gauss_Coastal", "Barnes BSc Gaussiano Costero (NN-3D)", "0.309", "0.449", "14.22", "+4.08%", "0.646", "0.310", "0.298", "0.445", "0.463", "Fase 1 (Rank 9)", False),
-        ("10", "EXP_R01_SBA_IDW_Baseline", "IDW Plano Monocapa (Sin RnoR)", "0.335", "0.486", "12.22", "-13.53%", "0.666", "0.338", "0.274", "0.418", "0.440", "Línea Base", False),
-        ("11", "EXP_R02_SBA_IDW_RnoR", "IDW 3 pasadas + RnoR (Corte Duro)", "0.263", "0.466", "12.39", "-22.15%", "0.613", "0.315", "0.272", "0.411", "0.374", "Fase 1 (Rank 11)", False),
-        ("12", "EXP_R05_RK_Topography_BW", "Regression Kriging DEM+Slope (Weibull)", "0.215", "0.417", "13.28", "-18.28%", "0.522", "0.367", "0.201", "0.322", "0.346", "Fase 1 (Rank 12)", False),
-        ("13", "EXP_R03_SBA_OKR_BernoulliGamma", "QM Paramétrico Gamma + OKR Bloques", "-0.028", "0.427", "14.87", "-5.83%", "0.639", "0.348", "0.246", "0.373", "0.323", "Fase 1 (Rank 13)", False),
-        ("14", "EXP_R04_SBA_OKR_BernoulliWeib", "QM Paramétrico Weibull + OKR Bloques", "0.016", "0.431", "14.51", "-11.98%", "0.636", "0.348", "0.247", "0.373", "0.315", "Fase 1 (Rank 14)", False),
-        ("15", "EXP_R10_RK_FullTopography_Asp", "RK Máxima Complejidad DEM+Aspect", "0.106", "0.411", "14.11", "-18.36%", "0.508", "0.376", "0.190", "0.307", "0.305", "Fase 1 (Rank 15)", False),
+        ("1*", "EXP_R02_SBA_IDW_RnoR", "SBA IDW 3 pasadas + RnoR dura", "0.336", "0.491", "12.01", "-13.33%", "0.667", "0.336", "0.275", "0.419", "0.456", "DESCARTADO (Ojos de buey IDW)", False),
+        ("2", "EXP_R11_Shepard_Median_Coarse", "Shepard Mediana + CoarseGrid (1.5°)", "0.336", "0.464", "13.38", "-6.02%", "0.663", "0.313", "0.308", "0.456", "0.454", "TOP 1 FÍSICO (Sin ojos de buey)", True),
+        ("3", "EXP_R15_Shepard_RnoR_Smooth", "Shepard Suave (RnoRCutOff=2, 1.2°)", "0.319", "0.462", "13.35", "-7.52%", "0.692", "0.320", "0.316", "0.465", "0.454", "TOP 2 FÍSICO (Máx POD/ETS/HSS)", True),
+        ("4", "EXP_R12_Shepard_Local_Orn", "Shepard Confinado Local (rad 0.9°)", "0.315", "0.456", "13.59", "-5.15%", "0.659", "0.311", "0.307", "0.456", "0.449", "TOP 3 FÍSICO (Mejor PBIAS)", True),
+        ("5", "EXP_R08_Shepard_Complex_Relief", "Shepard Relieve Complejo (rad 1.5°)", "0.317", "0.464", "13.39", "-8.33%", "0.653", "0.315", "0.300", "0.448", "0.442", "Admisible (Rank 4 Físico)", False),
+        ("6", "EXP_R14_Spheremap_Median", "Spheremap Gran Círculo + Mediana", "0.299", "0.436", "14.23", "-5.16%", "0.642", "0.308", "0.302", "0.450", "0.437", "Admisible (Rank 5 Físico)", False),
+        ("7", "EXP_R09_Spheremap_Trans_Caribe", "Spheremap Gran Círculo Estándar", "0.295", "0.438", "14.27", "-6.23%", "0.635", "0.309", "0.296", "0.445", "0.434", "Admisible (Rank 6 Físico)", False),
+        ("8", "EXP_R01_SBA_IDW_Baseline", "IDW Plano Monocapa (Sin RnoR)", "0.335", "0.486", "12.22", "-13.53%", "0.666", "0.338", "0.274", "0.418", "0.440", "Línea Base 2D (Ojos de buey)", False),
+        ("9", "EXP_R13_QM_Empirical_ECDF", "QM Empírico (qmecdf) + Shepard", "0.260", "0.452", "13.51", "-6.69%", "0.630", "0.313", "0.288", "0.433", "0.422", "Admisible (Alta var. γ)", False),
+        ("10", "EXP_R07_Cressman_Spherical", "Cressman 4 pasadas (1.0° a 0.25°)", "0.252", "0.429", "15.17", "+1.96%", "0.619", "0.317", "0.282", "0.428", "0.418", "Guía Oficial CDT", False),
+        ("11", "EXP_R06_Barnes_Gauss_Coastal", "Barnes BSc Gaussiano Costero (NN-3D)", "0.236", "0.432", "14.90", "+2.65%", "0.635", "0.321", "0.285", "0.431", "0.414", "Admisible (Costas)", False),
+        ("12", "EXP_R05_RK_Topography_BW", "Regression Kriging DEM+Slope (Weibull)", "0.145", "0.391", "14.41", "-13.45%", "0.520", "0.369", "0.199", "0.319", "0.313", "Inestable (Sobreajuste RK)", False),
+        ("13", "EXP_R04_SBA_OKR_BernoulliWeib", "QM Paramétrico Weibull + OKR Bloques", "-0.025", "0.419", "14.95", "-10.50%", "0.631", "0.354", "0.241", "0.366", "0.296", "Inestable (KGE < 0)", False),
+        ("14", "EXP_R03_SBA_OKR_BernoulliGamma", "QM Paramétrico Gamma + OKR Bloques", "-0.085", "0.416", "15.38", "-3.96%", "0.635", "0.354", "0.240", "0.366", "0.295", "Inestable (KGE < 0)", False),
+        ("15", "EXP_R10_RK_FullTopography_Asp", "RK Máxima Complejidad DEM+Aspect", "0.022", "0.382", "15.36", "-13.18%", "0.505", "0.379", "0.187", "0.303", "0.264", "Inestable (Colapso RK)", False),
         ("Control", "EXP_R00_Raw_CHIRPS", "Control 0: CHIRPS Crudo (Sin estaciones)", "0.284", "0.442", "14.85", "-18.65%", "0.589", "0.392", "0.218", "0.345", "0.379", "Control Grilla Original", False),
     ]
 
@@ -918,11 +926,10 @@ def generate_experiments_pdf(
     story.append(Spacer(1, 2))
 
     # DISCUSIÓN DE RESULTADOS DE PRECIPITACIÓN
-    story.append(Paragraph("5.3. Discusión de resultados de Precipitación en Centroamérica", h2_style))
+    story.append(Paragraph("5.3. Discusión Físico-Climatológica de Precipitación y Rechazo de Ojos de Buey", h2_style))
     story.append(Paragraph(
-        "<b>1. No Linealidad Orográfica y Falla de Regression Kriging:</b> En Centroamérica, la relación entre cota altimétrica y precipitación diaria no es monótona: la máxima condensación forzada por los vientos Alisios ocurre en laderas medias de barlovento (800–1,800 msnm) y decrece hacia las cumbres más altas por agotamiento de humedad. Modelos de regresión global con DEM colapsan (KGE &lt; 0.22) al imponer sombras de lluvia artificiales o forzar lluvia excesiva en cumbres secas.<br/>"
-        "<b>2. Superioridad de Shepard Modificado en el Istmo:</b> Las 4 variantes de Shepard copan el Top 4. Al evaluar derivadas direccionales locales con polinomios de Taylor en lugar de variogramas esféricos isotrópicos rígidos, se adapta a la topografía escarpada y cañones del istmo sin generar 'ojos de buey' circulares alrededor de estaciones aisladas.<br/>"
-        "<b>3. Resolución de la Canícula mediante RnoR Suave (EXP_R15):</b> En el Corredor Seco Centroamericano, la nubosidad cirriforme fría durante la Canícula induce a CHIRPS a sobreestimar lloviznas inexistentes (<i>drizzle</i>). Un corte duro (0.5 mm) eliminó el sesgo pero suprimió tormentas reales (-22.15% PBIAS). La transición continua suave (0.1 a 1.0 mm, <code>CutOff=2</code>) resolvió el compromiso físico: suprimió lloviznas espurias reduciendo el sesgo a solo <b>-4.39%</b> y maximizando el ETS (0.329) y Skill (0.501).",
+        "<b>1. Rechazo Físico de EXP_R02 por Artefactos de 'Ojos de Buey' y Sesgo Seco:</b> Aunque <code>EXP_R02_SBA_IDW_RnoR</code> encabeza por 2 milésimas el GSS bruto en Ronda 2 (0.456 vs 0.454), utiliza interpolación IDW isotrópica pura (<i>w<sub>i</sub> = d<sub>i</sub><sup>-2</sup></i>) que carece de desagrupamiento direccional (<i>declustering</i>) y presenta derivada nula (&nabla;<i>Z</i> = 0) en cada pluviómetro, generando dianas circulares concéntricas ('ojos de buey'; Shepard, 1968; Daly, 2006; Hofstra et al., 2008) y un sesgo seco severo (<b>PBIAS = -13.33%</b>).<br/>"
+        "<b>2. Selección del Top 3 Físico con Shepard Modificado (EXP_R11, EXP_R15, EXP_R12):</b> Al aplicar ponderación angular direccional (1 - cos &theta;<sub>ij</sub>) y derivadas locales de Taylor, la familia Shepard elimina los ojos de buey, reduce a menos de la mitad la pérdida de volumen hídrico (PBIAS entre <b>-5.15% y -7.52%</b>) y domina la detección de eventos lluviosos (<b>POD hasta 69.2%</b> y <b>HSS hasta 0.465</b> en <code>EXP_R15</code>).",
         body_style,
     ))
     story.append(PageBreak())
@@ -1100,18 +1107,18 @@ def generate_experiments_pdf(
         Paragraph("Estado / Justificación Operativa", th_lb),
     ]
     rows_lb_tx_data = [
-        ("1", "EXP_TX01_SBA_IDW_Baseline", "SBA IDW Plano sin DEM", "0.735", "0.679", "0.787", "1.90", "1.58", "+1.37%", "Línea Base (Rechazada: Sobreajuste sin gradiente altimétrico)", False),
-        ("2", "EXP_TX11_RK_Barnes_Hybrid", "RK (DEM+Coords) + Barnes Residuos", "0.719", "0.690", "0.743", "2.06", "1.69", "+1.40%", "GANADOR OFICIAL (Máx KGE=0.690, Relieve real y gradiente vertical)", True),
-        ("3", "EXP_TX06_Barnes_Gauss_Coastal", "Barnes BSc Gaussiano Continuo", "0.709", "0.676", "0.736", "2.17", "1.80", "+0.95%", "Fase 1 (Suavizado costero sin saltos)", False),
-        ("4", "EXP_TX10_QM_Empirical_ECDF", "QM Empírico (ECDF) + RK DEM/Slope", "0.705", "0.655", "0.739", "2.05", "1.69", "+1.31%", "Fase 2 (Excelente captura de olas de calor)", False),
-        ("5", "EXP_TX04_RK_FullTopography_NN3D", "RK DEM + Pendiente + Aspect + NN-3D", "0.682", "0.633", "0.727", "2.28", "1.90", "+2.03%", "Fase 1 (Insolación diferencial de ladera)", False),
-        ("6", "EXP_TX07_Cressman_Intermontane", "Cressman 4 pasadas (Guía Oficial CDT)", "0.674", "0.626", "0.707", "2.36", "1.95", "+0.82%", "Fase 1 (Configuración Guía Oficial CDT)", False),
-        ("7", "EXP_TX09_SBA_Shepard_NN3D", "SBA Shepard Modificado + NN-3D", "0.624", "0.596", "0.678", "3.00", "2.59", "+2.74%", "Fase 2 (Aislamiento vertical por cota)", False),
-        ("8", "EXP_TX12_SBA_IDW_Local_Relief", "SBA IDW Local Multiescala + NN-3D", "0.597", "0.568", "0.643", "3.14", "2.70", "+2.96%", "Fase 2 (IDW confinado a 0.25°)", False),
-        ("9", "EXP_TX05_RK_Gumbel_Heatwaves", "RK DEM + QM Gumbel Extremos", "0.365", "0.056", "0.680", "4.04", "3.53", "-4.75%", "Fase 1 (Colapso por colas asimétricas teóricas)", False),
-        ("10", "EXP_TX02_RK_DEM_Normal", "RK Solo DEM + QM Normal Gaussiano", "0.354", "0.031", "0.686", "4.09", "3.61", "-5.12%", "Fase 1 (Rigidez de campana gaussiana)", False),
-        ("11", "EXP_TX08_RK_FullTopography_Aspect", "RK Acoplamiento Total + Skew-Normal", "0.349", "0.026", "0.678", "4.11", "3.60", "-4.93%", "Fase 1 (Sobreparametrización en residuales)", False),
-        ("12", "EXP_TX03_RK_Topography_SkewNormal", "RK DEM + Pendiente + Skew-Normal", "0.348", "0.023", "0.677", "4.11", "3.60", "-4.88%", "Fase 1 (Inestabilidad en distribución asimétrica)", False),
+        ("1*", "EXP_TX01_SBA_IDW_Baseline", "SBA IDW Plano sin DEM", "0.735", "0.679", "0.787", "1.90", "1.58", "+1.37%", "DESCARTADO (Viola gradiente vertical ∂T/∂z en montañas)", False),
+        ("2", "EXP_TX11_RK_Barnes_Hybrid", "RK (DEM+Coords) + Barnes Residuos", "0.719", "0.690", "0.743", "2.06", "1.69", "+1.40%", "TOP 1 FÍSICO (Máx KGE=0.690, Relieve real + filtro Barnes)", True),
+        ("3", "EXP_TX06_Barnes_Gauss_Coastal", "Barnes BSc Gaussiano Continuo", "0.708", "0.676", "0.736", "2.17", "1.80", "+0.95%", "TOP 2 FÍSICO (Suavizado costero sin ojos de buey)", True),
+        ("4", "EXP_TX10_QM_Empirical_ECDF", "QM Empírico (ECDF) + RK DEM/Slope", "0.705", "0.655", "0.739", "2.05", "1.69", "+1.31%", "TOP 3 FÍSICO (Menor RMSE físico=2.05°C, olas de calor)", True),
+        ("5", "EXP_TX04_RK_FullTopography_NN3D", "RK DEM + Pendiente + Aspect + NN-3D", "0.682", "0.633", "0.727", "2.28", "1.90", "+2.03%", "Admisible (Rank 4 Físico — Insolación de ladera)", False),
+        ("6", "EXP_TX07_Cressman_Intermontane", "Cressman 4 pasadas (Guía Oficial CDT)", "0.674", "0.626", "0.707", "2.36", "1.95", "+0.82%", "Admisible (Rank 5 Físico — Guía Oficial CDT)", False),
+        ("7", "EXP_TX09_SBA_Shepard_NN3D", "SBA Shepard Modificado + NN-3D", "0.624", "0.596", "0.678", "3.00", "2.59", "+2.74%", "Admisible (Rank 6 Físico — Control vertical NN-3D)", False),
+        ("8", "EXP_TX12_SBA_IDW_Local_Relief", "SBA IDW Local Multiescala + NN-3D", "0.596", "0.568", "0.643", "3.14", "2.70", "+2.96%", "Admisible (Rank 7 Físico — IDW confinado 0.25°)", False),
+        ("9", "EXP_TX05_RK_Gumbel_Heatwaves", "RK DEM + QM Gumbel Extremos", "0.365", "0.056", "0.680", "4.04", "3.53", "-4.75%", "Inestable (Colapso por colas Gumbel + OKR)", False),
+        ("10", "EXP_TX02_RK_DEM_Normal", "RK Solo DEM + QM Normal Gaussiano", "0.354", "0.031", "0.686", "4.09", "3.61", "-5.12%", "Inestable (Rigidez gaussiana + OKR diario)", False),
+        ("11", "EXP_TX08_RK_FullTopography_Aspect", "RK Acoplamiento Total + Skew-Normal", "0.349", "0.026", "0.678", "4.11", "3.60", "-4.93%", "Inestable (Sobreparametrización en residuales)", False),
+        ("12", "EXP_TX03_RK_Topography_SkewNormal", "RK DEM + Pendiente + Skew-Normal", "0.348", "0.023", "0.677", "4.11", "3.60", "-4.88%", "Inestable (Distribución Skew-Normal + OKR)", False),
         ("Control", "EXP_TX00_Raw_CHIRTS", "Control 0: CHIRTS Tmax Crudo (Sin DEM ni estaciones)", "0.577", "0.518", "0.672", "3.12", "2.54", "+5.82%", "Control Grilla Original", False),
     ]
 
@@ -1335,18 +1342,18 @@ def generate_experiments_pdf(
         Paragraph("Estado / Posición", th_lb),
     ]
     rows_lb_tn_data = [
-        ("1", "EXP_TN10_QM_Empirical_ECDF", "QM Empírico (ECDF) + RK DEM/Slope", "0.613", "0.543", "0.649", "1.92", "1.57", "+4.46%", "GANADOR OFICIAL ABSOLUTO (Menor RMSE=1.92°C, GSS=0.613)", True),
-        ("2", "EXP_TN01_SBA_IDW_Baseline", "SBA IDW Plano sin DEM", "0.612", "0.550", "0.669", "2.19", "1.89", "+3.47%", "Línea Base (Superada por EXP_TN10 en RMSE y Skill)", False),
-        ("3", "EXP_TN04_RK_FullTopography_NN3D", "RK DEM + Pend + Coords + NN-3D", "0.573", "0.508", "0.612", "2.19", "1.76", "+5.43%", "Fase 1 (Control vertical estricto anti-inversión)", False),
-        ("4", "EXP_TN11_RK_Barnes_Hybrid", "RK (DEM+Coords) + Barnes Residuos", "0.570", "0.480", "0.611", "2.07", "1.66", "+4.42%", "Fase 2 (Segundo menor RMSE=2.07°C)", False),
-        ("5", "EXP_TN08_RK_FullTopography_Aspect", "RK Drenaje Catabático DEM+Slope+Asp", "0.559", "0.483", "0.601", "2.30", "1.85", "+4.05%", "Fase 1 (Modelado de pozas de aire frío)", False),
-        ("6", "EXP_TN06_Barnes_Gauss_Coastal", "Barnes BSc Gaussiano Continuo", "0.529", "0.413", "0.598", "2.36", "1.95", "+3.51%", "Fase 1 (Amortiguamiento costero continuo)", False),
-        ("7", "EXP_TN09_SBA_Shepard_NN3D", "SBA Shepard Modificado + NN-3D", "0.450", "0.347", "0.576", "3.21", "2.80", "+6.05%", "Fase 2 (Shepard local en cimas escarpadas)", False),
-        ("8", "EXP_TN07_Cressman_ColdAirPooling", "Cressman 4 pasadas (Guía Oficial CDT)", "0.445", "0.294", "0.551", "2.74", "2.29", "+5.04%", "Fase 1 (Configuración Guía Oficial CDT)", False),
-        ("9", "EXP_TN12_SBA_IDW_Local_Relief", "SBA IDW Local Multiescala + NN-3D", "0.403", "0.260", "0.549", "3.37", "2.91", "+5.09%", "Fase 2 (IDW confinado a 0.25°)", False),
-        ("10", "EXP_TN05_RK_Gumbel_Frost_Extremes", "RK DEM + QM Gumbel Heladas", "0.376", "0.108", "0.593", "3.18", "2.73", "-1.36%", "Fase 1 (Colapso por asimetría teórica de cola fría)", False),
-        ("11", "EXP_TN02_RK_DEM_Normal", "RK Solo DEM + QM Normal Gaussiano", "0.359", "0.072", "0.598", "3.22", "2.79", "-1.82%", "Fase 1 (Rigidez de campana normal en heladas)", False),
-        ("12", "EXP_TN03_RK_Topography_SkewNormal", "RK DEM + Pendiente + Skew-Normal", "0.357", "0.069", "0.596", "3.25", "2.82", "-1.50%", "Fase 1 (Inestabilidad en caídas por frentes fríos)", False),
+        ("1*", "EXP_TN01_SBA_IDW_Baseline", "SBA IDW Plano sin DEM", "0.612", "0.550", "0.669", "2.19", "1.89", "+3.47%", "DESCARTADO (Destruye heladas en cumbres e inv. en valles)", False),
+        ("2", "EXP_TN10_QM_Empirical_ECDF", "QM Empírico (ECDF) + RK DEM/Slope", "0.611", "0.543", "0.649", "1.92", "1.57", "+4.47%", "TOP 1 FÍSICO (Menor RMSE=1.92°C y MAE=1.57°C del estudio)", True),
+        ("3", "EXP_TN04_RK_FullTopography_NN3D", "RK DEM + Pend + Coords + NN-3D", "0.572", "0.508", "0.612", "2.19", "1.76", "+5.43%", "TOP 2 FÍSICO (Aislamiento vertical estricto anti-inversión)", True),
+        ("4", "EXP_TN11_RK_Barnes_Hybrid", "RK (DEM+Coords) + Barnes Residuos", "0.569", "0.480", "0.611", "2.07", "1.66", "+4.42%", "TOP 3 FÍSICO (2do menor RMSE=2.07°C y MAE=1.66°C)", True),
+        ("5", "EXP_TN08_RK_FullTopography_Aspect", "RK Drenaje Catabático DEM+Slope+Asp", "0.559", "0.483", "0.601", "2.30", "1.85", "+4.05%", "Admisible (Rank 4 Físico — Drenaje catabático)", False),
+        ("6", "EXP_TN06_Barnes_Gauss_Coastal", "Barnes BSc Gaussiano Continuo", "0.528", "0.413", "0.598", "2.36", "1.95", "+3.51%", "Admisible (Rank 5 Físico — Amortiguamiento costero)", False),
+        ("7", "EXP_TN09_SBA_Shepard_NN3D", "SBA Shepard Modificado + NN-3D", "0.449", "0.347", "0.576", "3.21", "2.80", "+6.05%", "Admisible (Rank 6 Físico — Shepard con NN-3D)", False),
+        ("8", "EXP_TN07_Cressman_ColdAirPooling", "Cressman 4 pasadas (Guía Oficial CDT)", "0.444", "0.294", "0.551", "2.74", "2.29", "+5.04%", "Admisible (Rank 7 Físico — Guía Oficial CDT)", False),
+        ("9", "EXP_TN12_SBA_IDW_Local_Relief", "SBA IDW Local Multiescala + NN-3D", "0.402", "0.260", "0.549", "3.37", "2.91", "+5.09%", "Admisible (Rank 8 Físico — IDW confinado 0.25°)", False),
+        ("10", "EXP_TN05_RK_Gumbel_Frost_Extremes", "RK DEM + QM Gumbel Heladas", "0.376", "0.108", "0.593", "3.18", "2.73", "-1.36%", "Inestable (Colapso por asimetría Gumbel + OKR)", False),
+        ("11", "EXP_TN02_RK_DEM_Normal", "RK Solo DEM + QM Normal Gaussiano", "0.358", "0.072", "0.598", "3.22", "2.79", "-1.82%", "Inestable (Rigidez gaussiana en inversiones)", False),
+        ("12", "EXP_TN03_RK_Topography_SkewNormal", "RK DEM + Pendiente + Skew-Normal", "0.357", "0.069", "0.596", "3.25", "2.82", "-1.50%", "Inestable (Distribución Skew-Normal + OKR)", False),
         ("Control", "EXP_TN00_Raw_CHIRTS", "Control 0: CHIRTS Tmin Crudo (Sin DEM ni estaciones)", "0.470", "0.412", "0.583", "3.28", "2.69", "+7.94%", "Control Grilla Original", False),
     ]
 
@@ -1480,24 +1487,24 @@ def generate_experiments_pdf(
     rows_fin = [
         [
             Paragraph("<b>Precipitación Diaria</b>", td_bold),
-            Paragraph("<b>EXP_R15_Shepard_RnoR_Smooth</b>", td_lb_winner),
-            Paragraph("SBA Multiescala + Shepard Modificado + RnoR Suave (CutOff 2)", td_style),
-            Paragraph("• <b>GSS:</b> 0.501<br/>• <b>KGE:</b> 0.379<br/>• <b>r:</b> 0.479<br/>• <b>RMSE:</b> 12.88 mm<br/>• <b>ETS:</b> 0.329<br/>• <b>PBIAS:</b> -4.39%", td_style),
-            Paragraph("Elimina lloviznas espurias (<i>drizzle</i>) en el Corredor Seco Centroamericano mediante RnoR continua suave, preservando la lluvia convectiva real y evitando singularidades circulares de Kriging en cañones y laderas escarpadas.", td_style),
+            Paragraph("<b>Top 1: EXP_R11_Shepard_Median_Coarse<br/>Top 2: EXP_R15_Shepard_RnoR_Smooth<br/>Top 3: EXP_R12_Shepard_Local_Orn</b>", td_lb_winner),
+            Paragraph("SBA Multiescala + Shepard Modificado (Desagrupamiento angular libre de ojos de buey)", td_style),
+            Paragraph("• <b>R11 (Balance):</b> GSS 0.454, KGE 0.336, PBIAS -6.02%<br/>• <b>R15 (Eventos):</b> GSS 0.454, POD <b>0.692</b>, HSS <b>0.465</b><br/>• <b>R12 (Volumen):</b> PBIAS <b>-5.15%</b>, FAR <b>0.311</b><br/><i>(EXP_R02 descartado por ojos de buey IDW)</i>", td_style),
+            Paragraph("Elimina los artefactos concéntricos ('ojos de buey') del IDW isotrópico mediante ponderación direccional de Shepard, reduciendo a menos de la mitad la subestimación volumétrica (-5.15% a -7.52% vs -13.33% en R02) y maximizando la detección de tormentas reales.", td_style),
         ],
         [
             Paragraph("<b>Temperatura Máxima (Tmax)</b>", td_bold),
-            Paragraph("<b>EXP_TX11_RK_Barnes_Hybrid</b>", td_lb_winner),
-            Paragraph("Regression Kriging (DEM + Coords) + Barnes Gaussiano Continuo", td_style),
-            Paragraph("• <b>GSS:</b> 0.719<br/>• <b>KGE:</b> <b>0.690 (Máximo)</b><br/>• <b>r:</b> 0.743<br/>• <b>RMSE:</b> 2.06 °C<br/>• <b>MAE:</b> 1.69 °C<br/>• <b>PBIAS:</b> +1.40%", td_style),
-            Paragraph("Proyecta el gradiente térmico adiabático vertical uniforme mediante el DEM en zonas sin estaciones y suaviza las anomalías costeras con el filtro espectral de Barnes sin bordes artificiales.", td_style),
+            Paragraph("<b>Top 1: EXP_TX11_RK_Barnes_Hybrid<br/>Top 2: EXP_TX06_Barnes_Gauss_Coastal<br/>Top 3: EXP_TX10_QM_Empirical_ECDF</b>", td_lb_winner),
+            Paragraph("Regression Kriging (DEM) + Filtro Gaussiano de Barnes / QM Empírico ECDF", td_style),
+            Paragraph("• <b>TX11 (Top 1):</b> GSS 0.719, KGE <b>0.690</b>, RMSE 2.06 °C<br/>• <b>TX06 (Top 2):</b> GSS 0.708, KGE 0.676, PBIAS +0.95%<br/>• <b>TX10 (Top 3):</b> RMSE <b>2.05 °C</b>, KGE 0.655<br/><i>(EXP_TX01 descartado por omitir DEM)</i>", td_style),
+            Paragraph("Conserva el gradiente adiabático vertical (&part;<i>T</i>/&part;<i>z</i> &approx; -6.5 °C/km) en cordilleras desprovistas de estaciones mediante el DEM y suaviza las anomalías costeras con el filtro continuo de Barnes sin bordes artificiales.", td_style),
         ],
         [
             Paragraph("<b>Temperatura Mínima (Tmin)</b>", td_bold),
-            Paragraph("<b>EXP_TN10_QM_Empirical_ECDF</b>", td_lb_winner),
-            Paragraph("RK (DEM + Pendiente) + Quantile Mapping Empírico celda a celda (NN-3D)", td_style),
-            Paragraph("• <b>GSS:</b> <b>0.613 (Máximo)</b><br/>• <b>KGE:</b> 0.543<br/>• <b>r:</b> 0.649<br/>• <b>RMSE:</b> <b>1.92 °C (Mínimo)</b><br/>• <b>MAE:</b> <b>1.57 °C</b><br/>• <b>PBIAS:</b> +4.46%", td_style),
-            Paragraph("Resuelve el desacople vertical nocturno y el drenaje de aire frío (<i>cold-air pooling</i>) en valles cerrados y altiplanos modelando la curva acumulada empírica real de heladas con búsqueda vertical NN-3D.", td_style),
+            Paragraph("<b>Top 1: EXP_TN10_QM_Empirical_ECDF<br/>Top 2: EXP_TN04_RK_FullTopography_NN3D<br/>Top 3: EXP_TN11_RK_Barnes_Hybrid</b>", td_lb_winner),
+            Paragraph("RK (DEM + Pendiente) + Quantile Mapping Empírico (NN-3D) / Barnes", td_style),
+            Paragraph("• <b>TN10 (Top 1):</b> GSS <b>0.611</b>, RMSE <b>1.92 °C</b>, MAE <b>1.57 °C</b><br/>• <b>TN04 (Top 2):</b> GSS 0.572, KGE 0.508, RMSE 2.19 °C<br/>• <b>TN11 (Top 3):</b> GSS 0.569, RMSE <b>2.07 °C</b>, MAE 1.66 °C<br/><i>(EXP_TN01 descartado por omitir DEM)</i>", td_style),
+            Paragraph("Resuelve el desacople vertical nocturno y el drenaje catabático de aire frío (<i>cold-air pooling</i>) en valles cerrados y altiplanos modelando la curva acumulada empírica real de heladas con vecindad vertical NN-3D.", td_style),
         ],
     ]
     t_fin = Table([th_fin] + rows_fin, colWidths=[1.10 * inch, 1.60 * inch, 1.50 * inch, 1.35 * inch, 1.95 * inch])
