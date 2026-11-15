@@ -418,12 +418,12 @@ class TestPDFGeneration(unittest.TestCase):
 
 
 class TestExperimentYAMLConsistency(unittest.TestCase):
-    """Ensure all 26 experiment YAML configurations are strictly compliant with CDT 8.0."""
+    """Ensure all experiment YAML configurations are strictly compliant with CDT 8.0."""
 
     def test_all_experiment_yamls_valid(self):
         import glob
         yaml_files = sorted(glob.glob("config/experiments_*/*.yaml"))
-        self.assertIn(len(yaml_files), (26, 31), f"Expected 26 or 31 experiment YAMLs, found {len(yaml_files)}")
+        self.assertIn(len(yaml_files), (26, 31, 39), f"Expected 26, 31, or 39 experiment YAMLs, found {len(yaml_files)}")
 
         valid_merge_methods = {"SBA", "RK"}
         valid_interp_methods = {"idw", "okr", "barnes", "cressman", "shepard", "sphere"}
@@ -459,12 +459,26 @@ class TestExperimentYAMLConsistency(unittest.TestCase):
     def test_all_temperature_yamls_have_temp_var_id(self):
         import glob
         temp_yamls = sorted(glob.glob("config/experiments_tm*/*.yaml"))
-        self.assertEqual(len(temp_yamls), 16)
+        self.assertIn(len(temp_yamls), (16, 24))
         for p in temp_yamls:
             with self.subTest(yaml_file=p):
                 with open(p, "r", encoding="utf-8") as f:
                     cfg = yaml.safe_load(f)
                 self.assertEqual(cfg.get("var_id"), "temp", f"Expected var_id 'temp' for CHIRTS NetCDFs in {p}")
+
+    def test_chirps_v3_experiment_specialization(self):
+        from launcher.experiment_runner import ExperimentRunner
+        from pathlib import Path
+        runner_v2 = ExperimentRunner("config/experiments_rainfall/exp_R01_SBA_IDW_Baseline.yaml", region="ca", chirps_version="v2")
+        runner_v3 = ExperimentRunner("config/experiments_rainfall/exp_R01_SBA_IDW_Baseline.yaml", region="ca", chirps_version="v3")
+        norm_v2 = runner_v2.load_configs()[0]
+        norm_v3 = runner_v3.load_configs()[0]
+        self.assertEqual(norm_v2["experiment_id"], "EXP_R01_SBA_IDW_Baseline")
+        self.assertEqual(norm_v2["variable_type"], "rainfall")
+        self.assertEqual(norm_v3["experiment_id"], "EXP_R01_SBA_IDW_Baseline_v3")
+        self.assertEqual(norm_v3["variable_type"], "rainfall_v3")
+        self.assertIn("chirpsv3_daily/ca", norm_v3["paths"]["satellite_dir"].replace("\\", "/"))
+        self.assertTrue(norm_v3["paths"]["output_dir"].endswith("EXP_R01_SBA_IDW_Baseline_v3"))
 
 
 if __name__ == "__main__":

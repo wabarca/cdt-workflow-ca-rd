@@ -102,6 +102,8 @@ def harvest_experiment_metrics(experiments_root: Path | str) -> Tuple[pd.DataFra
             var_type = "tmax"
         elif re.search(r"EXP_TN\d+", exp_id, re.IGNORECASE) or "tmin" in exp_id.lower():
             var_type = "tmin"
+        elif exp_id.lower().endswith("_v3") or "chirps_v3" in exp_id.lower() or "chirpsv3" in exp_id.lower():
+            var_type = "rainfall_v3"
         else:
             var_type = "rainfall"
         desc = exp_id.replace("_", " ")
@@ -111,6 +113,8 @@ def harvest_experiment_metrics(experiments_root: Path | str) -> Tuple[pd.DataFra
                 with open(manifest_path, "r", encoding="utf-8") as mf:
                     mdata = json.load(mf)
                     var_type = mdata.get("variable_type", var_type).lower()
+                    if exp_id.lower().endswith("_v3") and var_type in ("rainfall", "precip", "rain"):
+                        var_type = "rainfall_v3"
                     desc = mdata.get("description", desc)
             except Exception:
                 pass
@@ -186,7 +190,7 @@ def compute_leaderboard_ranking(df_summaries: pd.DataFrame) -> pd.DataFrame:
         # PBIAS penalty score (1 = 0% bias, 0 = >=50% bias)
         pbias_score = (1.0 - (pbias / 50.0)).clip(lower=0.0, upper=1.0)
 
-        if var in ("rainfall", "precip", "rain"):
+        if var in ("rainfall", "rainfall_v3", "precip", "rain"):
             ets = df["ets"].fillna(0.0).clip(lower=0.0, upper=1.0)
             df["global_skill_score"] = (
                 0.35 * kge +
@@ -256,7 +260,8 @@ def generate_taylor_diagram(
         return
 
     var_titles = {
-        "rainfall": "Diagrama Polar de Taylor: Precipitacion (CHIRPS)",
+        "rainfall": "Diagrama Polar de Taylor: Precipitacion (CHIRPS v2.0)",
+        "rainfall_v3": "Diagrama Polar de Taylor: Precipitacion (CHIRPS v3.0)",
         "tmax": "Diagrama Polar de Taylor: Temperatura Maxima (Tmax)",
         "tmin": "Diagrama Polar de Taylor: Temperatura Minima (Tmin)"
     }
@@ -298,6 +303,7 @@ def generate_taylor_diagram(
 
     var_colors = {
         "rainfall": ["#0369a1", "#0284c7", "#38bdf8", "#0891b2", "#0d9488", "#16a34a"],
+        "rainfall_v3": ["#0f766e", "#0d9488", "#14b8a6", "#059669", "#0284c7", "#16a34a"],
         "tmax": ["#b45309", "#d97706", "#f59e0b", "#ea580c", "#c2410c", "#9a3412"],
         "tmin": ["#4338ca", "#6366f1", "#818cf8", "#7c3aed", "#a855f7", "#6b21a8"]
     }
@@ -1919,6 +1925,66 @@ def generate_interactive_html_dashboard(
 # 6. FULL BENCHMARK SUITE ORCHESTRATION
 # =============================================================================
 
+def compute_chirps_v2_vs_v3_comparison(df_ranked: pd.DataFrame) -> pd.DataFrame:
+    """Builds a paired head-to-head comparison DataFrame matching each algorithm (R00..R15) between CHIRPS v2 and CHIRPS v3."""
+    if df_ranked.empty or "variable" not in df_ranked.columns:
+        return pd.DataFrame()
+
+    df_v2 = df_ranked[df_ranked["variable"] == "rainfall"].copy()
+    df_v3 = df_ranked[df_ranked["variable"] == "rainfall_v3"].copy()
+    if df_v2.empty or df_v3.empty:
+        return pd.DataFrame()
+
+    def _base_id(eid: str) -> str:
+        return re.sub(r"_v3$", "", str(eid), flags=re.IGNORECASE)
+
+    df_v2["base_exp_id"] = df_v2["experiment_id"].map(_base_id)
+    df_v3["base_exp_id"] = df_v3["experiment_id"].map(_base_id)
+
+    merged = pd.merge(
+        df_v2,
+        df_v3,
+        on="base_exp_id",
+        suffixes=("_v2", "_v3"),
+    )
+    if merged.empty:
+        return pd.DataFrame()
+
+    rows = []
+    for _, r in merged.sort_values("base_exp_id").iterrows():
+        kge2, kge3 = float(r.get("kge_v2", np.nan)), float(r.get("kge_v3", np.nan))
+        rmse2, rmse3 = float(r.get("rmse_v2", np.nan)), float(r.get("rmse_v3", np.nan))
+        pb2, pb3 = float(r.get("pbias_v2", np.nan)), float(r.get("pbias_v3", np.nan))
+        ets2, ets3 = float(r.get("ets_v2", np.nan)), float(r.get("ets_v3", np.nan))
+        gss2, gss3 = float(r.get("global_skill_score_v2", np.nan)), float(r.get("global_skill_score_v3", np.nan))
+        dkge = kge3 - kge2
+        drmse = rmse3 - rmse2
+        dgss = gss3 - gss2
+        better = "CHIRPS v3.0" if (pd.notna(dkge) and dkge > 0) else "CHIRPS v2.0"
+        rows.append({
+            "base_exp_id": r["base_exp_id"],
+            "description": str(r.get("description_v2", "")).replace("[CHIRPS v3]", "").strip(),
+            "rank_v2": int(r.get("rank_v2", 0)),
+            "rank_v3": int(r.get("rank_v3", 0)),
+            "gss_v2": gss2,
+            "gss_v3": gss3,
+            "delta_gss_v3_vs_v2": dgss,
+            "kge_v2": kge2,
+            "kge_v3": kge3,
+            "delta_kge_v3_vs_v2": dkge,
+            "rmse_v2": rmse2,
+            "rmse_v3": rmse3,
+            "delta_rmse_v3_vs_v2": drmse,
+            "pbias_v2": pb2,
+            "pbias_v3": pb3,
+            "ets_v2": ets2,
+            "ets_v3": ets3,
+            "delta_ets_v3_vs_v2": ets3 - ets2,
+            "better_version": better,
+        })
+    return pd.DataFrame(rows)
+
+
 def run_full_benchmark_suite(
     experiments_dir: Path | str = "output/experiments",
     output_dir: Path | str = "output/benchmark"
@@ -1959,6 +2025,7 @@ def run_full_benchmark_suite(
         generate_heatmap_matrix_figure,
         generate_spatial_gain_map,
         generate_elevation_strata_figure,
+        generate_chirps_v2_vs_v3_comparison_figure,
     )
     from launcher.benchmark_comparisons import generate_all_comparisons_suite, clean_figures_root
     from launcher.benchmark_static_dashboard import generate_static_html_dashboard
@@ -1979,13 +2046,18 @@ def run_full_benchmark_suite(
         ctrl_rows = df_var[df_var["is_control"]]
         ctrl_id = ctrl_rows["experiment_id"].values[0] if not ctrl_rows.empty else ""
 
-        unit = "mm" if var in ("rainfall", "precip", "rain") else "°C"
+        unit = "mm" if var in ("rainfall", "rainfall_v3", "precip", "rain") else "°C"
 
         # Station metrics for this variable
         st_var = df_stations[df_stations["variable"] == var].copy() if not df_stations.empty and "variable" in df_stations.columns else pd.DataFrame()
         if st_var.empty and not df_stations.empty:
-            prefix = "EXP_R" if var in ("rainfall", "precip", "rain") else ("EXP_TX" if var == "tmax" else "EXP_TN")
-            st_var = df_stations[df_stations["experiment_id"].str.startswith(prefix)].copy()
+            if var == "rainfall_v3":
+                st_var = df_stations[df_stations["experiment_id"].str.endswith("_v3")].copy()
+            elif var in ("rainfall", "precip", "rain"):
+                st_var = df_stations[df_stations["experiment_id"].str.startswith("EXP_R") & ~df_stations["experiment_id"].str.endswith("_v3")].copy()
+            else:
+                prefix = "EXP_TX" if var == "tmax" else "EXP_TN"
+                st_var = df_stations[df_stations["experiment_id"].str.startswith(prefix)].copy()
 
         # Figure 1: Boxplots
         p_box = var_fig_dir / "figure_1_kge_boxplots_by_station.png"
@@ -2036,6 +2108,16 @@ def run_full_benchmark_suite(
         df_stations=df_stations,
         output_dir=figures_base / "comparisons_winner_vs_raw"
     )
+
+    # 4b. Paired CHIRPS v2.0 vs. CHIRPS v3.0 comparison if both are present
+    df_chirps_comp = compute_chirps_v2_vs_v3_comparison(df_ranked)
+    if not df_chirps_comp.empty:
+        comp_csv = out_path / "benchmark_chirps_v2_vs_v3_comparison.csv"
+        df_chirps_comp.to_csv(comp_csv, index=False)
+        print(f"  [CSV] CHIRPS v2 vs v3 paired comparison saved: {comp_csv}")
+        v2v3_png = figures_base / "comparisons_winner_vs_raw" / "comparison_chirps_v2_vs_v3_head_to_head.png"
+        generate_chirps_v2_vs_v3_comparison_figure(df_chirps_comp, v2v3_png)
+        comp_figures["chirps_v2_vs_v3"] = "figures/comparisons_winner_vs_raw/comparison_chirps_v2_vs_v3_head_to_head.png"
 
     # 5. Generate Static HTML Dashboard (Data-First, sortable tables, 300 DPI figures)
     html_path = out_path / "benchmark_report.html"

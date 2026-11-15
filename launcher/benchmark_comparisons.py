@@ -329,9 +329,17 @@ def generate_all_comparisons_suite(
             "var": "rainfall",
             "winner_id": "EXP_R15_Shepard_RnoR_Smooth",
             "raw_id": "EXP_R00_Raw_CHIRPS",
-            "winner_name": "Shepard Suave RnoR",
+            "winner_name": "Ganador CHIRPS v2.0",
             "raw_name": "CHIRPS v2.0 Original Crudo",
             "filename": "comparison_rainfall_winner_vs_raw.png",
+        },
+        {
+            "var": "rainfall_v3",
+            "winner_id": "EXP_R15_Shepard_RnoR_Smooth_v3",
+            "raw_id": "EXP_R00_Raw_CHIRPS_v3",
+            "winner_name": "Ganador CHIRPS v3.0",
+            "raw_name": "CHIRPS v3.0 Original Crudo",
+            "filename": "comparison_rainfall_v3_winner_vs_raw.png",
         },
         {
             "var": "tmax",
@@ -357,6 +365,8 @@ def generate_all_comparisons_suite(
         v = cfg["var"]
         # Find winner dynamically if available in df_ranked
         sub_df = df_ranked[df_ranked["variable"] == v] if not df_ranked.empty else pd.DataFrame()
+        if sub_df.empty:
+            continue
         win_id = cfg["winner_id"]
         if not sub_df.empty:
             winners = sub_df[sub_df["is_winner"] == True]

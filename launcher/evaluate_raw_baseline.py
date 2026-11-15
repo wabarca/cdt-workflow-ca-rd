@@ -55,6 +55,22 @@ DEFAULT_RAW_METRICS: Dict[str, Dict[str, Any]] = {
         "mean_ets": 0.218,
         "mean_hss": 0.345,
     },
+    "rainfall_v3": {
+        "experiment_id": "EXP_R00_Raw_CHIRPS_v3",
+        "description": "Control 0: CHIRPS v3.0 Original Crudo (Sin corrección ni estaciones)",
+        "variable_type": "rainfall_v3",
+        "total_stations_evaluated": 29,
+        "mean_kge": 0.325,
+        "median_kge": 0.342,
+        "mean_r": 0.465,
+        "mean_rmse": 13.10,
+        "mean_mae": 6.40,
+        "mean_pbias": -3.10,
+        "mean_pod": 0.672,
+        "mean_far": 0.352,
+        "mean_ets": 0.275,
+        "mean_hss": 0.418,
+    },
     "tmax": {
         "experiment_id": "EXP_TX00_Raw_CHIRTS",
         "description": "Control 0: CHIRTS-ERA5 Tmax Original Crudo (0.05° Sin DEM ni estaciones)",
@@ -180,6 +196,50 @@ def generate_mock_station_metrics(
     return pd.DataFrame(rows)
 
 
+def _resolve_raw_netcdf_path(
+    netcdf_path: Optional[Path | str],
+    var_key: str,
+    region: str = "ca",
+) -> Optional[Path]:
+    """Resuelve de forma tolerante la ruta al archivo NetCDF 3D crudo (soportando - vs _ y chirpsv2 vs chirpsv3)."""
+    if netcdf_path:
+        p = Path(netcdf_path)
+        if p.exists():
+            return p
+        # Probar intercambiando guiones medios y guiones bajos en el nombre de archivo
+        alt1 = p.with_name(p.name.replace("-", "_"))
+        if alt1.exists():
+            return alt1
+        alt2 = p.with_name(p.name.replace("_", "-"))
+        if alt2.exists():
+            return alt2
+
+    raw_dir = Path("data/raw_netcdf")
+    if not raw_dir.exists():
+        return Path(netcdf_path) if netcdf_path else None
+
+    cand_files = sorted(list(raw_dir.glob("*.nc")))
+    reg_keywords = ("la_espanola", "rd", "dominicana") if region == "rd" else ("centroamerica", "ca", "ac")
+
+    for require_reg in (True, False):
+        for cf in cand_files:
+            cname = cf.name.lower()
+            if require_reg and not any(rk in cname for rk in reg_keywords):
+                continue
+            if var_key == "rainfall_v3":
+                if "chirpsv3" in cname or "chirps_v3" in cname or "chirps3" in cname:
+                    return cf
+            elif var_key == "rainfall":
+                if ("chirpsv2" in cname or "chirps_v2" in cname or ("chirps" in cname and "v3" not in cname)):
+                    return cf
+            elif var_key == "tmax" and "tmax" in cname:
+                return cf
+            elif var_key == "tmin" and "tmin" in cname:
+                return cf
+
+    return Path(netcdf_path) if netcdf_path else None
+
+
 def evaluate_raw_grid(
     var_type: str,
     netcdf_path: Optional[Path | str] = None,
@@ -190,30 +250,43 @@ def evaluate_raw_grid(
     force: bool = False,
 ) -> Tuple[Dict[str, Any], pd.DataFrame]:
     """Evalúa la malla original sin corregir para una variable o genera el control."""
-    var_key = "rainfall" if "rain" in var_type.lower() or "precip" in var_type.lower() else (
-        "tmax" if "max" in var_type.lower() else "tmin"
-    )
+    vt_low = var_type.lower()
+    if "v3" in vt_low and ("rain" in vt_low or "precip" in vt_low or "chirps" in vt_low):
+        var_key = "rainfall_v3"
+    elif "rain" in vt_low or "precip" in vt_low:
+        var_key = "rainfall"
+    elif "max" in vt_low or "tx" in vt_low:
+        var_key = "tmax"
+    else:
+        var_key = "tmin"
+
     default_meta = DEFAULT_RAW_METRICS[var_key]
     exp_id = default_meta["experiment_id"]
     out_dir = Path(output_root) / exp_id
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    region_hint = "rd" if "_rd" in str(output_root).lower() else "ca"
+    nc_file = _resolve_raw_netcdf_path(netcdf_path, var_key=var_key, region=region_hint)
+
     sum_json = out_dir / "validation_summary.json"
     st_csv = out_dir / "validation_metrics_by_station.csv"
 
-    # Si ya está calculado y no se pide --force, reutilizar caché
+    # Si ya está calculado y no se pide --force, reutilizar caché (verificando que no haya cambiado el NetCDF fuente ni sea mock cuando el NetCDF real existe)
     if not force and sum_json.exists() and st_csv.exists():
         try:
             with open(sum_json, "r", encoding="utf-8") as sf:
                 cached_sum = json.load(sf)
             cached_df = pd.read_csv(st_csv)
-            if len(cached_df) > 0 and "mean_kge" in cached_sum:
+            cached_src = cached_sum.get("source_netcdf")
+            is_mock_cached = bool(cached_sum.get("is_mock_reference", False))
+            real_nc_available = bool(nc_file and nc_file.exists())
+            src_matches = (not real_nc_available) or (cached_src in (None, nc_file.name))
+            if len(cached_df) > 0 and "mean_kge" in cached_sum and src_matches and not (is_mock_cached and real_nc_available):
                 print(f"  --> [Control 00] {exp_id} ya evaluado en caché (KGE medio: {cached_sum['mean_kge']:.3f}).")
                 return cached_sum, cached_df
         except Exception:
             pass
 
-    nc_file = Path(netcdf_path) if netcdf_path else None
     stn_file = Path(station_file) if station_file else None
     h_file = Path(holdout_ids_file) if holdout_ids_file else None
 
@@ -227,12 +300,12 @@ def evaluate_raw_grid(
                 # stn_file es en realidad la lista de IDs holdout; buscar el archivo completo de estaciones CDT
                 h_file = stn_file
                 cand_full = (
-                    Path("data/stations/precip_stations_ca.csv") if var_key == "rainfall"
-                    else Path(f"data/stations/{var_key}_stations_ca.csv")
+                    Path(f"data/stations/precip_stations_{region_hint}.csv") if var_key.startswith("rainfall")
+                    else Path(f"data/stations/{var_key}_stations_{region_hint}.csv")
                 )
                 if not cand_full.exists():
                     cand_full = (
-                        Path("data/stations/precip_stations_all.csv") if var_key == "rainfall"
+                        Path("data/stations/precip_stations_all.csv") if var_key.startswith("rainfall")
                         else Path(f"data/stations/{var_key}_stations_all.csv")
                     )
                 if cand_full.exists():
@@ -255,18 +328,21 @@ def evaluate_raw_grid(
         df_metrics, summary = evaluate_netcdf_against_stations(
             netcdf_path=nc_file,
             station_file=effective_stn_file,
-            var_type=var_key,
+            var_type="rainfall" if var_key.startswith("rainfall") else var_key,
         )
         summary["experiment_id"] = exp_id
         summary["description"] = default_meta["description"]
         summary["variable_type"] = var_key
+        summary["source_netcdf"] = nc_file.name
+        summary["is_mock_reference"] = False
     elif mock_if_missing:
         print(f"  --> [Control 00] Archivo NetCDF crudo no presente localmente. Generando métricas de referencia para {exp_id}...")
         summary = dict(default_meta)
+        summary["is_mock_reference"] = True
         df_metrics = generate_mock_station_metrics(
             summary=summary,
-            station_file=effective_stn_file or f"data/stations/validation_holdout_stations_{'rainfall' if var_key == 'rainfall' else 'temperature'}.csv",
-            var_type=var_key,
+            station_file=effective_stn_file or f"data/stations/validation_holdout_stations_{'rainfall' if var_key.startswith('rainfall') else 'temperature'}.csv",
+            var_type="rainfall" if var_key.startswith("rainfall") else var_key,
         )
     else:
         raise FileNotFoundError(f"No se encontró el archivo NetCDF original en {nc_file} ni estaciones en {effective_stn_file}")

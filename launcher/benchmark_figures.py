@@ -37,6 +37,28 @@ def _extract_exp_short_label(exp_id: str) -> str:
     return exp_id[:8]
 
 
+def _get_var_title(var_type: str) -> str:
+    vt = (var_type or "").lower()
+    if vt == "rainfall_v3" or "v3" in vt:
+        return "Precipitacion Diaria (CHIRPS v3.0)"
+    elif vt in ("rainfall", "precip", "rain"):
+        return "Precipitacion Diaria (CHIRPS v2.0)"
+    elif vt == "tmax":
+        return "Temperatura Maxima"
+    return "Temperatura Minima"
+
+
+def _get_var_color(var_type: str) -> str:
+    vt = (var_type or "").lower()
+    if vt == "rainfall_v3" or "v3" in vt:
+        return "#0d9488"  # Teal for CHIRPS v3
+    elif vt in ("rainfall", "precip", "rain"):
+        return "#0284c7"  # Sky Blue for CHIRPS v2
+    elif vt == "tmax":
+        return "#ea580c"  # Amber/Orange
+    return "#7c3aed"      # Violet
+
+
 def generate_kge_boxplots_figure(
     df_stations_var: pd.DataFrame,
     output_png: Path | str,
@@ -58,7 +80,7 @@ def generate_kge_boxplots_figure(
     ylabels = []
     for e in ordered_exps:
         is_ctrl = ("00" in e or "Raw" in e)
-        is_win = (e == winner_id) if winner_id else (("R15" in e and var_type == "rainfall") or ("TX11" in e and var_type == "tmax") or ("TN10" in e and var_type == "tmin"))
+        is_win = (e == winner_id) if winner_id else (("R15" in e and var_type.startswith("rainfall")) or ("TX11" in e and var_type == "tmax") or ("TN10" in e and var_type == "tmin"))
         if is_win:
             palette[e] = "#059669" # Emerald
             ylabels.append(f"[OPTIMO] {e}")
@@ -66,7 +88,7 @@ def generate_kge_boxplots_figure(
             palette[e] = "#1e293b" # Dark Slate
             ylabels.append(f"[REJILLA ORIGINAL] {e}")
         else:
-            palette[e] = "#38bdf8" if var_type == "rainfall" else ("#ea580c" if var_type == "tmax" else "#8b5cf6")
+            palette[e] = _get_var_color(var_type)
             ylabels.append(e)
 
     fig_height = max(5.5, len(ordered_exps) * 0.38 + 1.8)
@@ -107,7 +129,7 @@ def generate_kge_boxplots_figure(
             tick_label.set_color("#0f172a")
             tick_label.set_fontweight("bold")
 
-    var_title = "Precipitacion Diaria" if var_type == "rainfall" else ("Temperatura Maxima" if var_type == "tmax" else "Temperatura Minima")
+    var_title = _get_var_title(var_type)
     ax.set_title(f"Figura 1: Distribucion de Eficiencia KGE en las 29 Estaciones Holdout\n{var_title} (1991-2020) • Ordenados por Mediana de Rendimiento", fontsize=11, fontweight="bold", pad=12)
     ax.set_xlabel("Kling-Gupta Efficiency (KGE)", fontsize=9.5, fontweight="bold")
     ax.set_ylabel("Experimento Evaluado", fontsize=9.5, fontweight="bold")
@@ -137,7 +159,7 @@ def generate_pareto_scatter_figure(
     out_p.parent.mkdir(parents=True, exist_ok=True)
 
     fig, ax = plt.subplots(figsize=(10.5, 7.0), dpi=300)
-    base_color = "#0284c7" if var_type == "rainfall" else ("#ea580c" if var_type == "tmax" else "#7c3aed")
+    base_color = _get_var_color(var_type)
 
     candidates_df = df_var[~df_var["is_winner"] & ~df_var["is_control"]].copy()
     win_row = df_var[df_var["is_winner"]].iloc[0] if not df_var[df_var["is_winner"]].empty else None
@@ -293,7 +315,7 @@ def generate_pareto_scatter_figure(
             zorder=6
         )
 
-    var_title = "Precipitacion Diaria" if var_type == "rainfall" else ("Temperatura Maxima" if var_type == "tmax" else "Temperatura Minima")
+    var_title = _get_var_title(var_type)
     ax.set_title(f"Figura 2: Espacio Bi-Criterio de Precision (RMSE vs. KGE)\nFrontera de Pareto con Proyecciones Ortogonales a los Ejes • {var_title}", fontsize=11, fontweight="bold", pad=12)
     ax.set_xlabel(f"Raiz del Error Cuadratico Medio (RMSE en {unit}) [Menor error a la izquierda ←]", fontsize=9.5, fontweight="bold")
     ax.set_ylabel("Kling-Gupta Efficiency (KGE) [Mayor habilidad hacia arriba ↑]", fontsize=9.5, fontweight="bold")
@@ -351,7 +373,7 @@ def generate_divergent_bars_figure(
         else:
             ax.text(w - 0.005, y, f"{w:.3f}", ha="right", va=va, fontsize=8, color="#e11d48")
 
-    var_title = "Precipitacion Diaria" if var_type == "rainfall" else ("Temperatura Maxima" if var_type == "tmax" else "Temperatura Minima")
+    var_title = _get_var_title(var_type)
     ctrl_name = ctrl_rows["experiment_id"].values[0] if not ctrl_rows.empty else "Rejilla Original"
     ax.set_title(f"Figura 3: Ganancia Neta de Eficiencia (Δ KGE) respecto a la Rejilla Original [{ctrl_name}]\n{var_title} (1991-2020) • Evaluacion en 29 Estaciones Holdout", fontsize=11, fontweight="bold", pad=12)
     ax.set_xlabel("Ganancia Neta en Eficiencia (Δ KGE) [> 0 indica mejora respecto a la rejilla original sin corregir]", fontsize=9.5, fontweight="bold")
@@ -381,7 +403,7 @@ def generate_heatmap_matrix_figure(
 
     df_sorted = df_var.sort_values(by="rank", ascending=True).copy()
 
-    if var_type in ("rainfall", "precip", "rain"):
+    if var_type in ("rainfall", "rainfall_v3", "precip", "rain"):
         metric_cols = [
             ("global_skill_score", "GSS", True, "{:.3f}"),
             ("kge", "KGE", True, "{:.3f}"),
@@ -471,7 +493,7 @@ def generate_heatmap_matrix_figure(
             tick_label.set_color("#059669")
             tick_label.set_fontweight("bold")
 
-    var_title = "Precipitacion Diaria" if var_type == "rainfall" else ("Temperatura Maxima" if var_type == "tmax" else "Temperatura Minima")
+    var_title = _get_var_title(var_type)
     ax.set_title(f"Figura 4: Matriz Multicriterio de Rendimiento Climatologico\nValores exactos impresos • Escala de color: Verde (Optimo) a Rojo (Deficiente) • {var_title}", fontsize=11, fontweight="bold", pad=14)
     plt.xticks(rotation=20, ha="right", fontsize=9, fontweight="bold")
     plt.yticks(fontsize=8)
@@ -585,7 +607,7 @@ def generate_spatial_gain_map(
     leg_elev.set_zorder(10)
     ax.add_artist(leg_elev)
 
-    var_title = "Precipitacion Diaria" if var_type == "rainfall" else ("Temperatura Maxima" if var_type == "tmax" else "Temperatura Minima")
+    var_title = _get_var_title(var_type)
     fig.suptitle(
         f"Figura 5: Distribucion Espacial de la Ganancia Neta (Δ KGE) en las 29 Estaciones de Validacion\n"
         f"{winner_name} vs. Rejilla Original • {var_title} en Centroamerica",
@@ -645,7 +667,7 @@ def generate_elevation_strata_figure(
     rects2 = ax.bar(x + width/2, win_means, width, yerr=win_stds,
                     label=f"Ganador [{winner_name}]", color="#059669", edgecolor="#065f46", capsize=5)
 
-    var_title = "Precipitacion Diaria" if var_type == "rainfall" else ("Temperatura Maxima" if var_type == "tmax" else "Temperatura Minima")
+    var_title = _get_var_title(var_type)
     ax.set_title(f"Figura 6: Eficiencia (KGE) por Estrato Topografico de Elevacion\nEvaluacion de Sesgo Orografico en Centroamerica (Media ± Desv. Estandar) • {var_title}", fontsize=11, fontweight="bold", pad=12)
     ax.set_ylabel("Kling-Gupta Efficiency (KGE)", fontsize=9.5, fontweight="bold")
     ax.set_xticks(x)
@@ -673,6 +695,86 @@ def generate_elevation_strata_figure(
                     ha="center", va="bottom", fontsize=8, color="#065f46", fontweight="bold")
 
     plt.tight_layout()
+    plt.savefig(out_p, dpi=300)
+    plt.close()
+    return str(out_p)
+
+
+def generate_chirps_v2_vs_v3_comparison_figure(
+    df_comp: pd.DataFrame,
+    output_png: Path | str,
+) -> str:
+    """
+    Generates a 4-panel high-resolution (300 DPI) head-to-head comparison figure
+    between CHIRPS v2.0 and CHIRPS v3.0 across all rainfall experiments (R00 to R15):
+      - Panel A: Grouped KGE comparison (CHIRPS v2 vs. CHIRPS v3)
+      - Panel B: Net ΔKGE (v3 - v2) per experiment
+      - Panel C: RMSE comparison (mm/day)
+      - Panel D: Categorical ETS vs. PBIAS (%) shift from v2 to v3
+    """
+    if df_comp.empty:
+        return ""
+
+    out_p = Path(output_png)
+    out_p.parent.mkdir(parents=True, exist_ok=True)
+
+    df = df_comp.sort_values("base_exp_id").reset_index(drop=True)
+    short_labels = [_extract_exp_short_label(eid) for eid in df["base_exp_id"]]
+    x = np.arange(len(df))
+    w = 0.38
+
+    fig, axes = plt.subplots(2, 2, figsize=(15.5, 11.0), dpi=300)
+    ax_kge, ax_dkge = axes[0, 0], axes[0, 1]
+    ax_rmse, ax_ets = axes[1, 0], axes[1, 1]
+
+    # Panel A: KGE v2 vs v3
+    ax_kge.bar(x - w/2, df["kge_v2"], w, label="CHIRPS v2.0", color="#0284c7", edgecolor="#0369a1", alpha=0.9)
+    ax_kge.bar(x + w/2, df["kge_v3"], w, label="CHIRPS v3.0", color="#0d9488", edgecolor="#0f766e", alpha=0.9)
+    ax_kge.set_title("A) Eficiencia de Kling-Gupta (KGE Medio): CHIRPS v2.0 vs. CHIRPS v3.0", fontsize=10.5, fontweight="bold")
+    ax_kge.set_ylabel("KGE Medio", fontsize=9.5, fontweight="bold")
+    ax_kge.set_xticks(x)
+    ax_kge.set_xticklabels(short_labels, rotation=45, ha="right", fontsize=8)
+    ax_kge.legend(frameon=True, facecolor="white", fontsize=8.5)
+
+    # Panel B: Delta KGE (v3 - v2)
+    dkge = df["delta_kge_v3_vs_v2"]
+    bar_cols = ["#059669" if v >= 0 else "#e11d48" for v in dkge]
+    bars_d = ax_dkge.bar(x, dkge, width=0.6, color=bar_cols, edgecolor="#1e293b", linewidth=0.6)
+    ax_dkge.axhline(0, color="#0f172a", linewidth=1.1)
+    for b in bars_d:
+        h = b.get_height()
+        va = "bottom" if h >= 0 else "top"
+        offset = 0.002 if h >= 0 else -0.002
+        ax_dkge.text(b.get_x() + b.get_width()/2, h + offset, f"{h:+.3f}", ha="center", va=va, fontsize=7, fontweight="bold")
+    ax_dkge.set_title("B) Diferencia Neta de Habilidad ΔKGE (CHIRPS v3.0 − CHIRPS v2.0)", fontsize=10.5, fontweight="bold")
+    ax_dkge.set_ylabel("Δ KGE (> 0 favorece a CHIRPS v3.0)", fontsize=9.5, fontweight="bold")
+    ax_dkge.set_xticks(x)
+    ax_dkge.set_xticklabels(short_labels, rotation=45, ha="right", fontsize=8)
+
+    # Panel C: RMSE v2 vs v3
+    ax_rmse.bar(x - w/2, df["rmse_v2"], w, label="CHIRPS v2.0", color="#38bdf8", edgecolor="#0284c7", alpha=0.9)
+    ax_rmse.bar(x + w/2, df["rmse_v3"], w, label="CHIRPS v3.0", color="#14b8a6", edgecolor="#0d9488", alpha=0.9)
+    ax_rmse.set_title("C) Error Cuadrático Medio RMSE (mm/día) [Menor es Mejor]", fontsize=10.5, fontweight="bold")
+    ax_rmse.set_ylabel("RMSE (mm/día)", fontsize=9.5, fontweight="bold")
+    ax_rmse.set_xticks(x)
+    ax_rmse.set_xticklabels(short_labels, rotation=45, ha="right", fontsize=8)
+    ax_rmse.legend(frameon=True, facecolor="white", fontsize=8.5)
+
+    # Panel D: ETS v2 vs v3
+    ax_ets.bar(x - w/2, df["ets_v2"], w, label="ETS CHIRPS v2.0", color="#0284c7", edgecolor="#0369a1", alpha=0.85)
+    ax_ets.bar(x + w/2, df["ets_v3"], w, label="ETS CHIRPS v3.0", color="#0d9488", edgecolor="#0f766e", alpha=0.85)
+    ax_ets.set_title("D) Habilidad Categórica de Detección de Eventos Lluviosos (ETS)", fontsize=10.5, fontweight="bold")
+    ax_ets.set_ylabel("Equitable Threat Score (ETS)", fontsize=9.5, fontweight="bold")
+    ax_ets.set_xticks(x)
+    ax_ets.set_xticklabels(short_labels, rotation=45, ha="right", fontsize=8)
+    ax_ets.legend(frameon=True, facecolor="white", fontsize=8.5)
+
+    fig.suptitle(
+        "Comparación Directa Pareada por Algoritmo: CHIRPS v2.0 vs. CHIRPS v3.0 (1991–2020)\n"
+        "Evaluación sobre las 29 Estaciones Independientes de Validación Cruzada (Holdout)",
+        fontsize=13, fontweight="bold", y=0.98, color="#0f172a"
+    )
+    plt.tight_layout(rect=[0, 0, 1, 0.94])
     plt.savefig(out_p, dpi=300)
     plt.close()
     return str(out_p)

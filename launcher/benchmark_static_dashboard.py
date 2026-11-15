@@ -73,10 +73,12 @@ def generate_static_html_dashboard(
 
     # Filter by variable
     df_rain = df_ranked[df_ranked["variable"] == "rainfall"].sort_values("rank", ascending=True) if not df_ranked.empty else pd.DataFrame()
+    df_rain_v3 = df_ranked[df_ranked["variable"] == "rainfall_v3"].sort_values("rank", ascending=True) if not df_ranked.empty and "rainfall_v3" in df_ranked["variable"].values else pd.DataFrame()
     df_tmax = df_ranked[df_ranked["variable"] == "tmax"].sort_values("rank", ascending=True) if not df_ranked.empty else pd.DataFrame()
     df_tmin = df_ranked[df_ranked["variable"] == "tmin"].sort_values("rank", ascending=True) if not df_ranked.empty else pd.DataFrame()
 
     win_rain = df_rain[df_rain["is_winner"]].iloc[0].to_dict() if not df_rain.empty and not df_rain[df_rain["is_winner"]].empty else (df_rain.iloc[0].to_dict() if not df_rain.empty else {})
+    win_rain_v3 = df_rain_v3[df_rain_v3["is_winner"]].iloc[0].to_dict() if not df_rain_v3.empty and not df_rain_v3[df_rain_v3["is_winner"]].empty else (df_rain_v3.iloc[0].to_dict() if not df_rain_v3.empty else {})
     win_tmax = df_tmax[df_tmax["is_winner"]].iloc[0].to_dict() if not df_tmax.empty and not df_tmax[df_tmax["is_winner"]].empty else (df_tmax.iloc[0].to_dict() if not df_tmax.empty else {})
     win_tmin = df_tmin[df_tmin["is_winner"]].iloc[0].to_dict() if not df_tmin.empty and not df_tmin[df_tmin["is_winner"]].empty else (df_tmin.iloc[0].to_dict() if not df_tmin.empty else {})
 
@@ -100,9 +102,46 @@ def generate_static_html_dashboard(
         return records
 
     list_rain = enrich_deltas(df_rain)
+    list_rain_v3 = enrich_deltas(df_rain_v3)
     list_tmax = enrich_deltas(df_tmax)
     list_tmin = enrich_deltas(df_tmin)
-    list_all = enrich_deltas(df_ranked.sort_values(["variable", "rank"]))
+    list_all = list_rain + list_rain_v3 + list_tmax + list_tmin
+
+    # Build paired CHIRPS v2 vs v3 list when both are available
+    list_v2_vs_v3 = []
+    if not df_rain.empty and not df_rain_v3.empty:
+        v2_by_base = {}
+        for r in list_rain:
+            base_id = re.sub(r"_v[23]$", "", str(r["experiment_id"]))
+            v2_by_base[base_id] = r
+        v3_by_base = {}
+        for r in list_rain_v3:
+            base_id = re.sub(r"_v[23]$", "", str(r["experiment_id"]))
+            v3_by_base[base_id] = r
+        for base_id in sorted(set(v2_by_base.keys()).intersection(set(v3_by_base.keys()))):
+            r2 = v2_by_base[base_id]
+            r3 = v3_by_base[base_id]
+            dkge = float(r3.get("kge", 0.0)) - float(r2.get("kge", 0.0))
+            drmse = float(r3.get("rmse", 0.0)) - float(r2.get("rmse", 0.0))
+            dgss = float(r3.get("global_skill_score", 0.0)) - float(r2.get("global_skill_score", 0.0))
+            list_v2_vs_v3.append({
+                "base_id": base_id,
+                "is_control": bool("00" in base_id or "Raw" in base_id),
+                "rank_v2": r2.get("rank", 99),
+                "rank_v3": r3.get("rank", 99),
+                "gss_v2": float(r2.get("global_skill_score", 0.0)),
+                "gss_v3": float(r3.get("global_skill_score", 0.0)),
+                "delta_gss": dgss,
+                "kge_v2": float(r2.get("kge", 0.0)),
+                "kge_v3": float(r3.get("kge", 0.0)),
+                "delta_kge": dkge,
+                "rmse_v2": float(r2.get("rmse", 0.0)),
+                "rmse_v3": float(r3.get("rmse", 0.0)),
+                "delta_rmse": drmse,
+                "ets_v2": float(r2.get("ets", 0.0)) if r2.get("ets") is not None else 0.0,
+                "ets_v3": float(r3.get("ets", 0.0)) if r3.get("ets") is not None else 0.0,
+                "better_version": "CHIRPS v3.0" if dkge > 0.001 else ("CHIRPS v2.0" if dkge < -0.001 else "Empate"),
+            })
 
     methodology_html = load_and_render_methodology_doc()
 
@@ -276,8 +315,18 @@ def generate_static_html_dashboard(
                 🌟 Resumen Ejecutivo Multivariable
             </button>
             <button onclick="switchTab('rainfall')" id="tab-btn-rainfall" class="tab-btn px-4 py-2.5 text-xs whitespace-nowrap transition">
-                🌧️ Precipitación Diaria (CHIRPS)
+                🌧️ Precipitación (CHIRPS v2.0)
             </button>
+            {% if list_rain_v3 %}
+            <button onclick="switchTab('rainfall_v3')" id="tab-btn-rainfall_v3" class="tab-btn px-4 py-2.5 text-xs whitespace-nowrap transition">
+                🌧️ Precipitación (CHIRPS v3.0)
+            </button>
+            {% endif %}
+            {% if list_v2_vs_v3 %}
+            <button onclick="switchTab('chirps_v2_vs_v3')" id="tab-btn-chirps_v2_vs_v3" class="tab-btn px-4 py-2.5 text-xs whitespace-nowrap transition">
+                ⚖️ Comparativa CHIRPS v2 vs. v3
+            </button>
+            {% endif %}
             <button onclick="switchTab('tmax')" id="tab-btn-tmax" class="tab-btn px-4 py-2.5 text-xs whitespace-nowrap transition">
                 ☀️ Temperatura Máxima (CHIRTS)
             </button>
@@ -299,12 +348,12 @@ def generate_static_html_dashboard(
         <div id="tab-content-consolidated" class="tab-panel space-y-8">
             
             <!-- Cards de los Ganadores Oficiales -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div class="grid grid-cols-1 {% if win_rain_v3 %}md:grid-cols-4{% else %}md:grid-cols-3{% endif %} gap-5">
                 
-                <!-- Winner Rain Card -->
+                <!-- Winner Rain Card (CHIRPS v2.0) -->
                 <div class="bg-white border-t-4 border-sky-500 rounded-xl p-5 shadow-sm border-x border-b border-slate-200">
                     <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs font-bold text-sky-700 uppercase tracking-wider">Precipitación Diaria</span>
+                        <span class="text-xs font-bold text-sky-700 uppercase tracking-wider">Precipitación (CHIRPS v2.0)</span>
                         <span class="bg-sky-100 text-sky-800 text-[10px] font-bold px-2 py-0.5 rounded border border-sky-300">Rango #01</span>
                     </div>
                     <div class="font-bold text-base text-slate-900 truncate" title="{{ win_rain.experiment_id }}">{{ win_rain.experiment_id }}</div>
@@ -324,6 +373,32 @@ def generate_static_html_dashboard(
                         </div>
                     </div>
                 </div>
+
+                {% if win_rain_v3 %}
+                <!-- Winner Rain v3 Card (CHIRPS v3.0) -->
+                <div class="bg-white border-t-4 border-teal-500 rounded-xl p-5 shadow-sm border-x border-b border-slate-200">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold text-teal-700 uppercase tracking-wider">Precipitación (CHIRPS v3.0)</span>
+                        <span class="bg-teal-100 text-teal-800 text-[10px] font-bold px-2 py-0.5 rounded border border-teal-300">Rango #01</span>
+                    </div>
+                    <div class="font-bold text-base text-slate-900 truncate" title="{{ win_rain_v3.experiment_id }}">{{ win_rain_v3.experiment_id }}</div>
+                    <p class="text-[11px] text-slate-500 mt-1 line-clamp-2">{{ win_rain_v3.description }}</p>
+                    <div class="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-slate-100 text-center">
+                        <div class="bg-slate-50 p-1.5 rounded">
+                            <div class="text-[9px] uppercase text-slate-400 font-semibold">GSS</div>
+                            <div class="text-xs font-bold text-teal-700">{{ "%.3f"|format(win_rain_v3.global_skill_score) }}</div>
+                        </div>
+                        <div class="bg-slate-50 p-1.5 rounded">
+                            <div class="text-[9px] uppercase text-slate-400 font-semibold">KGE</div>
+                            <div class="text-xs font-bold text-slate-900">{{ "%.3f"|format(win_rain_v3.kge) }}</div>
+                        </div>
+                        <div class="bg-slate-50 p-1.5 rounded">
+                            <div class="text-[9px] uppercase text-slate-400 font-semibold">RMSE</div>
+                            <div class="text-xs font-bold text-emerald-700">{{ "%.2f"|format(win_rain_v3.rmse) }} <span class="text-[8px]">mm</span></div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
 
                 <!-- Winner Tmax Card -->
                 <div class="bg-white border-t-4 border-amber-500 rounded-xl p-5 shadow-sm border-x border-b border-slate-200">
@@ -397,8 +472,8 @@ def generate_static_html_dashboard(
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                     <div>
                         <h3 class="font-bold text-sm text-slate-900 flex items-center gap-2">
-                            <span>📋 Tabla Maestra Consolidada: Los 42 Experimentos de Centroamérica</span>
-                            <span class="bg-slate-100 text-slate-700 text-[10px] font-mono px-2 py-0.5 rounded border border-slate-300">42 Experimentos Evaluados</span>
+                            <span>📋 Tabla Maestra Consolidada: Todos los Experimentos Evaluados</span>
+                            <span class="bg-slate-100 text-slate-700 text-[10px] font-mono px-2 py-0.5 rounded border border-slate-300">{{ list_all|length }} Experimentos Evaluados</span>
                         </h3>
                         <p class="text-[11px] text-slate-500">Haga clic en el encabezado de cualquier columna para ordenar de forma ascendente o descendente.</p>
                     </div>
@@ -665,10 +740,10 @@ def generate_static_html_dashboard(
                     <div class="fig-card lg:col-span-2">
                         <div>
                             <div class="text-[10px] font-bold text-rose-700 uppercase tracking-wider mb-1">Figura 7 • Espacio Polar</div>
-                            <h4 class="font-bold text-sm text-slate-900">Diagrama Polar Clásico de Taylor: Precipitación Diaria</h4>
+                            <h4 class="font-bold text-sm text-slate-900">Diagrama Polar Clásico de Taylor: Precipitación Diaria (CHIRPS v2.0)</h4>
                             <p class="text-xs text-slate-600 mt-1">Experimento óptimo claramente destacado con llamada y aureola dorada. Eje base explicativo de RMSE y ángulo de correlación en 2 líneas.</p>
                         </div>
-                        <div class="mt-3 cursor-pointer flex justify-center bg-slate-50 p-3 rounded-lg border border-slate-200" onclick="openModal('{{ fig_rain.taylor }}', 'Figura 7: Diagrama Polar de Taylor (Precipitación)')">
+                        <div class="mt-3 cursor-pointer flex justify-center bg-slate-50 p-3 rounded-lg border border-slate-200" onclick="openModal('{{ fig_rain.taylor }}', 'Figura 7: Diagrama Polar de Taylor (Precipitación CHIRPS v2.0)')">
                             <img src="{{ fig_rain.taylor }}" alt="Taylor Diagram Lluvia" class="max-h-84 object-contain">
                         </div>
                         <div class="mt-3 pt-2 border-t border-slate-100 flex justify-between items-center">
@@ -680,6 +755,296 @@ def generate_static_html_dashboard(
             </div>
 
         </div>
+
+        {% if list_rain_v3 %}
+        <!-- ========================================================================= -->
+        <!-- TAB 2B: PRECIPITACIÓN DIARIA (CHIRPS v3.0) -->
+        <!-- ========================================================================= -->
+        <div id="tab-content-rainfall_v3" class="tab-panel hidden space-y-8">
+            
+            {% if win_rain_v3 %}
+            <div class="bg-gradient-to-r from-teal-50 via-white to-teal-50 border border-teal-300 rounded-xl p-6 shadow-sm relative overflow-hidden">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative z-10">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="bg-teal-600 text-white text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded">Experimento Óptimo Seleccionado (CHIRPS v3.0)</span>
+                            <span class="text-xs text-teal-800 font-mono font-bold">Rango #01 en Precipitación Diaria (CHIRPS v3.0)</span>
+                        </div>
+                        <h2 class="text-2xl font-black text-slate-900 tracking-tight">{{ win_rain_v3.experiment_id }}</h2>
+                        <p class="text-xs text-slate-600 max-w-2xl mt-1 leading-relaxed">{{ win_rain_v3.description }}</p>
+                    </div>
+                    <div class="grid grid-cols-4 gap-3 bg-white rounded-lg p-3 border border-teal-200 text-center shadow-sm">
+                        <div class="px-2">
+                            <div class="text-[10px] uppercase text-slate-500 font-semibold">GSS</div>
+                            <div class="text-base font-bold text-teal-700">{{ "%.3f"|format(win_rain_v3.global_skill_score) }}</div>
+                        </div>
+                        <div class="px-2">
+                            <div class="text-[10px] uppercase text-slate-500 font-semibold">KGE</div>
+                            <div class="text-base font-bold text-slate-900">{{ "%.3f"|format(win_rain_v3.kge) }}</div>
+                        </div>
+                        <div class="px-2">
+                            <div class="text-[10px] uppercase text-slate-500 font-semibold">Pearson r</div>
+                            <div class="text-base font-bold text-slate-700">{{ "%.3f"|format(win_rain_v3.r) }}</div>
+                        </div>
+                        <div class="px-2">
+                            <div class="text-[10px] uppercase text-slate-500 font-semibold">RMSE</div>
+                            <div class="text-base font-bold text-emerald-700">{{ "%.2f"|format(win_rain_v3.rmse) }} <span class="text-[9px]">mm</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Master Table for Rainfall v3 -->
+            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                    <div>
+                        <h3 class="font-bold text-sm text-slate-900 flex items-center gap-2">
+                            <span>📋 Tabla Maestra de Experimentos de Corrección: Precipitación Diaria (CHIRPS v3.0)</span>
+                            <span class="bg-teal-100 text-teal-800 border border-teal-300 text-[10px] font-mono px-2 py-0.5 rounded">{{ list_rain_v3|length }} Experimentos Evaluados</span>
+                        </h3>
+                        <p class="text-[11px] text-slate-500">Haga clic en el encabezado de cualquier columna para ordenar ascendentemente o descendentemente.</p>
+                    </div>
+                    <input type="text" id="searchRainV3" onkeyup="filterTable('tableRainV3', 'searchRainV3')" placeholder="🔍 Filtrar experimento v3..." class="bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-teal-500 focus:bg-white transition">
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table id="tableRainV3" class="data-table w-full text-xs">
+                        <thead>
+                            <tr>
+                                <th class="sortable-th" onclick="sortTable('tableRainV3', 0, 'num')">Rango <span class="sort-icon">⇅</span></th>
+                                <th class="sortable-th" onclick="sortTable('tableRainV3', 1, 'str')">ID Experimento <span class="sort-icon">⇅</span></th>
+                                <th class="sortable-th" onclick="sortTable('tableRainV3', 2, 'num')">GSS <span class="sort-icon">⇅</span></th>
+                                <th class="sortable-th" onclick="sortTable('tableRainV3', 3, 'num')">KGE Medio <span class="sort-icon">⇅</span></th>
+                                <th class="sortable-th" onclick="sortTable('tableRainV3', 4, 'num')">Pearson r <span class="sort-icon">⇅</span></th>
+                                <th class="sortable-th" onclick="sortTable('tableRainV3', 5, 'num')">RMSE (mm) <span class="sort-icon">⇅</span></th>
+                                <th class="sortable-th" onclick="sortTable('tableRainV3', 6, 'num')">MAE (mm) <span class="sort-icon">⇅</span></th>
+                                <th class="sortable-th" onclick="sortTable('tableRainV3', 7, 'num')">PBIAS (%) <span class="sort-icon">⇅</span></th>
+                                <th class="sortable-th" onclick="sortTable('tableRainV3', 8, 'num')">ETS (Lluvia) <span class="sort-icon">⇅</span></th>
+                                <th class="sortable-th" onclick="sortTable('tableRainV3', 9, 'num')">Δ KGE vs CHIRPS v3.0 Original <span class="sort-icon">⇅</span></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for e in list_rain_v3 %}
+                            <tr class="{% if e.is_winner %}bg-emerald-50 text-emerald-950 font-bold{% elif e.is_control %}bg-slate-100 text-slate-800 font-semibold{% endif %}">
+                                <td class="font-mono">#{{ e.rank }}</td>
+                                <td class="font-mono text-left font-medium">
+                                    <span>{{ e.experiment_id }}</span>
+                                    {% if e.is_winner %}
+                                    <span class="ml-1.5 bg-emerald-100 text-emerald-800 text-[10px] px-1.5 py-0.5 rounded border border-emerald-300 font-bold">🏆 Ganador Climatológico</span>
+                                    {% elif "Baseline" in e.experiment_id %}
+                                    <span class="ml-1.5 bg-amber-100 text-amber-800 text-[10px] px-1.5 py-0.5 rounded border border-amber-300 font-bold">📐 Línea Base 2D</span>
+                                    {% elif e.is_control %}
+                                    <span class="ml-1.5 bg-slate-200 text-slate-700 text-[10px] px-1.5 py-0.5 rounded border border-slate-300 font-bold">⚡ Rejilla Original v3.0</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ "%.3f"|format(e.global_skill_score) }}</td>
+                                <td>{{ "%.3f"|format(e.kge) }}</td>
+                                <td>{{ "%.3f"|format(e.r) }}</td>
+                                <td>{{ "%.2f"|format(e.rmse) }}</td>
+                                <td>{{ "%.2f"|format(e.mae) }}</td>
+                                <td>{{ "%+.1f"|format(e.pbias) }}%</td>
+                                <td>{{ "%.3f"|format(e.ets) if e.ets is defined and e.ets is not none and e.ets == e.ets else "-" }}</td>
+                                <td class="{% if e.delta_kge_raw > 0 %}text-emerald-700 font-bold{% elif e.delta_kge_raw < 0 %}text-rose-700{% else %}text-slate-500{% endif %}">
+                                    <span>{{ "%+.3f"|format(e.delta_kge_raw) }} pts</span>
+                                    <span class="text-[11px] font-normal text-slate-500">({{ "%+.1f"|format(e.pct_kge_gain) }}%)</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Figures Grid for Rainfall v3 -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="fig-card">
+                    <div>
+                        <div class="text-[10px] font-bold text-teal-700 uppercase tracking-wider mb-1">Figura 1 • Dispersión (CHIRPS v3.0)</div>
+                        <h4 class="font-bold text-sm text-slate-900">Distribución de Eficiencia KGE en Estaciones Holdout (CHIRPS v3.0)</h4>
+                    </div>
+                    <div class="mt-3 cursor-pointer bg-slate-50 p-2 rounded-lg border border-slate-200" onclick="openModal('{{ fig_rain_v3.kge_boxplots }}', 'Figura 1: Boxplots de KGE por Estación (CHIRPS v3.0)')">
+                        <img src="{{ fig_rain_v3.kge_boxplots }}" alt="Boxplots KGE Lluvia v3" class="max-h-72 object-contain w-full">
+                    </div>
+                    <div class="mt-3 pt-2 border-t border-slate-100 flex justify-between items-center">
+                        <span class="text-[10px] text-slate-500 font-mono">300 DPI • CHIRPS v3.0</span>
+                        <a href="{{ fig_rain_v3.kge_boxplots }}" download class="text-xs bg-slate-100 hover:bg-teal-600 hover:text-white text-slate-700 px-3 py-1.5 rounded transition font-medium border border-slate-300">📥 Descargar</a>
+                    </div>
+                </div>
+
+                <div class="fig-card">
+                    <div>
+                        <div class="text-[10px] font-bold text-emerald-700 uppercase tracking-wider mb-1">Figura 2 • Frontera Pareto (CHIRPS v3.0)</div>
+                        <h4 class="font-bold text-sm text-slate-900">Espacio de Precisión: RMSE vs. KGE (CHIRPS v3.0)</h4>
+                    </div>
+                    <div class="mt-3 cursor-pointer bg-slate-50 p-2 rounded-lg border border-slate-200" onclick="openModal('{{ fig_rain_v3.pareto }}', 'Figura 2: Scatter Pareto KGE vs. RMSE (CHIRPS v3.0)')">
+                        <img src="{{ fig_rain_v3.pareto }}" alt="Scatter Pareto Lluvia v3" class="max-h-72 object-contain w-full">
+                    </div>
+                    <div class="mt-3 pt-2 border-t border-slate-100 flex justify-between items-center">
+                        <span class="text-[10px] text-slate-500 font-mono">300 DPI • CHIRPS v3.0</span>
+                        <a href="{{ fig_rain_v3.pareto }}" download class="text-xs bg-slate-100 hover:bg-emerald-600 hover:text-white text-slate-700 px-3 py-1.5 rounded transition font-medium border border-slate-300">📥 Descargar</a>
+                    </div>
+                </div>
+
+                <div class="fig-card">
+                    <div>
+                        <div class="text-[10px] font-bold text-emerald-700 uppercase tracking-wider mb-1">Figura 3 • Ganancia Neta (CHIRPS v3.0)</div>
+                        <h4 class="font-bold text-sm text-slate-900">Ganancia Neta (Δ KGE) respecto a CHIRPS v3.0 Original</h4>
+                    </div>
+                    <div class="mt-3 cursor-pointer bg-slate-50 p-2 rounded-lg border border-slate-200" onclick="openModal('{{ fig_rain_v3.divergent }}', 'Figura 3: Barras Divergentes Δ KGE (CHIRPS v3.0)')">
+                        <img src="{{ fig_rain_v3.divergent }}" alt="Barras Divergentes Lluvia v3" class="max-h-72 object-contain w-full">
+                    </div>
+                    <div class="mt-3 pt-2 border-t border-slate-100 flex justify-between items-center">
+                        <span class="text-[10px] text-slate-500 font-mono">300 DPI • CHIRPS v3.0</span>
+                        <a href="{{ fig_rain_v3.divergent }}" download class="text-xs bg-slate-100 hover:bg-emerald-600 hover:text-white text-slate-700 px-3 py-1.5 rounded transition font-medium border border-slate-300">📥 Descargar</a>
+                    </div>
+                </div>
+
+                <div class="fig-card">
+                    <div>
+                        <div class="text-[10px] font-bold text-amber-700 uppercase tracking-wider mb-1">Figura 4 • Síntesis Multicriterio (CHIRPS v3.0)</div>
+                        <h4 class="font-bold text-sm text-slate-900">Matriz Diagnóstica de Rendimiento Climatológico (CHIRPS v3.0)</h4>
+                    </div>
+                    <div class="mt-3 cursor-pointer bg-slate-50 p-2 rounded-lg border border-slate-200" onclick="openModal('{{ fig_rain_v3.heatmap }}', 'Figura 4: Matriz Heatmap Multimétrica (CHIRPS v3.0)')">
+                        <img src="{{ fig_rain_v3.heatmap }}" alt="Heatmap Multimétrica Lluvia v3" class="max-h-72 object-contain w-full">
+                    </div>
+                    <div class="mt-3 pt-2 border-t border-slate-100 flex justify-between items-center">
+                        <span class="text-[10px] text-slate-500 font-mono">300 DPI • CHIRPS v3.0</span>
+                        <a href="{{ fig_rain_v3.heatmap }}" download class="text-xs bg-slate-100 hover:bg-amber-600 hover:text-white text-slate-700 px-3 py-1.5 rounded transition font-medium border border-slate-300">📥 Descargar</a>
+                    </div>
+                </div>
+
+                <div class="fig-card">
+                    <div>
+                        <div class="text-[10px] font-bold text-teal-700 uppercase tracking-wider mb-1">Figura 5 • Geografía Regional (CHIRPS v3.0)</div>
+                        <h4 class="font-bold text-sm text-slate-900">Distribución Espacial de la Ganancia Neta (Δ KGE) con CHIRPS v3.0</h4>
+                    </div>
+                    <div class="mt-3 cursor-pointer bg-slate-50 p-2 rounded-lg border border-slate-200" onclick="openModal('{{ fig_rain_v3.map }}', 'Figura 5: Mapa Espacial Regional de Ganancia (CHIRPS v3.0)')">
+                        <img src="{{ fig_rain_v3.map }}" alt="Mapa Espacial Lluvia v3" class="max-h-72 object-contain w-full">
+                    </div>
+                    <div class="mt-3 pt-2 border-t border-slate-100 flex justify-between items-center">
+                        <span class="text-[10px] text-slate-500 font-mono">300 DPI • CHIRPS v3.0</span>
+                        <a href="{{ fig_rain_v3.map }}" download class="text-xs bg-slate-100 hover:bg-teal-600 hover:text-white text-slate-700 px-3 py-1.5 rounded transition font-medium border border-slate-300">📥 Descargar</a>
+                    </div>
+                </div>
+
+                <div class="fig-card">
+                    <div>
+                        <div class="text-[10px] font-bold text-violet-700 uppercase tracking-wider mb-1">Figura 6 • Orografía (CHIRPS v3.0)</div>
+                        <h4 class="font-bold text-sm text-slate-900">Rendimiento por Estratos Topográficos de Elevación (CHIRPS v3.0)</h4>
+                    </div>
+                    <div class="mt-3 cursor-pointer bg-slate-50 p-2 rounded-lg border border-slate-200" onclick="openModal('{{ fig_rain_v3.strata }}', 'Figura 6: Estratos de Elevación (CHIRPS v3.0)')">
+                        <img src="{{ fig_rain_v3.strata }}" alt="Estratos Elevación Lluvia v3" class="max-h-72 object-contain w-full">
+                    </div>
+                    <div class="mt-3 pt-2 border-t border-slate-100 flex justify-between items-center">
+                        <span class="text-[10px] text-slate-500 font-mono">300 DPI • CHIRPS v3.0</span>
+                        <a href="{{ fig_rain_v3.strata }}" download class="text-xs bg-slate-100 hover:bg-violet-600 hover:text-white text-slate-700 px-3 py-1.5 rounded transition font-medium border border-slate-300">📥 Descargar</a>
+                    </div>
+                </div>
+
+                <div class="fig-card lg:col-span-2">
+                    <div>
+                        <div class="text-[10px] font-bold text-rose-700 uppercase tracking-wider mb-1">Figura 7 • Espacio Polar (CHIRPS v3.0)</div>
+                        <h4 class="font-bold text-sm text-slate-900">Diagrama Polar Clásico de Taylor: Precipitación Diaria (CHIRPS v3.0)</h4>
+                    </div>
+                    <div class="mt-3 cursor-pointer flex justify-center bg-slate-50 p-3 rounded-lg border border-slate-200" onclick="openModal('{{ fig_rain_v3.taylor }}', 'Figura 7: Diagrama Polar de Taylor (Precipitación CHIRPS v3.0)')">
+                        <img src="{{ fig_rain_v3.taylor }}" alt="Taylor Diagram Lluvia v3" class="max-h-84 object-contain">
+                    </div>
+                    <div class="mt-3 pt-2 border-t border-slate-100 flex justify-between items-center">
+                        <span class="text-[10px] text-slate-500 font-mono">300 DPI • Taylor (2001)</span>
+                        <a href="{{ fig_rain_v3.taylor }}" download class="text-xs bg-slate-100 hover:bg-rose-600 hover:text-white text-slate-700 px-3 py-1.5 rounded transition font-medium border border-slate-300">📥 Descargar</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if list_v2_vs_v3 %}
+        <!-- ========================================================================= -->
+        <!-- TAB 2C: COMPARATIVA DIRECTA CHIRPS v2.0 vs. CHIRPS v3.0 -->
+        <!-- ========================================================================= -->
+        <div id="tab-content-chirps_v2_vs_v3" class="tab-panel hidden space-y-8">
+            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-100 pb-3">
+                    <div>
+                        <h3 class="font-bold text-base text-slate-900">Comparativa Pareada Directa: CHIRPS v2.0 vs. CHIRPS v3.0 (R00–R15)</h3>
+                        <p class="text-xs text-slate-500">Evaluación bajo configuraciones idénticas de corrección de sesgo y fusión espacial en las estaciones holdout independientes</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <a href="benchmark_chirps_v2_vs_v3_comparison.csv" download class="inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-3 py-2 rounded-lg border border-slate-300 transition">
+                            <span>📊 CSV Pareado</span>
+                        </a>
+                        <a href="{{ comp_v2_vs_v3 }}" download class="inline-flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition shadow-sm">
+                            <span>⬇️ Descargar Figura (300 DPI)</span>
+                        </a>
+                    </div>
+                </div>
+                <div class="bg-slate-50 rounded-lg p-3 border border-slate-200 flex justify-center cursor-pointer hover:border-slate-400 transition" onclick="openModal('{{ comp_v2_vs_v3 }}', 'Comparativa Directa CHIRPS v2.0 vs. CHIRPS v3.0 (R00–R15)')">
+                    <img src="{{ comp_v2_vs_v3 }}" alt="Comparativa CHIRPS v2 vs v3" class="rounded max-h-[600px] object-contain shadow-sm">
+                </div>
+            </div>
+
+            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                    <div>
+                        <h3 class="font-bold text-sm text-slate-900 flex items-center gap-2">
+                            <span>📋 Tabla Comparativa Pareada por Experimento: CHIRPS v2.0 vs. CHIRPS v3.0</span>
+                            <span class="bg-teal-100 text-teal-800 border border-teal-300 text-[10px] font-mono px-2 py-0.5 rounded">{{ list_v2_vs_v3|length }} Pares Evaluados</span>
+                        </h3>
+                        <p class="text-[11px] text-slate-500">Δ KGE positivo (verde) indica que CHIRPS v3.0 supera a CHIRPS v2.0 bajo el mismo algoritmo.</p>
+                    </div>
+                    <input type="text" id="searchV2V3" onkeyup="filterTable('tableV2V3', 'searchV2V3')" placeholder="🔍 Filtrar experimento..." class="bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-teal-500 focus:bg-white transition">
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table id="tableV2V3" class="data-table w-full text-xs">
+                        <thead>
+                            <tr>
+                                <th class="sortable-th" onclick="sortTable('tableV2V3', 0, 'str')">Experimento Base <span class="sort-icon">⇅</span></th>
+                                <th class="sortable-th" onclick="sortTable('tableV2V3', 1, 'num')">KGE v2.0 <span class="sort-icon">⇅</span></th>
+                                <th class="sortable-th" onclick="sortTable('tableV2V3', 2, 'num')">KGE v3.0 <span class="sort-icon">⇅</span></th>
+                                <th class="sortable-th" onclick="sortTable('tableV2V3', 3, 'num')">Δ KGE (v3 - v2) <span class="sort-icon">⇅</span></th>
+                                <th class="sortable-th" onclick="sortTable('tableV2V3', 4, 'num')">RMSE v2.0 (mm) <span class="sort-icon">⇅</span></th>
+                                <th class="sortable-th" onclick="sortTable('tableV2V3', 5, 'num')">RMSE v3.0 (mm) <span class="sort-icon">⇅</span></th>
+                                <th class="sortable-th" onclick="sortTable('tableV2V3', 6, 'num')">Δ RMSE (v3 - v2) <span class="sort-icon">⇅</span></th>
+                                <th class="sortable-th" onclick="sortTable('tableV2V3', 7, 'num')">ETS v2.0 <span class="sort-icon">⇅</span></th>
+                                <th class="sortable-th" onclick="sortTable('tableV2V3', 8, 'num')">ETS v3.0 <span class="sort-icon">⇅</span></th>
+                                <th class="sortable-th" onclick="sortTable('tableV2V3', 9, 'str')">Versión Superior <span class="sort-icon">⇅</span></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in list_v2_vs_v3 %}
+                            <tr class="{% if p.is_control %}bg-slate-100 text-slate-800 font-semibold{% endif %}">
+                                <td class="font-mono text-left font-medium">{{ p.base_id }}</td>
+                                <td>{{ "%.3f"|format(p.kge_v2) }}</td>
+                                <td>{{ "%.3f"|format(p.kge_v3) }}</td>
+                                <td class="{% if p.delta_kge > 0.001 %}text-emerald-700 font-bold{% elif p.delta_kge < -0.001 %}text-sky-700 font-bold{% else %}text-slate-500{% endif %}">
+                                    {{ "%+.3f"|format(p.delta_kge) }}
+                                </td>
+                                <td>{{ "%.2f"|format(p.rmse_v2) }}</td>
+                                <td>{{ "%.2f"|format(p.rmse_v3) }}</td>
+                                <td class="{% if p.delta_rmse < -0.01 %}text-emerald-700 font-bold{% elif p.delta_rmse > 0.01 %}text-rose-700{% else %}text-slate-500{% endif %}">
+                                    {{ "%+.2f"|format(p.delta_rmse) }}
+                                </td>
+                                <td>{{ "%.3f"|format(p.ets_v2) }}</td>
+                                <td>{{ "%.3f"|format(p.ets_v3) }}</td>
+                                <td>
+                                    {% if p.better_version == "CHIRPS v3.0" %}
+                                    <span class="bg-teal-100 text-teal-800 text-[10px] px-2 py-0.5 rounded border border-teal-300 font-bold">CHIRPS v3.0</span>
+                                    {% elif p.better_version == "CHIRPS v2.0" %}
+                                    <span class="bg-sky-100 text-sky-800 text-[10px] px-2 py-0.5 rounded border border-sky-300 font-bold">CHIRPS v2.0</span>
+                                    {% else %}
+                                    <span class="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded border border-slate-300">Empate</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
 
         <!-- ========================================================================= -->
         <!-- TAB 3: TEMPERATURA MÁXIMA (CHIRTS) -->
@@ -1272,16 +1637,21 @@ def generate_static_html_dashboard(
     rendered_html = tmpl.render(
         timestamp=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         win_rain=win_rain,
+        win_rain_v3=win_rain_v3,
         win_tmax=win_tmax,
         win_tmin=win_tmin,
         list_rain=list_rain,
+        list_rain_v3=list_rain_v3,
+        list_v2_vs_v3=list_v2_vs_v3,
         list_tmax=list_tmax,
         list_tmin=list_tmin,
         list_all=list_all,
         fig_rain=figures_map.get("rainfall", {}),
+        fig_rain_v3=figures_map.get("rainfall_v3", {}),
         fig_tmax=figures_map.get("tmax", {}),
         fig_tmin=figures_map.get("tmin", {}),
         comp_overview=comparison_figures.get("overview", "figures/comparisons_winner_vs_raw/comparison_all_variables_executive_summary.png"),
+        comp_v2_vs_v3=comparison_figures.get("chirps_v2_vs_v3", "figures/comparisons_winner_vs_raw/comparison_chirps_v2_vs_v3_head_to_head.png"),
         methodology_html=methodology_html,
     )
 

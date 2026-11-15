@@ -20,6 +20,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 import argparse
+import copy
 import datetime
 import json
 import os
@@ -298,6 +299,7 @@ class ExperimentRunner:
         nb_cores: Optional[Union[int, str]] = "auto",
         rscript_path: Optional[Path | str] = None,
         is_production: bool = False,
+        chirps_version: str = "v2",
     ):
         """Initialize runner with path to a YAML configuration file or directory of YAMLs."""
         self.config_target = Path(config_target).resolve()
@@ -307,6 +309,7 @@ class ExperimentRunner:
         self.base_config_path = Path(base_config_path).resolve() if base_config_path else None
         self.region = (region or "ca").lower()
         self.is_production = is_production
+        self.chirps_version = (chirps_version or "v2").lower().strip()
         
         # Parse nb_cores
         parsed_cores: Optional[Union[int, str]] = None
@@ -380,6 +383,7 @@ class ExperimentRunner:
 
     def _normalize_experiment_paths(self, exp: Dict[str, Any]) -> Dict[str, Any]:
         """Normalize paths depending on variable type (rainfall vs temperature) and region."""
+        exp = copy.deepcopy(exp)
         var_type = exp.get("variable_type", "rainfall").lower()
         exp_id = exp.get("experiment_id", exp.get("id", "EXP"))
         paths = dict(exp.get("paths", {}))
@@ -392,9 +396,39 @@ class ExperimentRunner:
                 if k not in ("name", "benchmark_dir"):
                     paths[k] = v
 
+        # Handle CHIRPS v3 specialization when running rainfall_v3 suite
+        is_rain_var = var_type in ("rainfall", "rain", "precip", "rainfall_v3", "chirps_v3")
+        is_v3 = (self.chirps_version in ("v3", "3", "chirpsv3", "chirps_v3") or var_type in ("rainfall_v3", "chirps_v3") or exp_id.lower().endswith("_v3"))
+        if is_rain_var and is_v3:
+            var_type = "rainfall_v3"
+            exp["variable_type"] = "rainfall_v3"
+            if not exp_id.lower().endswith("_v3"):
+                exp_id = f"{exp_id}_v3"
+                exp["experiment_id"] = exp_id
+                exp["id"] = exp_id
+            desc_val = str(exp.get("description", ""))
+            if "chirps v3" not in desc_val.lower() and "chirpsv3" not in desc_val.lower():
+                exp["description"] = f"[CHIRPS v3] {desc_val}".strip()
+            # Override output_dir / log_dir if they came from YAML with old non-_v3 id
+            if "output_dir" in paths and not str(paths["output_dir"]).lower().endswith("_v3"):
+                paths["output_dir"] = f"{paths['output_dir']}_v3"
+            if "log_dir" in paths and not str(paths["log_dir"]).lower().endswith("_v3"):
+                paths["log_dir"] = f"{paths['log_dir']}_v3"
+            # Override post_processing filename to include _v3
+            post_proc = dict(exp.get("post_processing", {}))
+            if "output_filename" in post_proc and not str(post_proc["output_filename"]).lower().endswith("_v3.nc"):
+                stem_fn = Path(post_proc["output_filename"]).stem
+                post_proc["output_filename"] = f"{stem_fn}_v3.nc"
+                exp["post_processing"] = post_proc
+
         # Auto-map generic satellite_dir and stations_file from base_config if not explicitly overridden
-        if "satellite_dir" not in paths:
-            if var_type in ("rainfall", "rain", "precip"):
+        if "satellite_dir" not in paths or (var_type == "rainfall_v3"):
+            if var_type == "rainfall_v3":
+                def_v3_dir = f"data/chirpsv3_daily/{self.region}" if self.region in ("ca", "rd") else "data/chirpsv3_daily"
+                paths["satellite_dir"] = paths.get("satellite_rainfall_v3_dir", def_v3_dir)
+                paths["satellite_format"] = paths.get("satellite_rainfall_format", "chirps_%s%s%s.nc")
+                paths["var_id"] = paths.get("var_id", "precip")
+            elif var_type in ("rainfall", "rain", "precip"):
                 paths["satellite_dir"] = paths.get("satellite_rainfall_dir", "data/chirps_daily")
                 paths["satellite_format"] = paths.get("satellite_rainfall_format", "chirps_%s%s%s.nc")
                 paths["var_id"] = paths.get("var_id", "precip")
@@ -418,7 +452,7 @@ class ExperimentRunner:
 
         if "stations_file" not in paths:
             reg_suffix = f"_{self.region}" if self.region in ("ca", "rd") else "_all"
-            if var_type in ("rainfall", "rain", "precip"):
+            if var_type in ("rainfall", "rain", "precip", "rainfall_v3"):
                 paths["stations_file"] = paths.get(
                     "stations_rainfall_file", f"data/stations/precip_stations{reg_suffix}.csv"
                 )
@@ -439,7 +473,7 @@ class ExperimentRunner:
 
         # Resolve holdout / omitted stations file based on variable type and region
         reg_suffix = f"_{self.region}" if self.region in ("ca", "rd") else ""
-        if var_type in ("rainfall", "rain", "precip"):
+        if var_type in ("rainfall", "rain", "precip", "rainfall_v3"):
             cand_candidates = [
                 paths.get("holdout_rainfall_file"),
                 f"data/stations/validation_holdout_stations_rainfall{reg_suffix}.csv" if reg_suffix else None,
@@ -599,18 +633,28 @@ class ExperimentRunner:
             evaluated_raw_vars = set()
             for exp_item in experiments:
                 v_type = exp_item.get("variable_type", "rainfall").lower()
-                v_key = "rainfall" if v_type in ("rainfall", "rain", "precip") else ("tmax" if "tmax" in v_type else "tmin")
+                if v_type == "rainfall_v3" or "v3" in v_type:
+                    v_key = "rainfall_v3"
+                elif v_type in ("rainfall", "rain", "precip"):
+                    v_key = "rainfall"
+                elif "tmax" in v_type:
+                    v_key = "tmax"
+                else:
+                    v_key = "tmin"
                 if v_key in evaluated_raw_vars:
                     continue
                 evaluated_raw_vars.add(v_key)
                 try:
                     from launcher.evaluate_raw_baseline import evaluate_raw_grid
                     p_cfg = exp_item.get("paths", {})
-                    raw_nc = (
-                        p_cfg.get(f"raw_3d_netcdf_{v_key}")
-                        or p_cfg.get("raw_3d_netcdf_rainfall" if v_key == "rainfall" else f"raw_3d_netcdf_{v_key}")
-                    )
-                    stn_f = p_cfg.get("stations_file") or p_cfg.get(f"stations_{v_key}_file")
+                    if v_key == "rainfall_v3":
+                        raw_nc = p_cfg.get("raw_3d_netcdf_rainfall_v3") or p_cfg.get("raw_3d_netcdf_rainfall")
+                    else:
+                        raw_nc = (
+                            p_cfg.get(f"raw_3d_netcdf_{v_key}")
+                            or p_cfg.get("raw_3d_netcdf_rainfall" if v_key == "rainfall" else f"raw_3d_netcdf_{v_key}")
+                        )
+                    stn_f = p_cfg.get("stations_file") or p_cfg.get(f"stations_{'rainfall' if v_key.startswith('rainfall') else v_key}_file")
                     hold_f = (
                         p_cfg.get("holdout_stations_file")
                         or p_cfg.get("omitted_stations_file")
@@ -775,18 +819,35 @@ class ExperimentRunner:
 
             current_nc_count = len(list(sat_dir.glob("*.nc"))) if (sat_dir and sat_dir.exists()) else 0
 
-            if sat_dir and current_nc_count < expected_days:
-                raw_key = f"raw_3d_netcdf_{var_type}" if var_type in ("rainfall", "precip") else f"raw_3d_netcdf_{var_type}"
-                raw_path_str = paths.get(raw_key) or paths.get("raw_3d_netcdf_rainfall" if var_type in ("rainfall", "precip") else "raw_3d_netcdf_tmax")
-                if not raw_path_str or not Path(raw_path_str).exists():
-                    cand_3d_files = sorted(list(Path("data/raw_netcdf").glob("*.nc"))) if Path("data/raw_netcdf").exists() else []
-                    reg_keywords = ("la_espanola", "rd", "dominicana") if self.region == "rd" else ("centroamerica", "ca", "ac")
-                    # First pass: match variable AND region keyword
+            # Resolve expected 3D NetCDF source file (tolerating - vs _ and distinguishing chirpsv2 vs chirpsv3)
+            if var_type == "rainfall_v3":
+                raw_path_str = paths.get("raw_3d_netcdf_rainfall_v3") or paths.get("raw_3d_netcdf_rainfall")
+            elif var_type in ("rainfall", "precip", "rain"):
+                raw_path_str = paths.get("raw_3d_netcdf_rainfall")
+            else:
+                raw_path_str = paths.get(f"raw_3d_netcdf_{var_type}")
+
+            if raw_path_str and not Path(raw_path_str).exists():
+                p_cand = Path(raw_path_str)
+                alt1 = p_cand.with_name(p_cand.name.replace("-", "_"))
+                alt2 = p_cand.with_name(p_cand.name.replace("_", "-"))
+                if alt1.exists():
+                    raw_path_str = str(alt1)
+                elif alt2.exists():
+                    raw_path_str = str(alt2)
+
+            if not raw_path_str or not Path(raw_path_str).exists():
+                cand_3d_files = sorted(list(Path("data/raw_netcdf").glob("*.nc"))) if Path("data/raw_netcdf").exists() else []
+                reg_keywords = ("la_espanola", "rd", "dominicana") if self.region == "rd" else ("centroamerica", "ca", "ac")
+                for require_reg in (True, False):
                     for cf in cand_3d_files:
                         cname = cf.name.lower()
-                        if not any(rk in cname for rk in reg_keywords):
+                        if require_reg and not any(rk in cname for rk in reg_keywords):
                             continue
-                        if var_type in ("rainfall", "precip") and ("chirps" in cname or "precip" in cname):
+                        if var_type == "rainfall_v3" and ("chirpsv3" in cname or "chirps_v3" in cname or "chirps3" in cname):
+                            raw_path_str = str(cf)
+                            break
+                        elif var_type in ("rainfall", "precip", "rain") and ("chirps" in cname or "precip" in cname) and "v3" not in cname:
                             raw_path_str = str(cf)
                             break
                         elif "tmax" in var_type and "tmax" in cname:
@@ -795,19 +856,29 @@ class ExperimentRunner:
                         elif "tmin" in var_type and "tmin" in cname:
                             raw_path_str = str(cf)
                             break
-                    # Second pass fallback: match variable only
-                    if not raw_path_str or not Path(raw_path_str).exists():
-                        for cf in cand_3d_files:
-                            cname = cf.name.lower()
-                            if var_type in ("rainfall", "precip") and ("chirps" in cname or "precip" in cname):
-                                raw_path_str = str(cf)
-                                break
-                            elif "tmax" in var_type and "tmax" in cname:
-                                raw_path_str = str(cf)
-                                break
-                            elif "tmin" in var_type and "tmin" in cname:
-                                raw_path_str = str(cf)
-                                break
+                    if raw_path_str and Path(raw_path_str).exists():
+                        break
+
+            # Check if existing daily grids in sat_dir came from a different 3D NetCDF source
+            source_stamp_file = (sat_dir / ".source_3d_manifest.json") if sat_dir else None
+            need_resplit_source_change = False
+            if sat_dir and raw_path_str and Path(raw_path_str).exists() and source_stamp_file and source_stamp_file.exists():
+                try:
+                    with open(source_stamp_file, "r", encoding="utf-8") as ssf:
+                        stamp_data = json.load(ssf)
+                    if stamp_data.get("source_name") != Path(raw_path_str).name:
+                        print(f"  --> [Cambio de Fuente Detectado] '{sat_dir.name}' tenía grillas de {stamp_data.get('source_name')} y ahora se solicita {Path(raw_path_str).name}. Regenerando grillas diarias...")
+                        for old_nc in sat_dir.glob("*.nc"):
+                            try:
+                                old_nc.unlink()
+                            except Exception:
+                                pass
+                        current_nc_count = 0
+                        need_resplit_source_change = True
+                except Exception:
+                    pass
+
+            if sat_dir and (current_nc_count < expected_days or need_resplit_source_change):
                 if raw_path_str and Path(raw_path_str).exists():
                     from launcher.data_preprocessor import split_3d_netcdf_to_daily_parallel
                     if current_nc_count > 0:
@@ -818,13 +889,23 @@ class ExperimentRunner:
                     split_res = split_3d_netcdf_to_daily_parallel(
                         input_nc_path=raw_path_str,
                         output_dir=sat_dir,
-                        filename_format=paths.get("satellite_format", "chirps_%s%s%s.nc" if var_type in ("rainfall", "precip") else f"{var_type}_%s%s%s.nc"),
-                        var_id=paths.get("var_id", "precip" if var_type in ("rainfall", "precip") else "temp"),
+                        filename_format=paths.get("satellite_format", "chirps_%s%s%s.nc" if var_type.startswith("rainfall") or var_type == "precip" else f"{var_type}_%s%s%s.nc"),
+                        var_id=paths.get("var_id", "precip" if var_type.startswith("rainfall") or var_type == "precip" else "temp"),
                         start_date=p_start,
                         end_date=p_end,
                     )
                     if split_res and "var_id" in split_res:
                         paths["var_id"] = split_res["var_id"]
+                    try:
+                        with open(sat_dir / ".source_3d_manifest.json", "w", encoding="utf-8") as ssf:
+                            json.dump({
+                                "source_name": Path(raw_path_str).name,
+                                "source_size": Path(raw_path_str).stat().st_size,
+                                "expected_days": expected_days,
+                                "timestamp": datetime.datetime.now().isoformat(),
+                            }, ssf, indent=2)
+                    except Exception:
+                        pass
 
             # Ensure paths["var_id"] accurately reflects the actual variable inside daily NetCDFs
             if sat_dir and sat_dir.exists():
@@ -848,7 +929,7 @@ class ExperimentRunner:
                     self.bridge.nb_cores = int(exp_sys_cores)
 
             t0 = time.time()
-            if var_type in ("rainfall", "rain", "precip"):
+            if var_type in ("rainfall", "rain", "precip", "rainfall_v3"):
                 ret_code, stdout, stderr, elapsed = self._run_rainfall_experiment(exp_exec, out_dir, log_dir)
             elif var_type in ("temperature", "temp", "tmax", "tmin"):
                 ret_code, stdout, stderr, elapsed = self._run_temperature_experiment(exp_exec, out_dir, log_dir)
@@ -889,7 +970,7 @@ class ExperimentRunner:
             assembled_nc_path = None
             if ret_code == 0 and post_proc.get("assemble_3d_netcdf", True):
                 try:
-                    eff_prefix = "rr_mrg_" if var_type in ("rainfall", "rain", "precip") else f"{var_type}_mrg_"
+                    eff_prefix = "rr_mrg_" if var_type in ("rainfall", "rain", "precip", "rainfall_v3") else f"{var_type}_mrg_"
                     cand_dirs = [
                         d for d in [out_dir] + list(out_dir.glob("**/DATA")) + list(out_dir.glob("MERGED_*"))
                         if d.is_dir() and list(d.glob(f"{eff_prefix}*.nc"))
@@ -902,12 +983,12 @@ class ExperimentRunner:
                         out_nc_name = post_proc.get("output_filename", f"{var_type}_daily_1991_2020_{exp_id}.nc")
                         assembled_nc_path = out_dir / out_nc_name
                         print(f"  --> Ensamblando archivos NetCDF diarios en producto 3D CF-1.8...")
-                        eff_cf_var = "precip" if var_type in ("rainfall", "rain", "precip") else ("tmin" if "tmin" in var_type or "tn" in var_type else "tmax")
+                        eff_cf_var = "precip" if var_type in ("rainfall", "rain", "precip", "rainfall_v3") else ("tmin" if "tmin" in var_type or "tn" in var_type else "tmax")
                         assemble_daily_netcdfs_to_cf18(
                             input_dir=daily_nc_dir,
                             output_netcdf_path=assembled_nc_path,
                             variable_name=eff_cf_var,
-                            variable_type=var_type,
+                            variable_type="rainfall" if var_type == "rainfall_v3" else var_type,
                             title=f"Reconstructed Climate Gridded Dataset (1991-2020) - {exp_id}",
                         )
                         manifest_data["assembled_netcdf_cf18"] = str(assembled_nc_path)
@@ -921,12 +1002,12 @@ class ExperimentRunner:
                 try:
                     from launcher.station_manager import evaluate_netcdf_against_stations
                     wet_thresh = validation_cfg.get("wet_threshold", 1.0)
-                    eff_cf_var = "precip" if var_type in ("rainfall", "rain", "precip") else ("tmin" if "tmin" in var_type or "tn" in var_type else "tmax")
+                    eff_cf_var = "precip" if var_type in ("rainfall", "rain", "precip", "rainfall_v3") else ("tmin" if "tmin" in var_type or "tn" in var_type else "tmax")
                     df_metrics, val_summary = evaluate_netcdf_against_stations(
                         netcdf_path=assembled_nc_path,
                         station_file=val_target_file,
                         var_name=eff_cf_var,
-                        var_type=var_type,
+                        var_type="rainfall" if var_type == "rainfall_v3" else var_type,
                         wet_threshold=wet_thresh,
                     )
                     
@@ -1444,9 +1525,16 @@ def main() -> None:
     parser.add_argument(
         "--suite", "-s", "--variable", "-v",
         type=str,
-        choices=["rainfall", "tmax", "tmin", "all"],
+        choices=["rainfall", "rainfall_v2", "rainfall_v3", "chirps_v2", "chirps_v3", "tmax", "tmin", "all"],
         default=None,
-        help="Ejecuta una suite completa predefinida: 'rainfall' (10 exp), 'tmax' (8 exp), 'tmin' (8 exp) o 'all' (26 exp).",
+        help="Ejecuta una suite completa predefinida: 'rainfall'/'rainfall_v2' (CHIRPS v2, 15 exp), 'rainfall_v3' (CHIRPS v3, 15 exp), 'tmax' (12 exp), 'tmin' (12 exp) o 'all' (54 exp incluyendo CHIRPS v2 y v3).",
+    )
+    parser.add_argument(
+        "--chirps-version",
+        type=str,
+        choices=["v2", "v3", "both"],
+        default=None,
+        help="Versión de CHIRPS a utilizar para precipitación ('v2', 'v3' o 'both'). Por defecto 'v2' en '--suite rainfall' y 'both' en '--suite all'.",
     )
     parser.add_argument(
         "--base-config", "-b",
@@ -1569,23 +1657,34 @@ def main() -> None:
         )
         return
 
-    suite_targets = []
+    suite_targets: List[Tuple[Path, str]] = []
     if args.suite:
-        if args.suite == "rainfall":
-            suite_targets.append(PROJECT_ROOT / "config" / "experiments_rainfall")
+        if args.suite in ("rainfall", "rainfall_v2", "chirps_v2"):
+            c_ver = args.chirps_version or "v2"
+            if c_ver == "both":
+                suite_targets.append((PROJECT_ROOT / "config" / "experiments_rainfall", "v2"))
+                suite_targets.append((PROJECT_ROOT / "config" / "experiments_rainfall", "v3"))
+            else:
+                suite_targets.append((PROJECT_ROOT / "config" / "experiments_rainfall", c_ver))
+        elif args.suite in ("rainfall_v3", "chirps_v3"):
+            suite_targets.append((PROJECT_ROOT / "config" / "experiments_rainfall", "v3"))
         elif args.suite == "tmax":
-            suite_targets.append(PROJECT_ROOT / "config" / "experiments_tmax")
+            suite_targets.append((PROJECT_ROOT / "config" / "experiments_tmax", "v2"))
         elif args.suite == "tmin":
-            suite_targets.append(PROJECT_ROOT / "config" / "experiments_tmin")
+            suite_targets.append((PROJECT_ROOT / "config" / "experiments_tmin", "v2"))
         elif args.suite == "all":
-            suite_targets.append(PROJECT_ROOT / "config" / "experiments_rainfall")
-            suite_targets.append(PROJECT_ROOT / "config" / "experiments_tmax")
-            suite_targets.append(PROJECT_ROOT / "config" / "experiments_tmin")
+            c_ver = args.chirps_version or "both"
+            if c_ver in ("v2", "both"):
+                suite_targets.append((PROJECT_ROOT / "config" / "experiments_rainfall", "v2"))
+            if c_ver in ("v3", "both"):
+                suite_targets.append((PROJECT_ROOT / "config" / "experiments_rainfall", "v3"))
+            suite_targets.append((PROJECT_ROOT / "config" / "experiments_tmax", "v2"))
+            suite_targets.append((PROJECT_ROOT / "config" / "experiments_tmin", "v2"))
     elif args.config:
-        suite_targets.append(Path(args.config))
+        suite_targets.append((Path(args.config), args.chirps_version or "v2"))
     elif not args.check_env and not args.check_data:
         # Default fallback: run rainfall baseline
-        suite_targets.append(PROJECT_ROOT / "config" / "experiments_rainfall" / "EXP_R01_SBA_IDW_Baseline.yaml")
+        suite_targets.append((PROJECT_ROOT / "config" / "experiments_rainfall" / "EXP_R01_SBA_IDW_Baseline.yaml", args.chirps_version or "v2"))
 
     if args.pack_only:
         target_root = exp_out_dir
@@ -1598,7 +1697,7 @@ def main() -> None:
         sys.exit(0)
 
     all_summaries = []
-    for target in suite_targets:
+    for target, c_ver in suite_targets:
         runner = ExperimentRunner(
             config_target=target,
             base_config_path=args.base_config,
@@ -1606,6 +1705,7 @@ def main() -> None:
             nb_cores=args.cores,
             rscript_path=args.rscript,
             is_production=args.production,
+            chirps_version=c_ver,
         )
         res = runner.run_all_experiments(force=args.force)
         all_summaries.extend(res)

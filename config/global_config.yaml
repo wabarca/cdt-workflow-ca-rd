@@ -34,11 +34,13 @@ paths:
   # --- Opción A: Archivos NetCDF 3D Únicos (Multi-temporales 1991-2020) ---
   # Si se especifican estas rutas, el lanzador los dividirá automáticamente en paralelo:
   raw_3d_netcdf_rainfall: "data/raw_netcdf/chirpsv2_ca-rd_1991-2020_centroamerica.nc"
+  raw_3d_netcdf_rainfall_v3: "data/raw_netcdf/chirpsv3_ca_rd_1991_2020_centroamerica.nc"
   raw_3d_netcdf_tmax: "data/raw_netcdf/CHIRTS-ERA5.daily_Tmax.1991-2020_centroamerica.nc"
   raw_3d_netcdf_tmin: "data/raw_netcdf/CHIRTS-ERA5.daily_Tmin.1991-2020_centroamerica.nc"
 
   # --- Opción B: Directorios con Grillas Diarias 2D en Formato CDT (0.05° ~5.5 km) ---
-  satellite_rainfall_dir: "data/chirps_daily/ca"             # Directorio con archivos NetCDF diarios de CHIRPS
+  satellite_rainfall_dir: "data/chirps_daily/ca"             # Directorio con archivos NetCDF diarios de CHIRPS v2.0
+  satellite_rainfall_v3_dir: "data/chirpsv3_daily/ca"        # Directorio aislado con archivos NetCDF diarios de CHIRPS v3.0
   satellite_rainfall_format: "chirps_%s%s%s.nc"             # Patrón de nombres de archivo (%s%s%s = YYYY MM DD)
 
   satellite_tmax_dir: "data/chirts_daily/ca/tmax"           # Directorio con archivos NetCDF diarios de CHIRTS Tmax
@@ -81,20 +83,22 @@ regions:
   ca:
     name: "Centroamérica"
     raw_3d_netcdf_rainfall: "data/raw_netcdf/chirpsv2_ca-rd_1991-2020_centroamerica.nc"
+    raw_3d_netcdf_rainfall_v3: "data/raw_netcdf/chirpsv3_ca_rd_1991_2020_centroamerica.nc"
     raw_3d_netcdf_tmax: "data/raw_netcdf/CHIRTS-ERA5.daily_Tmax.1991-2020_centroamerica.nc"
     raw_3d_netcdf_tmin: "data/raw_netcdf/CHIRTS-ERA5.daily_Tmin.1991-2020_centroamerica.nc"
     satellite_rainfall_dir: "data/chirps_daily/ca"
+    satellite_rainfall_v3_dir: "data/chirpsv3_daily/ca"
     satellite_tmax_dir: "data/chirts_daily/ca/tmax"
     satellite_tmin_dir: "data/chirts_daily/ca/tmin"
     satellite_temperature_dir: "data/chirts_daily/ca"
     stations_rainfall_file: "data/stations/precip_stations_ca.csv"
     stations_tmax_file: "data/stations/tmax_stations_ca.csv"
     stations_tmin_file: "data/stations/tmin_stations_ca.csv"
-    holdout_rainfall_file: "data/stations/validation_holdout_stations_rainfall.csv"
-    holdout_temperature_file: "data/stations/validation_holdout_stations_temperature.csv"
+    holdout_rainfall_file: "data/stations/validation_holdout_stations_rainfall_ca.csv"
+    holdout_temperature_file: "data/stations/validation_holdout_stations_temperature_ca.csv"
     dem_file: "data/topography/dem_ca_continental_land.nc"
     dem_raw_file: "data/topography/gebco_2026.nc"
-    shapefile_path: "data/gis/Buffer_15km_todo_AC.shp"
+    shapefile_path: "data/gis/Centroamerica_full_buffer15km.shp"
     output_root: "output/experiments_ca"
     log_root: "logs/experiments_ca"
     benchmark_dir: "output/benchmark_ca"
@@ -102,9 +106,11 @@ regions:
   rd:
     name: "República Dominicana"
     raw_3d_netcdf_rainfall: "data/raw_netcdf/chirpsv2_ca-rd_1991-2020_la_espanola.nc"
+    raw_3d_netcdf_rainfall_v3: "data/raw_netcdf/chirpsv3_ca_rd_1991_2020_la_espanola.nc"
     raw_3d_netcdf_tmax: "data/raw_netcdf/CHIRTS-ERA5.daily_Tmax.1991-2020_la_espanola.nc"
     raw_3d_netcdf_tmin: "data/raw_netcdf/CHIRTS-ERA5.daily_Tmin.1991-2020_la_espanola.nc"
     satellite_rainfall_dir: "data/chirps_daily/rd"
+    satellite_rainfall_v3_dir: "data/chirpsv3_daily/rd"
     satellite_tmax_dir: "data/chirts_daily/rd/tmax"
     satellite_tmin_dir: "data/chirts_daily/rd/tmin"
     satellite_temperature_dir: "data/chirts_daily/rd"
@@ -114,7 +120,7 @@ regions:
     holdout_rainfall_file: "data/stations/validation_holdout_stations_rainfall_rd.csv"
     holdout_temperature_file: "data/stations/validation_holdout_stations_temperature_rd.csv"
     dem_file: "data/topography/dem_srtm_dominicana.nc"
-    shapefile_path: "data/gis/republica_dominicana.shp"
+    shapefile_path: "data/gis/Dominicana_full_buffer15km.shp"
     output_root: "output/experiments_rd"
     log_root: "logs/experiments_rd"
     benchmark_dir: "output/benchmark_rd"

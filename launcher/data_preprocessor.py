@@ -714,12 +714,13 @@ def validate_project_inputs(
     # 5. Validar Grillas Satelitales Diarias NetCDF (CHIRPS, Tmax, Tmin)
     # -------------------------------------------------------------------------
     gridded_specs = [
-        ("satellite_rainfall_dir", "raw_3d_netcdf_rainfall", "chirps_%s%s%s.nc", "precip", "Grillas Lluvia (CHIRPS)", "data/chirps_daily"),
-        ("satellite_tmax_dir", "raw_3d_netcdf_tmax", "tmax_%s%s%s.nc", "tmax", "Grillas Tmax (CHIRTS)", "data/chirts_daily/tmax"),
-        ("satellite_tmin_dir", "raw_3d_netcdf_tmin", "tmin_%s%s%s.nc", "tmin", "Grillas Tmin (CHIRTS)", "data/chirts_daily/tmin"),
+        ("satellite_rainfall_dir", "raw_3d_netcdf_rainfall", "chirps_%s%s%s.nc", "precip", "Grillas Lluvia (CHIRPS v2)", "data/chirps_daily", False),
+        ("satellite_rainfall_v3_dir", "raw_3d_netcdf_rainfall_v3", "chirps_%s%s%s.nc", "precip", "Grillas Lluvia (CHIRPS v3)", "data/chirpsv3_daily", True),
+        ("satellite_tmax_dir", "raw_3d_netcdf_tmax", "tmax_%s%s%s.nc", "tmax", "Grillas Tmax (CHIRTS)", "data/chirts_daily/tmax", False),
+        ("satellite_tmin_dir", "raw_3d_netcdf_tmin", "tmin_%s%s%s.nc", "tmin", "Grillas Tmin (CHIRTS)", "data/chirts_daily/tmin", False),
     ]
 
-    for dir_key, raw_3d_key, def_format, def_var, label, def_dir in gridded_specs:
+    for dir_key, raw_3d_key, def_format, def_var, label, def_dir, is_optional in gridded_specs:
         target_dir_str = paths.get(dir_key, def_dir)
         raw_3d_str = paths.get(raw_3d_key)
         
@@ -736,12 +737,16 @@ def validate_project_inputs(
         raw_found = False
         raw_path_obj = None
         if raw_3d_str:
-            raw_path_obj = Path(raw_3d_str).resolve()
-            if not raw_path_obj.exists():
-                cand_raw = Path(raw_3d_str)
-                if cand_raw.exists():
-                    raw_path_obj = cand_raw.resolve()
-            raw_found = raw_path_obj.exists() and raw_path_obj.is_file()
+            for variant_str in (
+                raw_3d_str,
+                raw_3d_str.replace("-", "_"),
+                raw_3d_str.replace("_", "-"),
+            ):
+                cand_raw = Path(variant_str).resolve()
+                if cand_raw.exists() and cand_raw.is_file():
+                    raw_path_obj = cand_raw
+                    raw_found = True
+                    break
 
         if not raw_found and Path("data/raw_netcdf").exists():
             reg_keywords = ("la_espanola", "rd", "dominicana") if active_region == "rd" else ("centroamerica", "ca", "ac")
@@ -758,7 +763,11 @@ def validate_project_inputs(
                     raw_path_obj = cf.resolve()
                     raw_found = True
                     break
-                elif "rainfall" in raw_3d_key and ("chirps" in c_name or "precip" in c_name):
+                elif raw_3d_key == "raw_3d_netcdf_rainfall_v3" and ("chirpsv3" in c_name or "chirps_v3" in c_name or "chirps-v3" in c_name):
+                    raw_path_obj = cf.resolve()
+                    raw_found = True
+                    break
+                elif raw_3d_key == "raw_3d_netcdf_rainfall" and ("chirps" in c_name or "precip" in c_name) and not ("v3" in c_name):
                     raw_path_obj = cf.resolve()
                     raw_found = True
                     break
@@ -773,6 +782,8 @@ def validate_project_inputs(
         elif raw_found and raw_path_obj:
             details[raw_3d_key] = {"path": str(raw_path_obj), "status": "RAW_3D_READY"}
             report_rows.append((label, "3D DISPONIBLE", raw_path_obj.name, "Listo para particionar automáticamente a diario"))
+        elif is_optional:
+            report_rows.append((label, "OPCIONAL", str(raw_3d_str or target_dir_str), "Opcional para comparativa CHIRPS v3.0"))
         else:
             errors.append(f"{label}: No se encontraron archivos NetCDF en '{target_dir_str}' ni 3D en raw_netcdf.")
             report_rows.append((label, "NO ENCONTRADO", str(target_dir_str), f"Colocar {expected_days:,} archivos diarios 2D o NetCDF 3D"))
