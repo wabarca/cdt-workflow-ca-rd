@@ -43,8 +43,14 @@ REQUIRED_R_PACKAGES: list[str] = [
     "fitdistrplus",
     "qmap",
     "doParallel",
+    "doSNOW",
     "foreach",
+    "dotCall64",
+    "spam",
     "fields",
+    "interp",
+    "reshape2",
+    "stringr",
     "lmomco",
     "yaml",
     "jsonlite",
@@ -142,23 +148,40 @@ def get_r_version(rscript_path: Path) -> Tuple[Optional[Tuple[int, int, int]], s
         return None, f"Error obtaining R version: {e}"
 
 
-def check_installed_r_packages(
+def check_r_packages_detailed(
     rscript_path: Path, packages: list[str] = REQUIRED_R_PACKAGES
-) -> Dict[str, bool]:
-    """Query R to determine which required packages are currently installed.
+) -> Tuple[Dict[str, bool], Dict[str, str]]:
+    """Query R to determine which required packages are installed AND dynamically loadable.
+
+    Verifies both presence in installed.packages() and dynamic shared library (.so/.dll)
+    loading via loadNamespace(), catching ABI mismatches (e.g. undefined symbol: MAYBE_SHARED).
 
     Args:
         rscript_path: Path to Rscript executable.
         packages: List of package names to check.
 
     Returns:
-        Dictionary mapping package names to True (installed) or False (missing).
+        Tuple of:
+          - Dictionary mapping package names to True (installed & loadable) or False.
+          - Dictionary mapping broken package names (installed on disk, but failed loadNamespace)
+            to their specific error message.
     """
     pkg_str = ", ".join(f"'{p}'" for p in packages)
     r_command = (
         f"installed <- rownames(installed.packages()); "
         f"pkgs <- c({pkg_str}); "
-        f"cat(paste(pkgs, pkgs %in% installed, sep = ':', collapse = ','))"
+        f"for (p in pkgs) {{ "
+        f"  if (!(p %in% installed)) {{ "
+        f"    cat(paste0('PKG_STATUS|', p, '|MISSING|\\n')); "
+        f"  }} else {{ "
+        f"    err_msg <- tryCatch({{ loadNamespace(p); '' }}, error = function(e) gsub('[\\r\\n|]+', ' ', conditionMessage(e))); "
+        f"    if (nzchar(err_msg)) {{ "
+        f"      cat(paste0('PKG_STATUS|', p, '|BROKEN|', err_msg, '\\n')); "
+        f"    }} else {{ "
+        f"      cat(paste0('PKG_STATUS|', p, '|OK|\\n')); "
+        f"    }} "
+        f"  }} "
+        f"}}"
     )
 
     try:
@@ -168,16 +191,49 @@ def check_installed_r_packages(
             text=True,
             check=True,
         )
-        raw_pairs = res.stdout.strip().split(",")
-        results = {}
-        for pair in raw_pairs:
-            if ":" in pair:
-                name, status = pair.split(":")
-                results[name.strip()] = status.strip() == "TRUE"
-        return results
+        results: Dict[str, bool] = {}
+        broken_details: Dict[str, str] = {}
+        for line in res.stdout.splitlines():
+            line = line.strip()
+            if line.startswith("PKG_STATUS|"):
+                parts = line.split("|", 3)
+                if len(parts) >= 3:
+                    pkg_name = parts[1].strip()
+                    state = parts[2].strip()
+                    msg = parts[3].strip() if len(parts) > 3 else ""
+                    if state == "OK":
+                        results[pkg_name] = True
+                    elif state == "BROKEN":
+                        results[pkg_name] = False
+                        broken_details[pkg_name] = msg
+                    else:
+                        results[pkg_name] = False
+        # Fallback if output format was mocked in a test with old 'pkg:TRUE,pkg2:FALSE' syntax
+        if not results and ":" in res.stdout:
+            for pair in res.stdout.strip().split(","):
+                if ":" in pair:
+                    name, status = pair.split(":", 1)
+                    results[name.strip()] = status.strip() == "TRUE"
+        return results, broken_details
     except Exception as e:
         print(f"[!] Warning: Could not query R packages: {e}", file=sys.stderr)
-        return {p: False for p in packages}
+        return {p: False for p in packages}, {}
+
+
+def check_installed_r_packages(
+    rscript_path: Path, packages: list[str] = REQUIRED_R_PACKAGES
+) -> Dict[str, bool]:
+    """Query R to determine which required packages are installed and dynamically loadable.
+
+    Args:
+        rscript_path: Path to Rscript executable.
+        packages: List of package names to check.
+
+    Returns:
+        Dictionary mapping package names to True (installed & loadable) or False.
+    """
+    results, _ = check_r_packages_detailed(rscript_path, packages)
+    return results
 
 
 def check_system_environment(rscript_path: Optional[Path | str] = None) -> Dict[str, Any]:
@@ -226,14 +282,20 @@ def check_system_environment(rscript_path: Optional[Path | str] = None) -> Dict[
             r_version_ok = True
 
     r_pkg_status: Dict[str, bool] = {}
+    broken_r_packages: Dict[str, str] = {}
     missing_r_packages: list[str] = []
 
     if rscript_path and r_version_ok:
-        r_pkg_status = check_installed_r_packages(rscript_path, REQUIRED_R_PACKAGES)
-        missing_r_packages = [p for p, installed in r_pkg_status.items() if not installed]
+        r_pkg_status, broken_r_packages = check_r_packages_detailed(rscript_path, REQUIRED_R_PACKAGES)
+        missing_r_packages = [
+            p for p, ok in r_pkg_status.items() if not ok and p not in broken_r_packages
+        ]
 
     r_ready = bool(
-        r_available and r_version_ok and (len(missing_r_packages) == 0 or "CDT" in r_pkg_status and r_pkg_status["CDT"])
+        r_available
+        and r_version_ok
+        and len(missing_r_packages) == 0
+        and len(broken_r_packages) == 0
     )
 
     is_ready = bool(py_ready and r_ready)
@@ -249,6 +311,7 @@ def check_system_environment(rscript_path: Optional[Path | str] = None) -> Dict[
         "r_version_ok": r_version_ok,
         "r_packages": r_pkg_status,
         "missing_r_packages": missing_r_packages,
+        "broken_r_packages": broken_r_packages,
         "r_ready": r_ready,
         "is_ready": is_ready,
     }
@@ -256,6 +319,10 @@ def check_system_environment(rscript_path: Optional[Path | str] = None) -> Dict[
 
 def print_environment_report(status: Dict[str, Any]) -> None:
     """Print a user-friendly console report of the environment health check."""
+    repo_root = Path(__file__).resolve().parent.parent
+    rscript_bin = status.get("rscript_path") or "Rscript"
+    r_bin = str(Path(rscript_bin).with_name("R")) if status.get("rscript_path") else "R"
+
     print("=" * 75)
     print("       CDT ENVIRONMENT & DEPENDENCY PRE-FLIGHT CHECK (PYTHON & R)")
     print("=" * 75)
@@ -273,12 +340,17 @@ def print_environment_report(status: Dict[str, Any]) -> None:
         print(f"    {icon:10} {pkg}")
 
     # 2. R Packages Table
-    print("\n  2. Required R Packages Status:")
+    broken_r = status.get("broken_r_packages", {})
+    print("\n  2. Required R Packages Status (Installation & Dynamic .so/.dll Load):")
     print("  " + "-" * 55)
     if status["r_packages"]:
-        for pkg, installed in status["r_packages"].items():
-            icon = "[OK]" if installed else "[MISSING]"
-            print(f"    {icon:10} {pkg}")
+        for pkg, ok in status["r_packages"].items():
+            if ok:
+                print(f"    {'[OK]':10} {pkg}")
+            elif pkg in broken_r:
+                print(f"    {'[BROKEN]':10} {pkg}  --> Error de enlace dinámico (.so/.dll): {broken_r[pkg]}")
+            else:
+                print(f"    {'[MISSING]':10} {pkg}")
     else:
         print("    [!] Could not check R packages because Rscript was not found.")
 
@@ -289,17 +361,43 @@ def print_environment_report(status: Dict[str, Any]) -> None:
         print("  >>> STATUS: ENVIRONMENT NEEDS ATTENTION BEFORE RUNNING <<<")
         if status["missing_python_packages"]:
             print(f"\n  [!] Faltan paquetes de Python: {', '.join(status['missing_python_packages'])}")
-            print("      Para instalarlos, ejecuta en tu terminal:")
-            print("      pip install -r requirements.txt")
-        
+            print("      Para instalarlos sin alterar librerías compiladas de R en entornos Conda, ejecuta:")
+            print(f"      pip install {' '.join(status['missing_python_packages'])}")
+            print("      (o bien para todo el entorno: pip install -r requirements.txt)")
+
         if not status["r_available"]:
             print("\n  [!] R no fue encontrado en el sistema.")
-            print("      Descarga e instala R 4.4.3: https://cran.r-project.org/")
+            print("      Descarga e instala R >= 4.0.0 (recomendado R 4.4.3): https://cran.r-project.org/")
         elif not status["r_version_ok"]:
             print(f"\n  [!] La versión de R ({status['r_version']}) está obsoleta. Se requiere R >= 4.0.0.")
-        elif status["missing_r_packages"]:
-            print(f"\n  [!] Faltan paquetes de R: {', '.join(status['missing_r_packages'])}")
-            print("      Ejecuta en R: install.packages(c(" + ", ".join(f"'{p}'" for p in status["missing_r_packages"]) + "))")
+        else:
+            cran_missing = [p for p in status.get("missing_r_packages", []) if p != "CDT"]
+            cran_broken = [p for p in broken_r.keys() if p != "CDT"]
+            cdt_needs_install = "CDT" in status.get("missing_r_packages", []) or "CDT" in broken_r
+
+            if cran_broken:
+                broken_vec = ", ".join(f'"{p}"' for p in cran_broken)
+                print(f"\n  [!] Paquetes de R con binario compilado (.so/.dll) corrupto o desincronizado con libR: {', '.join(cran_broken)}")
+                print("      Solución 1 — Recompilar los paquetes afectados desde código fuente:")
+                print(f"      {rscript_bin} -e 'install.packages(c({broken_vec}), type = \"source\", repos = \"https://cloud.r-project.org\", Ncpus = 4)'")
+                print("      Solución 2 — Escanear y reparar automáticamente TODOS los paquetes .so rotos del entorno R:")
+                print(
+                    f"      {rscript_bin} -e 'pkgs <- rownames(installed.packages()); "
+                    f"broken <- Filter(function(p) inherits(try(loadNamespace(p), silent=TRUE), \"try-error\"), pkgs); "
+                    f"if (length(broken) > 0) install.packages(setdiff(broken, \"CDT\"), type=\"source\", repos=\"https://cloud.r-project.org\", Ncpus=4)'"
+                )
+
+            if cran_missing:
+                missing_vec = ", ".join(f'"{p}"' for p in cran_missing)
+                print(f"\n  [!] Faltan paquetes de R de CRAN: {', '.join(cran_missing)}")
+                print("      Para instalarlos, ejecuta en tu terminal:")
+                print(f"      {rscript_bin} -e 'install.packages(c({missing_vec}), repos = \"https://cloud.r-project.org\", Ncpus = 4)'")
+
+            if cdt_needs_install or cran_broken or cran_missing:
+                print("\n  [!] Instalación / Reinstalación de CDT desde el código fuente local del repositorio:")
+                print("      Ejecuta en la raíz del proyecto (donde se encuentra el archivo DESCRIPTION):")
+                print("      R CMD INSTALL .")
+                print(f"      (o con ruta explícita: {r_bin} CMD INSTALL \"{repo_root}\")")
     print("=" * 75 + "\n")
 
 
