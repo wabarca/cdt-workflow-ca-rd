@@ -516,9 +516,11 @@ def generate_static_html_dashboard(
                                 <td class="font-mono text-left font-medium">
                                     <span>{{ e.experiment_id }}</span>
                                     {% if e.is_winner %}
-                                    <span class="ml-1.5 bg-emerald-100 text-emerald-800 text-[10px] px-1.5 py-0.5 rounded border border-emerald-300 font-bold">🏆 Ganador Físico</span>
+                                    <span class="ml-1.5 bg-emerald-100 text-emerald-800 text-[10px] px-1.5 py-0.5 rounded border border-emerald-300 font-bold">🏆 Ganador Climatológico</span>
                                     {% elif "Baseline" in e.experiment_id %}
                                     <span class="ml-1.5 bg-amber-100 text-amber-800 text-[10px] px-1.5 py-0.5 rounded border border-amber-300 font-bold">📐 Línea Base 2D</span>
+                                    {% elif "_IDW_" in e.experiment_id %}
+                                    <span class="ml-1.5 bg-rose-100 text-rose-800 text-[10px] px-1.5 py-0.5 rounded border border-rose-300 font-bold">🚫 Ojos de Buey (IDW)</span>
                                     {% elif e.is_control %}
                                     <span class="ml-1.5 bg-slate-200 text-slate-700 text-[10px] px-1.5 py-0.5 rounded border border-slate-300 font-bold">⚡ Rejilla Original</span>
                                     {% endif %}
@@ -617,9 +619,11 @@ def generate_static_html_dashboard(
                                 <td class="font-mono text-left font-medium">
                                     <span>{{ e.experiment_id }}</span>
                                     {% if e.is_winner %}
-                                    <span class="ml-1.5 bg-emerald-100 text-emerald-800 text-[10px] px-1.5 py-0.5 rounded border border-emerald-300 font-bold">🏆 Ganador Físico</span>
+                                    <span class="ml-1.5 bg-emerald-100 text-emerald-800 text-[10px] px-1.5 py-0.5 rounded border border-emerald-300 font-bold">🏆 Ganador Climatológico</span>
                                     {% elif "Baseline" in e.experiment_id %}
                                     <span class="ml-1.5 bg-amber-100 text-amber-800 text-[10px] px-1.5 py-0.5 rounded border border-amber-300 font-bold">📐 Línea Base 2D</span>
+                                    {% elif "_IDW_" in e.experiment_id %}
+                                    <span class="ml-1.5 bg-rose-100 text-rose-800 text-[10px] px-1.5 py-0.5 rounded border border-rose-300 font-bold">🚫 Ojos de Buey (IDW)</span>
                                     {% elif e.is_control %}
                                     <span class="ml-1.5 bg-slate-200 text-slate-700 text-[10px] px-1.5 py-0.5 rounded border border-slate-300 font-bold">⚡ Rejilla Original</span>
                                     {% endif %}
@@ -846,6 +850,8 @@ def generate_static_html_dashboard(
                                     <span class="ml-1.5 bg-emerald-100 text-emerald-800 text-[10px] px-1.5 py-0.5 rounded border border-emerald-300 font-bold">🏆 Ganador Climatológico</span>
                                     {% elif "Baseline" in e.experiment_id %}
                                     <span class="ml-1.5 bg-amber-100 text-amber-800 text-[10px] px-1.5 py-0.5 rounded border border-amber-300 font-bold">📐 Línea Base 2D</span>
+                                    {% elif "_IDW_" in e.experiment_id %}
+                                    <span class="ml-1.5 bg-rose-100 text-rose-800 text-[10px] px-1.5 py-0.5 rounded border border-rose-300 font-bold">🚫 Ojos de Buey (IDW)</span>
                                     {% elif e.is_control %}
                                     <span class="ml-1.5 bg-slate-200 text-slate-700 text-[10px] px-1.5 py-0.5 rounded border border-slate-300 font-bold">⚡ Rejilla Original v3.0</span>
                                     {% endif %}
@@ -1143,9 +1149,11 @@ def generate_static_html_dashboard(
                                 <td class="font-mono text-left font-medium">
                                     <span>{{ e.experiment_id }}</span>
                                     {% if e.is_winner %}
-                                    <span class="ml-1.5 bg-emerald-100 text-emerald-800 text-[10px] px-1.5 py-0.5 rounded border border-emerald-300 font-bold">🏆 Ganador Físico</span>
+                                    <span class="ml-1.5 bg-emerald-100 text-emerald-800 text-[10px] px-1.5 py-0.5 rounded border border-emerald-300 font-bold">🏆 Ganador Climatológico</span>
                                     {% elif "Baseline" in e.experiment_id %}
                                     <span class="ml-1.5 bg-amber-100 text-amber-800 text-[10px] px-1.5 py-0.5 rounded border border-amber-300 font-bold">📐 Línea Base 2D</span>
+                                    {% elif "_IDW_" in e.experiment_id %}
+                                    <span class="ml-1.5 bg-rose-100 text-rose-800 text-[10px] px-1.5 py-0.5 rounded border border-rose-300 font-bold">🚫 Ojos de Buey (IDW)</span>
                                     {% elif e.is_control %}
                                     <span class="ml-1.5 bg-slate-200 text-slate-700 text-[10px] px-1.5 py-0.5 rounded border border-slate-300 font-bold">⚡ Rejilla Original</span>
                                     {% endif %}
@@ -1351,9 +1359,11 @@ def generate_static_html_dashboard(
                                 <td class="font-mono text-left font-medium">
                                     <span>{{ e.experiment_id }}</span>
                                     {% if e.is_winner %}
-                                    <span class="ml-1.5 bg-emerald-100 text-emerald-800 text-[10px] px-1.5 py-0.5 rounded border border-emerald-300 font-bold">🏆 Ganador Físico</span>
+                                    <span class="ml-1.5 bg-emerald-100 text-emerald-800 text-[10px] px-1.5 py-0.5 rounded border border-emerald-300 font-bold">🏆 Ganador Climatológico</span>
                                     {% elif "Baseline" in e.experiment_id %}
                                     <span class="ml-1.5 bg-amber-100 text-amber-800 text-[10px] px-1.5 py-0.5 rounded border border-amber-300 font-bold">📐 Línea Base 2D</span>
+                                    {% elif "_IDW_" in e.experiment_id %}
+                                    <span class="ml-1.5 bg-rose-100 text-rose-800 text-[10px] px-1.5 py-0.5 rounded border border-rose-300 font-bold">🚫 Ojos de Buey (IDW)</span>
                                     {% elif e.is_control %}
                                     <span class="ml-1.5 bg-slate-200 text-slate-700 text-[10px] px-1.5 py-0.5 rounded border border-slate-300 font-bold">⚡ Rejilla Original</span>
                                     {% endif %}

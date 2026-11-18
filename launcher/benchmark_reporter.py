@@ -225,19 +225,22 @@ def compute_leaderboard_ranking(df_summaries: pd.DataFrame) -> pd.DataFrame:
         if "ets" in df.columns:
             df["delta_ets_vs_base"] = df["ets"] - base_ets
 
-        # Seleccion de Ganador Operativo:
-        # Las lineas base (00_Raw y 01_Baseline) son controles de referencia y estan
-        # formalmente descalificadas como ganadoras operativas (especialmente EXP_TX01
-        # por carecer de acoplamiento orografico con el DEM continental y aplanar cumbres).
-        non_baseline_mask = ~df["experiment_id"].str.contains(r"_Baseline|_Raw_|00_Raw", regex=True)
-        if non_baseline_mask.any():
-            winner_id = df[non_baseline_mask].iloc[0]["experiment_id"]
+        # Seleccion de Ganador Operativo (Filtro de Admisibilidad Climatologica):
+        # 1. Las lineas base (00_Raw y 01_Baseline) son controles de referencia.
+        # 2. Los esquemas IDW isotropicos puros (_IDW_, como EXP_R02, EXP_TX12, EXP_TN12)
+        #    quedan descartados como ganadores operativos porque generan artefactos
+        #    concentricos de "ojo de buey" (bull's-eyes, gradiente nulo en estaciones)
+        #    y carecen de apantallamiento direccional.
+        admissible_mask = ~df["experiment_id"].str.contains(r"_Baseline|_Raw_|00_Raw|_IDW_", regex=True)
+        if admissible_mask.any():
+            winner_id = df[admissible_mask].iloc[0]["experiment_id"]
         else:
             winner_id = df.iloc[0]["experiment_id"]
 
         df["is_winner"] = df["experiment_id"] == winner_id
         df["is_control"] = df["experiment_id"].str.contains(r"00_Raw|_Raw_", regex=True)
         df["is_baseline"] = df["experiment_id"].str.contains(r"_Baseline|01_", regex=True)
+        df["is_idw_bullseye"] = df["experiment_id"].str.contains(r"_IDW_", regex=True) & ~df["is_baseline"]
         ranked_dfs.append(df)
 
     final_df = pd.concat(ranked_dfs, ignore_index=True)
