@@ -314,9 +314,11 @@ def generate_static_html_dashboard(
             <button onclick="switchTab('consolidated')" id="tab-btn-consolidated" class="tab-btn active px-4 py-2.5 text-xs whitespace-nowrap transition">
                 🌟 Resumen Ejecutivo Multivariable
             </button>
+            {% if list_rain %}
             <button onclick="switchTab('rainfall')" id="tab-btn-rainfall" class="tab-btn px-4 py-2.5 text-xs whitespace-nowrap transition">
                 🌧️ Precipitación (CHIRPS v2.0)
             </button>
+            {% endif %}
             {% if list_rain_v3 %}
             <button onclick="switchTab('rainfall_v3')" id="tab-btn-rainfall_v3" class="tab-btn px-4 py-2.5 text-xs whitespace-nowrap transition">
                 🌧️ Precipitación (CHIRPS v3.0)
@@ -327,12 +329,16 @@ def generate_static_html_dashboard(
                 ⚖️ Comparativa CHIRPS v2 vs. v3
             </button>
             {% endif %}
+            {% if list_tmax %}
             <button onclick="switchTab('tmax')" id="tab-btn-tmax" class="tab-btn px-4 py-2.5 text-xs whitespace-nowrap transition">
                 ☀️ Temperatura Máxima (CHIRTS)
             </button>
+            {% endif %}
+            {% if list_tmin %}
             <button onclick="switchTab('tmin')" id="tab-btn-tmin" class="tab-btn px-4 py-2.5 text-xs whitespace-nowrap transition">
                 🌙 Temperatura Mínima (CHIRTS)
             </button>
+            {% endif %}
             <button onclick="switchTab('glossary')" id="tab-btn-glossary" class="tab-btn px-4 py-2.5 text-xs whitespace-nowrap transition">
                 📖 Definición e Interpretación
             </button>
@@ -350,6 +356,7 @@ def generate_static_html_dashboard(
             <!-- Cards de los Ganadores Oficiales -->
             <div class="grid grid-cols-1 {% if win_rain_v3 %}md:grid-cols-4{% else %}md:grid-cols-3{% endif %} gap-5">
                 
+                {% if win_rain %}
                 <!-- Winner Rain Card (CHIRPS v2.0) -->
                 <div class="bg-white border-t-4 border-sky-500 rounded-xl p-5 shadow-sm border-x border-b border-slate-200">
                     <div class="flex items-center justify-between mb-2">
@@ -373,6 +380,7 @@ def generate_static_html_dashboard(
                         </div>
                     </div>
                 </div>
+                {% endif %}
 
                 {% if win_rain_v3 %}
                 <!-- Winner Rain v3 Card (CHIRPS v3.0) -->
@@ -400,11 +408,12 @@ def generate_static_html_dashboard(
                 </div>
                 {% endif %}
 
+                {% if win_tmax %}
                 <!-- Winner Tmax Card -->
                 <div class="bg-white border-t-4 border-amber-500 rounded-xl p-5 shadow-sm border-x border-b border-slate-200">
                     <div class="flex items-center justify-between mb-2">
                         <span class="text-xs font-bold text-amber-700 uppercase tracking-wider">Temperatura Máxima</span>
-                        <span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-300">Ganador Físico</span>
+                        <span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-300">Ganador Climatológico</span>
                     </div>
                     <div class="font-bold text-base text-slate-900 truncate" title="{{ win_tmax.experiment_id }}">{{ win_tmax.experiment_id }}</div>
                     <p class="text-[11px] text-slate-500 mt-1 line-clamp-2">{{ win_tmax.description }}</p>
@@ -423,7 +432,9 @@ def generate_static_html_dashboard(
                         </div>
                     </div>
                 </div>
+                {% endif %}
 
+                {% if win_tmin %}
                 <!-- Winner Tmin Card -->
                 <div class="bg-white border-t-4 border-violet-500 rounded-xl p-5 shadow-sm border-x border-b border-slate-200">
                     <div class="flex items-center justify-between mb-2">
@@ -447,6 +458,7 @@ def generate_static_html_dashboard(
                         </div>
                     </div>
                 </div>
+                {% endif %}
 
             </div>
 
