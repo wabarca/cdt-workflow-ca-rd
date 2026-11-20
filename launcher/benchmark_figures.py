@@ -310,7 +310,7 @@ def generate_pareto_scatter_figure(
             lbl, (xi, yi),
             xytext=best_offset, textcoords="offset points",
             arrowprops=arr_props,
-            fontsize=7.5, color="#1e293b", fontweight="medium",
+            fontsize=7.5, color="#1e293b", fontweight="normal",
             bbox=dict(boxstyle="round,pad=0.15", facecolor="white", edgecolor="#cbd5e1", alpha=0.88),
             zorder=6
         )
@@ -375,12 +375,16 @@ def generate_divergent_bars_figure(
 
     var_title = _get_var_title(var_type)
     ctrl_name = ctrl_rows["experiment_id"].values[0] if not ctrl_rows.empty else "Rejilla Original"
-    ax.set_title(f"Figura 3: Ganancia Neta de Eficiencia (Δ KGE) respecto a la Rejilla Original [{ctrl_name}]\n{var_title} (1991-2020) • Evaluacion en 29 Estaciones Holdout", fontsize=11, fontweight="bold", pad=12)
+    fig.suptitle(
+        f"Figura 3: Ganancia Neta de Eficiencia (Δ KGE) vs. Rejilla Original [{ctrl_name}]\n"
+        f"{var_title} (1991-2020) • Evaluacion en 29 Estaciones Holdout",
+        fontsize=11, fontweight="bold", x=0.5, y=0.985, color="#0f172a"
+    )
     ax.set_xlabel("Ganancia Neta en Eficiencia (Δ KGE) [> 0 indica mejora respecto a la rejilla original sin corregir]", fontsize=9.5, fontweight="bold")
     ax.set_xlim(df_sorted["delta_kge"].min() - 0.04, df_sorted["delta_kge"].max() + 0.05)
 
-    plt.tight_layout()
-    plt.savefig(out_p, dpi=300)
+    plt.tight_layout(rect=[0, 0, 1, 0.93])
+    plt.savefig(out_p, dpi=300, bbox_inches="tight", pad_inches=0.15)
     plt.close()
     return str(out_p)
 
@@ -684,7 +688,7 @@ def generate_elevation_strata_figure(
         ax.annotate(f"{h:.3f}", (rect.get_x() + rect.get_width() / 2, h / 2),
                     ha="center", va="center", color="white", fontweight="bold", fontsize=9)
         ax.annotate(f"σ=±{s:.3f}", (rect.get_x() + rect.get_width() / 2, h + s + 0.012),
-                    ha="center", va="bottom", fontsize=8, color="#475569", fontweight="semibold")
+                    ha="center", va="bottom", fontsize=8, color="#475569", fontweight="bold")
 
     for i, rect in enumerate(rects2):
         h = rect.get_height()

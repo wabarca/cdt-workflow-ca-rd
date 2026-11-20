@@ -280,7 +280,7 @@ def generate_taylor_diagram(
     angles = np.arccos(r_ticks)
 
     ax.set_xticks(angles)
-    ax.set_xticklabels([f"{v:.2f}" for v in r_ticks], fontsize=9, color="#1e293b", fontweight="semibold")
+    ax.set_xticklabels([f"{v:.2f}" for v in r_ticks], fontsize=9, color="#1e293b", fontweight="bold")
     ax.tick_params(pad=9)
 
     # 2-line correlation label along the outer arc safely separated from title
@@ -2019,6 +2019,19 @@ def run_full_benchmark_suite(
     with open(json_path, "w", encoding="utf-8") as jf:
         json.dump(df_ranked.to_dict(orient="records"), jf, indent=2)
     print(f"  [CSV] Summary table saved: {csv_path}")
+
+    # Save consolidated station-by-station metrics CSV across all experiments
+    if not df_stations.empty:
+        df_st_out = df_stations.copy()
+        if "elev" in df_st_out.columns:
+            df_st_out["elevation_stratum"] = pd.cut(
+                df_st_out["elev"],
+                bins=[-1, 200, 800, 5000],
+                labels=["lowland_coast_<200m", "mid_valley_200_800m", "mountain_>800m"],
+            )
+        stations_csv_path = out_path / "benchmark_metrics_by_station.csv"
+        df_st_out.to_csv(stations_csv_path, index=False)
+        print(f"  [CSV] Station-level metrics saved ({len(df_st_out)} rows): {stations_csv_path}")
 
     # 3. Generate high-resolution static diagnostic figures per variable
     from launcher.benchmark_figures import (
